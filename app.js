@@ -1,107 +1,194 @@
-```javascript
 // ============================================================
 // RELUZ PRODUÇÃO - APP.JS
 // ============================================================
+
 
 // ============================================================
 // FIREBASE
 // ============================================================
 
 const firebaseConfig = {
-    apiKey: "AIzaSyCOVy3L_TD3JSWBsM7BuqGooaBE74-HG7Y",
-    authDomain: "reluz-producao.firebaseapp.com",
-    databaseURL: "https://reluz-producao-default-rtdb.firebaseio.com",
-    projectId: "reluz-producao",
-    storageBucket: "reluz-producao.firebasestorage.app",
-    messagingSenderId: "910724669287",
-    appId: "1:910724669287:web:e2ff572555c8cabafd59c2"
+
+    apiKey:
+        "AIzaSyCOVy3L_TD3JSWBsM7BuqGooaBE74-HG7Y",
+
+    authDomain:
+        "reluz-producao.firebaseapp.com",
+
+    databaseURL:
+        "https://reluz-producao-default-rtdb.firebaseio.com",
+
+    projectId:
+        "reluz-producao",
+
+    storageBucket:
+        "reluz-producao.firebasestorage.app",
+
+    messagingSenderId:
+        "910724669287",
+
+    appId:
+        "1:910724669287:web:e2ff572555c8cabafd59c2"
+
 };
 
+
 if (!firebase.apps.length) {
-    firebase.initializeApp(firebaseConfig);
+
+    firebase.initializeApp(
+        firebaseConfig
+    );
+
 }
 
-const auth = firebase.auth();
-const db = firebase.firestore();
+
+const auth =
+    firebase.auth();
+
+
+const db =
+    firebase.firestore();
+
 
 // ============================================================
 // ADMINISTRADOR PRINCIPAL
 // ============================================================
-//
-// SOMENTE ESTE UID terá acesso administrativo completo.
-//
-// UID informado:
-// 3QlkmlndAXaGxErEpCL17Mun35E3
-//
-// NÃO altere este valor, a menos que queira trocar o
-// administrador principal.
-//
 
-const MASTER_ADMIN_UID = "3QlkmlndAXaGxErEpCL17Mun35E3";
+const MASTER_ADMIN_UID =
+    "3QlkmlndAXaGxErEpCL17Mun35E3";
+
 
 // ============================================================
 // VARIÁVEIS GLOBAIS
 // ============================================================
 
 let currentUser = null;
+
 let currentProfile = null;
 
 let allLots = [];
+
 let allUsers = [];
+
 
 // ============================================================
 // HELPERS
 // ============================================================
 
-const $ = id => document.getElementById(id);
+const $ = id =>
+    document.getElementById(id);
 
-const kg = n =>
-    `${Number(n || 0).toLocaleString("pt-BR", {
-        maximumFractionDigits: 3
-    })} kg`;
 
-const pct = n =>
-    `${Number(n || 0).toLocaleString("pt-BR", {
-        maximumFractionDigits: 1
-    })}%`;
+function kg(n) {
 
-const today = () =>
-    new Date().toISOString().slice(0, 10);
+    return `${Number(n || 0).toLocaleString(
+        "pt-BR",
+        {
+            maximumFractionDigits: 3
+        }
+    )} kg`;
 
-const dateBR = d =>
-    d
-        ? String(d).split("-").reverse().join("/")
+}
+
+
+function pct(n) {
+
+    return `${Number(n || 0).toLocaleString(
+        "pt-BR",
+        {
+            maximumFractionDigits: 1
+        }
+    )}%`;
+
+}
+
+
+function today() {
+
+    return new Date()
+        .toISOString()
+        .slice(0, 10);
+
+}
+
+
+function dateBR(d) {
+
+    return d
+        ? String(d)
+            .split("-")
+            .reverse()
+            .join("/")
         : "—";
 
-function escapeHtml(s = "") {
-    return String(s).replace(/[&<>"']/g, m => ({
-        "&": "&amp;",
-        "<": "&lt;",
-        ">": "&gt;",
-        '"': "&quot;",
-        "'": "&#039;"
-    }[m]));
 }
+
+
+function escapeHtml(value = "") {
+
+    return String(value)
+        .replace(
+            /[&<>"']/g,
+            character => {
+
+                const map = {
+
+                    "&": "&amp;",
+
+                    "<": "&lt;",
+
+                    ">": "&gt;",
+
+                    '"': "&quot;",
+
+                    "'": "&#039;"
+
+                };
+
+                return map[character];
+
+            }
+        );
+
+}
+
 
 function dateRange(from, to) {
-    return allLots.filter(l =>
-        (!from || l.programDate >= from) &&
-        (!to || l.programDate <= to)
-    );
+
+    return allLots.filter(lot => {
+
+        return (
+            (!from ||
+                lot.programDate >= from)
+            &&
+            (!to ||
+                lot.programDate <= to)
+        );
+
+    });
+
 }
 
+
 // ============================================================
-// ADMINISTRADOR PRINCIPAL
+// ADMINISTRADOR
 // ============================================================
 
 function roleIsAdmin() {
 
     if (!currentUser) {
+
         return false;
+
     }
 
-    return currentUser.uid === MASTER_ADMIN_UID;
+    return (
+        currentUser.uid ===
+        MASTER_ADMIN_UID
+    );
+
 }
+
 
 // ============================================================
 // COLABORADOR
@@ -110,99 +197,208 @@ function roleIsAdmin() {
 function roleIsCollaborator() {
 
     if (!currentProfile) {
+
         return false;
+
     }
 
-    const role = String(
-        currentProfile.role ||
-        currentProfile.perfil ||
-        currentProfile.type ||
-        ""
-    )
+    const role =
+        String(
+            currentProfile.role ||
+            currentProfile.perfil ||
+            currentProfile.type ||
+            ""
+        )
         .trim()
         .toLowerCase();
 
     return role === "colaborador";
+
 }
+
 
 // ============================================================
 // AUTENTICAÇÃO
 // ============================================================
 
-auth.onAuthStateChanged(async user => {
+auth.onAuthStateChanged(
+    async user => {
 
-    if (!user) {
+        if (!user) {
 
-        currentUser = null;
-        currentProfile = null;
+            currentUser = null;
 
-        allLots = [];
-        allUsers = [];
+            currentProfile = null;
 
-        showLogin();
+            allLots = [];
 
-        return;
-    }
+            allUsers = [];
 
-    currentUser = user;
+            showLogin();
 
-    try {
+            return;
 
-        const snap = await db
-            .collection("users")
-            .doc(user.uid)
-            .get();
+        }
 
-        if (!snap.exists) {
+
+        currentUser = user;
+
+
+        try {
+
+            const snap =
+                await db
+                    .collection("users")
+                    .doc(user.uid)
+                    .get();
+
+
+            // ==================================================
+            // MASTER ADMIN
+            // ==================================================
+
+            if (
+                user.uid ===
+                MASTER_ADMIN_UID
+            ) {
+
+                if (snap.exists) {
+
+                    currentProfile = {
+
+                        uid:
+                            user.uid,
+
+                        ...snap.data()
+
+                    };
+
+                } else {
+
+                    // Mesmo que o perfil não exista,
+                    // o UID principal continua sendo admin.
+
+                    currentProfile = {
+
+                        uid:
+                            user.uid,
+
+                        name:
+                            user.email ||
+                            "Administrador",
+
+                        email:
+                            user.email,
+
+                        role:
+                            "admin",
+
+                        active:
+                            true
+
+                    };
+
+                }
+
+            }
+
+            // ==================================================
+            // OUTROS USUÁRIOS
+            // ==================================================
+
+            else {
+
+                if (!snap.exists) {
+
+                    await auth.signOut();
+
+                    throw new Error(
+                        "Usuário sem perfil cadastrado no Firestore."
+                    );
+
+                }
+
+
+                currentProfile = {
+
+                    uid:
+                        user.uid,
+
+                    ...snap.data()
+
+                };
+
+
+                if (
+                    currentProfile.active === false
+                ) {
+
+                    await auth.signOut();
+
+                    throw new Error(
+                        "Este usuário está inativo."
+                    );
+
+                }
+
+            }
+
+
+            console.log(
+                "PERFIL ATUAL:",
+                currentProfile
+            );
+
+
+            console.log(
+                "UID:",
+                currentUser.uid
+            );
+
+
+            console.log(
+                "É ADMIN:",
+                roleIsAdmin()
+            );
+
+
+            console.log(
+                "É COLABORADOR:",
+                roleIsCollaborator()
+            );
+
+
+            showApp();
+
+
+            await loadData();
+
+
+        } catch (error) {
+
+            console.error(
+                "Erro de autenticação:",
+                error
+            );
+
+
+            if ($("loginError")) {
+
+                $("loginError")
+                    .textContent =
+                    error.message ||
+                    "Erro ao carregar perfil.";
+
+            }
+
 
             await auth.signOut();
 
-            throw new Error(
-                "Usuário sem perfil cadastrado no Firestore."
-            );
         }
 
-        currentProfile = {
-            uid: user.uid,
-            ...snap.data()
-        };
-
-        console.log(
-            "PERFIL ATUAL:",
-            currentProfile
-        );
-
-        console.log(
-            "UID:",
-            currentUser.uid
-        );
-
-        console.log(
-            "É ADMIN PRINCIPAL?",
-            roleIsAdmin()
-        );
-
-        showApp();
-
-        await loadData();
-
-    } catch (e) {
-
-        console.error(
-            "Erro de autenticação:",
-            e
-        );
-
-        if ($("loginError")) {
-
-            $("loginError").textContent =
-                e.message ||
-                "Erro ao carregar perfil.";
-        }
-
-        await auth.signOut();
     }
-});
+);
+
 
 // ============================================================
 // MOSTRAR LOGIN
@@ -214,10 +410,13 @@ function showLogin() {
         ?.classList
         .remove("hidden");
 
+
     $("app")
         ?.classList
         .add("hidden");
+
 }
+
 
 // ============================================================
 // MOSTRAR APP
@@ -229,209 +428,328 @@ function showApp() {
         ?.classList
         .add("hidden");
 
+
     $("app")
         ?.classList
         .remove("hidden");
 
+
     if ($("userName")) {
 
-        $("userName").textContent =
+        $("userName")
+            .textContent =
             currentProfile?.name ||
             currentUser?.email ||
             "Usuário";
+
     }
+
 
     if ($("userRole")) {
 
-        $("userRole").textContent =
+        $("userRole")
+            .textContent =
             roleIsAdmin()
                 ? "Administrador"
                 : "Colaborador";
+
     }
+
 
     document
         .querySelectorAll(".admin-only")
-        .forEach(x => {
+        .forEach(element => {
 
-            x.classList.toggle(
+            element.classList.toggle(
                 "hidden",
                 !roleIsAdmin()
             );
 
         });
 
+
     if ($("todayLabel")) {
 
-        $("todayLabel").textContent =
-            new Date().toLocaleDateString(
-                "pt-BR",
-                {
-                    dateStyle: "full"
-                }
-            );
+        $("todayLabel")
+            .textContent =
+            new Date()
+                .toLocaleDateString(
+                    "pt-BR",
+                    {
+                        dateStyle:
+                            "full"
+                    }
+                );
+
     }
 
-    const t = today();
+
+    const t =
+        today();
+
 
     [
         "dashFrom",
         "kanbanFrom",
         "mineFrom",
         "reportFrom"
-    ].forEach(id => {
+    ]
+        .forEach(id => {
 
-        if ($(id) && !$(id).value) {
-            $(id).value = t;
-        }
+            if ($(id)) {
 
-    });
+                $(id).value = t;
+
+            }
+
+        });
+
 
     [
         "dashTo",
         "kanbanTo",
         "mineTo",
         "reportTo"
-    ].forEach(id => {
+    ]
+        .forEach(id => {
 
-        if ($(id) && !$(id).value) {
-            $(id).value = t;
-        }
+            if ($(id)) {
 
-    });
+                $(id).value = t;
+
+            }
+
+        });
+
 }
+
 
 // ============================================================
 // LOGIN
 // ============================================================
 
-if ($("loginForm")) {
+function initLogin() {
 
-    $("loginForm").addEventListener(
-        "submit",
-        async e => {
+    if (!$("loginForm")) {
 
-            e.preventDefault();
+        return;
 
-            if ($("loginError")) {
-                $("loginError").textContent = "";
-            }
+    }
 
-            try {
 
-                await auth.signInWithEmailAndPassword(
-                    $("loginEmail").value.trim(),
-                    $("loginPassword").value
-                );
+    $("loginForm")
+        .addEventListener(
+            "submit",
+            async event => {
 
-            } catch (err) {
+                event.preventDefault();
 
-                console.error(err);
 
                 if ($("loginError")) {
 
-                    $("loginError").textContent =
-                        "E-mail ou senha inválidos.";
+                    $("loginError")
+                        .textContent = "";
+
                 }
+
+
+                try {
+
+                    await auth
+                        .signInWithEmailAndPassword(
+                            $("loginEmail")
+                                .value
+                                .trim(),
+
+                            $("loginPassword")
+                                .value
+                        );
+
+                } catch (error) {
+
+                    console.error(
+                        error
+                    );
+
+
+                    if ($("loginError")) {
+
+                        $("loginError")
+                            .textContent =
+                            "E-mail ou senha inválidos.";
+
+                    }
+
+                }
+
             }
-        }
-    );
+        );
+
 }
+
 
 // ============================================================
 // LOGOUT
 // ============================================================
 
-if ($("logoutBtn")) {
+function initLogout() {
 
-    $("logoutBtn").onclick = () =>
-        auth.signOut();
+    if (!$("logoutBtn")) {
+
+        return;
+
+    }
+
+
+    $("logoutBtn")
+        .onclick =
+        () => auth.signOut();
+
 }
+
 
 // ============================================================
 // ATUALIZAR
 // ============================================================
 
-if ($("refreshBtn")) {
+function initRefresh() {
 
-    $("refreshBtn").onclick = async () => {
+    if (!$("refreshBtn")) {
 
-        await loadData();
+        return;
 
-    };
+    }
+
+
+    $("refreshBtn")
+        .onclick =
+        () => loadData();
+
 }
+
 
 // ============================================================
 // NAVEGAÇÃO
 // ============================================================
 
-document
-    .querySelectorAll(".nav-btn")
-    .forEach(btn => {
+function initNavigation() {
 
-        btn.onclick = () => {
+    document
+        .querySelectorAll(".nav-btn")
+        .forEach(button => {
 
-            // Segurança adicional:
-            // qualquer botão admin-only não funciona
-            // para quem não é o administrador principal.
+            button.onclick = () => {
 
-            if (
-                btn.classList.contains("admin-only") &&
-                !roleIsAdmin()
-            ) {
-                return;
-            }
+                // ------------------------------------------
+                // PROTEGER ÁREAS ADMINISTRATIVAS
+                // ------------------------------------------
 
-            document
-                .querySelectorAll(".nav-btn")
-                .forEach(b =>
-                    b.classList.remove("active")
-                );
+                if (
+                    button.classList
+                        .contains("admin-only")
+                    &&
+                    !roleIsAdmin()
+                ) {
 
-            btn.classList.add("active");
+                    return;
 
-            document
-                .querySelectorAll(".view")
-                .forEach(v =>
-                    v.classList.add("hidden")
-                );
+                }
 
-            const view =
-                $("view-" + btn.dataset.view);
 
-            if (view) {
-                view.classList.remove("hidden");
-            }
+                document
+                    .querySelectorAll(".nav-btn")
+                    .forEach(btn => {
 
-            if ($("pageTitle")) {
+                        btn.classList
+                            .remove("active");
 
-                $("pageTitle").textContent =
-                    btn.textContent.trim();
-            }
+                    });
 
-            switch (btn.dataset.view) {
 
-                case "dashboard":
-                    renderDashboard();
-                    break;
+                button.classList
+                    .add("active");
 
-                case "kanban":
-                    renderKanban();
-                    break;
 
-                case "meus-lotes":
-                    renderMine();
-                    break;
+                document
+                    .querySelectorAll(".view")
+                    .forEach(view => {
 
-                case "relatorio":
-                    renderReport();
-                    break;
+                        view.classList
+                            .add("hidden");
 
-                case "colaboradores":
-                    renderUsers();
-                    break;
-            }
-        };
-    });
+                    });
+
+
+                const view =
+                    $("view-" +
+                        button.dataset.view);
+
+
+                if (view) {
+
+                    view.classList
+                        .remove("hidden");
+
+                }
+
+
+                if ($("pageTitle")) {
+
+                    $("pageTitle")
+                        .textContent =
+                        button
+                            .textContent
+                            .trim();
+
+                }
+
+
+                switch (
+                    button.dataset.view
+                ) {
+
+                    case "dashboard":
+
+                        renderDashboard();
+
+                        break;
+
+
+                    case "kanban":
+
+                        renderKanban();
+
+                        break;
+
+
+                    case "meus-lotes":
+
+                        renderMine();
+
+                        break;
+
+
+                    case "relatorio":
+
+                        renderReport();
+
+                        break;
+
+
+                    case "colaboradores":
+
+                        renderUsers();
+
+                        break;
+
+                }
+
+            };
+
+        });
+
+}
+
 
 // ============================================================
 // CARREGAR DADOS
@@ -440,42 +758,65 @@ document
 async function loadData() {
 
     if (!currentUser) {
+
         return;
+
     }
+
 
     try {
 
         // ====================================================
-        // ADMIN PRINCIPAL
+        // ADMIN
         // ====================================================
 
         if (roleIsAdmin()) {
 
-            const [
-                lotsSnap,
-                usersSnap
-            ] = await Promise.all([
+            const result =
+                await Promise.all([
 
-                db
-                    .collection("lots")
-                    .get(),
+                    db
+                        .collection("lots")
+                        .get(),
 
-                db
-                    .collection("users")
-                    .get()
-            ]);
+                    db
+                        .collection("users")
+                        .get()
+
+                ]);
+
+
+            const lotsSnap =
+                result[0];
+
+            const usersSnap =
+                result[1];
+
 
             allLots =
-                lotsSnap.docs.map(d => ({
-                    id: d.id,
-                    ...d.data()
-                }));
+                lotsSnap.docs.map(
+                    doc => ({
+
+                        id:
+                            doc.id,
+
+                        ...doc.data()
+
+                    })
+                );
+
 
             allUsers =
-                usersSnap.docs.map(d => ({
-                    id: d.id,
-                    ...d.data()
-                }));
+                usersSnap.docs.map(
+                    doc => ({
+
+                        id:
+                            doc.id,
+
+                        ...doc.data()
+
+                    })
+                );
 
         }
 
@@ -495,174 +836,306 @@ async function loadData() {
                     )
                     .get();
 
+
             allLots =
-                lotsSnap.docs.map(d => ({
-                    id: d.id,
-                    ...d.data()
-                }));
+                lotsSnap.docs.map(
+                    doc => ({
+
+                        id:
+                            doc.id,
+
+                        ...doc.data()
+
+                    })
+                );
+
 
             allUsers = [
+
                 {
-                    id: currentUser.uid,
+
+                    id:
+                        currentUser.uid,
+
                     ...currentProfile
+
                 }
+
             ];
+
         }
+
 
         console.log(
             "Lotes carregados:",
             allLots.length
         );
 
+
         console.log(
             "Usuários carregados:",
             allUsers.length
         );
 
+
         fillUserSelects();
 
         renderDashboard();
+
         renderKanban();
+
         renderMine();
+
         renderReport();
+
         renderUsers();
 
-    } catch (err) {
+
+    } catch (error) {
 
         console.error(
-            "Erro ao carregar dados do Firebase:",
-            err
+            "Erro ao carregar dados:",
+            error
         );
 
+
         const message =
-            err.message ||
+            error.message ||
             "Permissão insuficiente.";
 
+
         if ($("loginError")) {
-            $("loginError").textContent =
-                "Erro ao carregar dados do Firebase: " +
+
+            $("loginError")
+                .textContent =
+                "Erro ao carregar dados: " +
                 message;
+
         }
+
 
         alert(
             "Erro ao carregar dados do Firebase:\n\n" +
             message
         );
+
     }
+
 }
 
+
 // ============================================================
-// SELECTS DE USUÁRIOS
+// SELECTS
 // ============================================================
 
 function fillUserSelects() {
 
-    const active =
+    const activeUsers =
         allUsers.filter(
-            u => u.active !== false
+            user =>
+                user.active !== false
         );
+
 
     if ($("kanbanCollaborator")) {
 
-        $("kanbanCollaborator").innerHTML =
-            `<option value="">Todos</option>` +
-            active
-                .map(u =>
-                    `<option value="${u.id}">
-                        ${escapeHtml(
-                            u.name ||
-                            u.email ||
-                            "Sem nome"
-                        )}
-                    </option>`
+        $("kanbanCollaborator")
+            .innerHTML =
+
+            `<option value="">
+                Todos
+            </option>` +
+
+            activeUsers
+                .map(
+                    user => `
+
+                        <option value="${escapeHtml(
+                            user.id
+                        )}">
+
+                            ${escapeHtml(
+                                user.name ||
+                                user.email ||
+                                "Sem nome"
+                            )}
+
+                        </option>
+
+                    `
                 )
                 .join("");
+
     }
+
 
     if ($("reportUser")) {
 
-        $("reportUser").innerHTML =
+        $("reportUser")
+            .innerHTML =
+
             `<option value="">
                 Todos os colaboradores
             </option>` +
-            active
-                .map(u =>
-                    `<option value="${u.id}">
-                        ${escapeHtml(
-                            u.name ||
-                            u.email ||
-                            "Sem nome"
-                        )}
-                    </option>`
+
+            activeUsers
+                .map(
+                    user => `
+
+                        <option value="${escapeHtml(
+                            user.id
+                        )}">
+
+                            ${escapeHtml(
+                                user.name ||
+                                user.email ||
+                                "Sem nome"
+                            )}
+
+                        </option>
+
+                    `
                 )
                 .join("");
+
     }
+
 }
+
 
 // ============================================================
 // FUNÇÕES DOS LOTES
 // ============================================================
 
-function lotProduced(l) {
+function lotProduced(lot) {
 
     return Number(
-        l.producedWeight || 0
+        lot?.producedWeight || 0
     );
+
 }
 
-function lotRemaining(l) {
+
+function lotRemaining(lot) {
 
     return Math.max(
+
         0,
-        Number(l.weight || 0) -
-        lotProduced(l)
+
+        Number(
+            lot?.weight || 0
+        )
+        -
+        lotProduced(lot)
+
     );
+
 }
 
-function lotPercent(l) {
+
+function lotPercent(lot) {
+
+    const weight =
+        Number(
+            lot?.weight || 0
+        );
+
+
+    if (weight <= 0) {
+
+        return 0;
+
+    }
+
 
     return Math.min(
+
         100,
+
         (
-            lotProduced(l) /
-            Math.max(
-                0.0001,
-                Number(l.weight || 0)
-            )
-        ) * 100
+            lotProduced(lot) /
+            weight
+        ) *
+        100
+
     );
+
 }
 
-function lotStatus(l) {
 
-    if (l.status === "cancelado") {
+function lotStatus(lot) {
+
+    if (!lot) {
+
+        return "pendente";
+
+    }
+
+
+    if (
+        lot.status ===
+        "cancelado"
+    ) {
+
         return "cancelado";
+
     }
 
+
     if (
-        lotRemaining(l) <= 0.0001
+        lot.status ===
+        "finalizado"
     ) {
+
         return "finalizado";
+
     }
 
+
     if (
-        lotProduced(l) > 0
+        lotRemaining(lot) <=
+        0.0001
     ) {
-        return "producao";
+
+        return "finalizado";
+
     }
+
+
+    if (
+        lotProduced(lot) > 0
+    ) {
+
+        return "producao";
+
+    }
+
 
     return "pendente";
+
 }
 
-function statusLabel(s) {
 
-    return ({
-        pendente: "Pendente",
-        producao: "Em produção",
-        finalizado: "Finalizado",
-        cancelado: "Cancelado"
-    })[s] || s;
+function statusLabel(status) {
+
+    return {
+
+        pendente:
+            "Pendente",
+
+        producao:
+            "Em produção",
+
+        finalizado:
+            "Finalizado",
+
+        cancelado:
+            "Cancelado"
+
+    }[status] || status || "—";
+
 }
+
 
 // ============================================================
 // DASHBOARD
@@ -670,112 +1143,145 @@ function statusLabel(s) {
 
 function renderDashboard() {
 
-    if (!$("dashFrom")) return;
+    if (!$("dashFrom")) {
 
-    const lots =
+        return;
+
+    }
+
+
+    let lots =
         dateRange(
             $("dashFrom").value,
             $("dashTo").value
         );
 
-    const visible =
-        roleIsAdmin()
-            ? lots
-            : lots.filter(
-                l =>
-                    l.assignedTo ===
+
+    if (!roleIsAdmin()) {
+
+        lots =
+            lots.filter(
+                lot =>
+                    lot.assignedTo ===
                     currentUser.uid
             );
 
+    }
+
+
     const planned =
-        visible.reduce(
-            (a, l) =>
-                a +
-                Number(l.weight || 0),
+        lots.reduce(
+            (total, lot) =>
+                total +
+                Number(
+                    lot.weight || 0
+                ),
             0
         );
+
 
     const produced =
-        visible.reduce(
-            (a, l) =>
-                a +
-                lotProduced(l),
+        lots.reduce(
+            (total, lot) =>
+                total +
+                lotProduced(lot),
             0
         );
+
 
     const remaining =
-        visible.reduce(
-            (a, l) =>
-                a +
-                lotRemaining(l),
+        lots.reduce(
+            (total, lot) =>
+                total +
+                lotRemaining(lot),
             0
         );
 
+
     const done =
-        visible.filter(
-            l =>
-                lotStatus(l) ===
+        lots.filter(
+            lot =>
+                lotStatus(lot) ===
                 "finalizado"
         ).length;
 
+
     if ($("dashboardCards")) {
 
-        $("dashboardCards").innerHTML = [
+        $("dashboardCards")
+            .innerHTML = [
 
-            [
-                "Peso programado",
-                kg(planned)
-            ],
+                [
+                    "Peso programado",
+                    kg(planned)
+                ],
 
-            [
-                "Peso produzido",
-                kg(produced)
-            ],
+                [
+                    "Peso produzido",
+                    kg(produced)
+                ],
 
-            [
-                "Saldo",
-                kg(remaining)
-            ],
+                [
+                    "Saldo",
+                    kg(remaining)
+                ],
 
-            [
-                "Lotes finalizados",
-                done
+                [
+                    "Lotes finalizados",
+                    done
+                ]
+
             ]
+                .map(
+                    item => `
 
-        ]
-            .map(x =>
-                `<div class="card">
-                    <small>${x[0]}</small>
-                    <strong>${x[1]}</strong>
-                </div>`
-            )
-            .join("");
+                        <div class="card">
+
+                            <small>
+                                ${item[0]}
+                            </small>
+
+                            <strong>
+                                ${item[1]}
+                            </strong>
+
+                        </div>
+
+                    `
+                )
+                .join("");
+
     }
+
 
     const by = {};
 
-    visible.forEach(l => {
 
-        const u =
+    lots.forEach(lot => {
+
+        const user =
             allUsers.find(
-                x =>
-                    x.id ===
-                    l.assignedTo
+                item =>
+                    item.id ===
+                    lot.assignedTo
             );
 
+
         const name =
-            u?.name ||
+            user?.name ||
             "Não atribuído";
 
+
         const key =
-            `${l.programDate}|${name}`;
+            `${lot.programDate}|${name}`;
+
 
         if (!by[key]) {
 
             by[key] = {
 
                 date:
-                    l.programDate,
+                    lot.programDate,
 
                 name,
 
@@ -787,210 +1293,300 @@ function renderDashboard() {
 
                 lots:
                     0
+
             };
+
         }
 
+
         by[key].weight +=
-            lotProduced(l);
+            lotProduced(lot);
+
 
         by[key].clients.add(
-            l.clientName ||
-            l.name ||
+            lot.clientName ||
+            lot.name ||
             "Sem cliente"
         );
 
+
         by[key].lots++;
+
     });
 
+
     const rows =
-        Object.values(by).sort(
-            (a, b) =>
-                a.date.localeCompare(b.date) ||
-                a.name.localeCompare(b.name)
-        );
+        Object.values(by)
+            .sort(
+                (a, b) =>
+                    (
+                        a.date || ""
+                    ).localeCompare(
+                        b.date || ""
+                    )
+                    ||
+                    a.name.localeCompare(
+                        b.name
+                    )
+            );
+
 
     if ($("dailyCollaboratorTable")) {
 
-        $("dailyCollaboratorTable").innerHTML = `
+        $("dailyCollaboratorTable")
+            .innerHTML = `
 
-            <div class="table-wrap">
+                <div class="table-wrap">
 
-                <table class="data-table">
+                    <table class="data-table">
 
-                    <thead>
+                        <thead>
 
-                        <tr>
-                            <th>Data</th>
-                            <th>Colaborador</th>
-                            <th>Peso do dia</th>
-                            <th>Clientes</th>
-                            <th>Lotes</th>
-                        </tr>
+                            <tr>
 
-                    </thead>
+                                <th>
+                                    Data
+                                </th>
 
-                    <tbody>
+                                <th>
+                                    Colaborador
+                                </th>
 
-                        ${
-                            rows.length
+                                <th>
+                                    Peso do dia
+                                </th>
 
-                                ? rows.map(r => `
+                                <th>
+                                    Clientes
+                                </th>
 
-                                    <tr>
+                                <th>
+                                    Lotes
+                                </th>
 
-                                        <td>
-                                            ${dateBR(r.date)}
-                                        </td>
+                            </tr>
 
-                                        <td>
-                                            ${escapeHtml(r.name)}
-                                        </td>
+                        </thead>
 
-                                        <td>
-                                            ${kg(r.weight)}
-                                        </td>
+                        <tbody>
 
-                                        <td>
-                                            ${escapeHtml(
-                                                [...r.clients].join(", ")
-                                            )}
-                                        </td>
+                            ${
+                                rows.length
 
-                                        <td>
-                                            ${r.lots}
-                                        </td>
+                                    ? rows
+                                        .map(
+                                            row => `
 
-                                    </tr>
+                                                <tr>
 
-                                `).join("")
+                                                    <td>
+                                                        ${dateBR(
+                                                            row.date
+                                                        )}
+                                                    </td>
 
-                                : `
-                                    <tr>
-                                        <td colspan="5">
-                                            Sem dados.
-                                        </td>
-                                    </tr>
-                                `
-                        }
+                                                    <td>
+                                                        ${escapeHtml(
+                                                            row.name
+                                                        )}
+                                                    </td>
 
-                    </tbody>
+                                                    <td>
+                                                        ${kg(
+                                                            row.weight
+                                                        )}
+                                                    </td>
 
-                </table>
+                                                    <td>
+                                                        ${escapeHtml(
+                                                            [
+                                                                ...row.clients
+                                                            ].join(", ")
+                                                        )}
+                                                    </td>
 
-            </div>
-        `;
+                                                    <td>
+                                                        ${row.lots}
+                                                    </td>
+
+                                                </tr>
+
+                                            `
+                                        )
+                                        .join("")
+
+                                    : `
+
+                                        <tr>
+
+                                            <td colspan="5">
+                                                Sem dados.
+                                            </td>
+
+                                        </tr>
+
+                                    `
+                            }
+
+                        </tbody>
+
+                    </table>
+
+                </div>
+
+            `;
+
     }
 
+
     const statuses = [
+
         "pendente",
+
         "producao",
-        "finalizado"
+
+        "finalizado",
+
+        "cancelado"
+
     ];
+
 
     if ($("statusSummary")) {
 
-        $("statusSummary").innerHTML = `
+        $("statusSummary")
+            .innerHTML = `
 
-            <div class="status-table">
+                <div class="status-table">
 
-                ${statuses.map(s => `
+                    ${statuses
+                        .map(
+                            status => `
 
-                    <div class="status-row">
+                                <div
+                                    class="status-row"
+                                >
 
-                        <span>
-                            ${statusLabel(s)}
-                        </span>
+                                    <span>
+                                        ${statusLabel(
+                                            status
+                                        )}
+                                    </span>
 
-                        <strong>
-                            ${
-                                visible.filter(
-                                    l =>
-                                        lotStatus(l) === s
-                                ).length
-                            }
-                        </strong>
+                                    <strong>
+                                        ${
+                                            lots.filter(
+                                                lot =>
+                                                    lotStatus(
+                                                        lot
+                                                    ) ===
+                                                    status
+                                            ).length
+                                        }
+                                    </strong>
 
-                    </div>
+                                </div>
 
-                `).join("")}
+                            `
+                        )
+                        .join("")}
 
-            </div>
-        `;
+                </div>
+
+            `;
+
     }
+
 }
 
-if ($("dashFilterBtn")) {
-    $("dashFilterBtn").onclick =
-        renderDashboard;
-}
 
 // ============================================================
 // CARD DO KANBAN
 // ============================================================
 
-function lotCard(l) {
+function lotCard(lot) {
 
-    const u =
+    const user =
         allUsers.find(
-            x =>
-                x.id ===
-                l.assignedTo
+            item =>
+                item.id ===
+                lot.assignedTo
         );
 
-    const st =
-        lotStatus(l);
+
+    const status =
+        lotStatus(lot);
+
 
     return `
+
         <div
             class="lot-card"
-            onclick="openLot('${l.id}')"
+            onclick="window.openLot('${lot.id}')"
         >
 
             <div class="lot-status">
-                ${statusLabel(st)}
+                ${statusLabel(status)}
             </div>
+
 
             <h4>
                 ${escapeHtml(
-                    l.name ||
+                    lot.name ||
                     "Lote"
                 )}
             </h4>
 
+
             <div>
                 OS:
                 ${escapeHtml(
-                    l.os ||
+                    lot.os ||
                     "—"
                 )}
             </div>
 
-            <div>
-                Peso:
-                ${kg(l.weight)}
-            </div>
 
             <div>
-                Entrada:
-                ${dateBR(
-                    l.entryDate
+                Cliente:
+                ${escapeHtml(
+                    lot.clientName ||
+                    lot.name ||
+                    "—"
                 )}
             </div>
+
+
+            <div>
+                Peso:
+                ${kg(lot.weight)}
+            </div>
+
+
+            <div>
+                Produzido:
+                ${kg(
+                    lotProduced(lot)
+                )}
+            </div>
+
 
             <div>
                 Programação:
                 ${dateBR(
-                    l.programDate
+                    lot.programDate
                 )}
             </div>
+
 
             <div>
                 Responsável:
                 ${escapeHtml(
-                    u?.name ||
+                    user?.name ||
                     "—"
                 )}
             </div>
+
 
             <div class="lot-progress">
 
@@ -998,28 +1594,43 @@ function lotCard(l) {
 
                     <div
                         class="progress-fill"
-                        style="width:${lotPercent(l)}%"
+                        style="
+                            width:${lotPercent(lot)}%
+                        "
                     ></div>
 
                 </div>
 
+
                 <small>
-                    ${kg(lotProduced(l))}
+
+                    ${kg(
+                        lotProduced(lot)
+                    )}
+
                     produzido
+
                     •
-                    ${pct(lotPercent(l))}
+
+                    ${pct(
+                        lotPercent(lot)
+                    )}
+
                 </small>
 
             </div>
 
+
             ${
                 roleIsAdmin()
+
                     ? `
+
                         <button
                             type="button"
                             onclick="
                                 event.stopPropagation();
-                                window.editLot('${l.id}');
+                                window.editLot('${lot.id}');
                             "
                             style="
                                 display:block !important;
@@ -1031,15 +1642,22 @@ function lotCard(l) {
                                 visibility:visible !important;
                             "
                         >
+
                             ✏️ EDITAR LOTE
+
                         </button>
+
                     `
+
                     : ""
             }
 
         </div>
+
     `;
+
 }
+
 
 // ============================================================
 // KANBAN
@@ -1047,7 +1665,12 @@ function lotCard(l) {
 
 function renderKanban() {
 
-    if (!$("kanban")) return;
+    if (!$("kanban")) {
+
+        return;
+
+    }
+
 
     let lots =
         dateRange(
@@ -1055,38 +1678,52 @@ function renderKanban() {
             $("kanbanTo").value
         );
 
+
     const uid =
-        $("kanbanCollaborator")?.value;
+        $("kanbanCollaborator")
+            ?.value;
+
 
     if (uid) {
 
         lots =
             lots.filter(
-                l =>
-                    l.assignedTo ===
+                lot =>
+                    lot.assignedTo ===
                     uid
             );
+
     }
+
 
     if (!roleIsAdmin()) {
 
         lots =
             lots.filter(
-                l =>
-                    l.assignedTo ===
+                lot =>
+                    lot.assignedTo ===
                     currentUser.uid
             );
+
     }
+
 
     renderKanbanInto(
         "kanban",
         lots
     );
+
 }
+
 
 function renderMine() {
 
-    if (!$("mineKanban")) return;
+    if (!$("mineKanban")) {
+
+        return;
+
+    }
+
 
     const lots =
         dateRange(
@@ -1094,25 +1731,33 @@ function renderMine() {
             $("mineTo").value
         )
             .filter(
-                l =>
-                    l.assignedTo ===
+                lot =>
+                    lot.assignedTo ===
                     currentUser.uid
             );
+
 
     renderKanbanInto(
         "mineKanban",
         lots
     );
+
 }
+
 
 function renderKanbanInto(
     id,
     lots
 ) {
 
-    if (!$(id)) return;
+    if (!$(id)) {
 
-    const cols = [
+        return;
+
+    }
+
+
+    const columns = [
 
         [
             "pendente",
@@ -1136,334 +1781,128 @@ function renderKanbanInto(
 
     ];
 
-    $(id).innerHTML =
-        cols.map(
-            ([s, title]) => {
 
-                const list =
-                    lots.filter(
-                        l =>
-                            lotStatus(l) === s
-                    );
+    $(id)
+        .innerHTML =
+        columns
+            .map(
+                ([status, title]) => {
 
-                return `
+                    const list =
+                        lots.filter(
+                            lot =>
+                                lotStatus(
+                                    lot
+                                ) ===
+                                status
+                        );
 
-                    <div class="kanban-column">
 
-                        <h3>
+                    return `
 
-                            ${title}
+                        <div
+                            class="kanban-column"
+                        >
 
-                            <span class="badge">
-                                ${list.length}
-                            </span>
+                            <h3>
 
-                        </h3>
+                                ${title}
 
-                        ${
-                            list.length
-                                ? list
-                                    .map(lotCard)
-                                    .join("")
-                                : `
-                                    <div class="empty-state">
-                                        Nenhum lote
-                                    </div>
-                                `
-                        }
+                                <span class="badge">
+                                    ${list.length}
+                                </span>
 
-                    </div>
-                `;
-            }
-        ).join("");
+                            </h3>
+
+
+                            ${
+                                list.length
+
+                                    ? list
+                                        .map(
+                                            lotCard
+                                        )
+                                        .join("")
+
+                                    : `
+
+                                        <div
+                                            class="empty-state"
+                                        >
+                                            Nenhum lote
+                                        </div>
+
+                                    `
+                            }
+
+                        </div>
+
+                    `;
+
+                }
+            )
+            .join("");
+
 }
 
-if ($("kanbanFilterBtn")) {
-    $("kanbanFilterBtn").onclick =
-        renderKanban;
+
+// ============================================================
+// FILTROS KANBAN
+// ============================================================
+
+function initFilters() {
+
+    if ($("kanbanFilterBtn")) {
+
+        $("kanbanFilterBtn")
+            .onclick =
+            renderKanban;
+
+    }
+
+
+    if ($("mineFilterBtn")) {
+
+        $("mineFilterBtn")
+            .onclick =
+            renderMine;
+
+    }
+
+
+    if ($("dashFilterBtn")) {
+
+        $("dashFilterBtn")
+            .onclick =
+            renderDashboard;
+
+    }
+
+
+    if ($("reportFilterBtn")) {
+
+        $("reportFilterBtn")
+            .onclick =
+            renderReport;
+
+    }
+
 }
 
-if ($("mineFilterBtn")) {
-    $("mineFilterBtn").onclick =
-        renderMine;
-}
 
 // ============================================================
-// MODAL DO LOTE
+// MODAL
 // ============================================================
 
-window.openLot = async function(id) {
-
-    const l =
-        allLots.find(
-            x =>
-                x.id === id
-        );
-
-    if (!l) return;
-
-    const u =
-        allUsers.find(
-            x =>
-                x.id ===
-                l.assignedTo
-        );
-
-    const mine =
-        l.assignedTo ===
-        currentUser.uid;
-
-    const canEditProduction =
-        roleIsAdmin() ||
-        mine;
-
-    if (!$("lotModalContent")) return;
-
-    $("lotModalContent").innerHTML = `
-
-        <h2>
-            ${escapeHtml(
-                l.name ||
-                "Lote"
-            )}
-        </h2>
-
-        <div class="modal-grid">
-
-            <div>
-                <small>OS</small>
-                <strong>
-                    ${escapeHtml(
-                        l.os ||
-                        "—"
-                    )}
-                </strong>
-            </div>
-
-            <div>
-                <small>Cliente</small>
-                <strong>
-                    ${escapeHtml(
-                        l.clientName ||
-                        l.name ||
-                        "—"
-                    )}
-                </strong>
-            </div>
-
-            <div>
-                <small>Peso do lote</small>
-                <strong>
-                    ${kg(l.weight)}
-                </strong>
-            </div>
-
-            <div>
-                <small>Produzido</small>
-                <strong>
-                    ${kg(
-                        lotProduced(l)
-                    )}
-                </strong>
-            </div>
-
-            <div>
-                <small>Saldo</small>
-                <strong>
-                    ${kg(
-                        lotRemaining(l)
-                    )}
-                </strong>
-            </div>
-
-            <div>
-                <small>Data entrada</small>
-                <strong>
-                    ${dateBR(
-                        l.entryDate
-                    )}
-                </strong>
-            </div>
-
-            <div>
-                <small>Programação</small>
-                <strong>
-                    ${dateBR(
-                        l.programDate
-                    )}
-                </strong>
-            </div>
-
-            <div>
-                <small>Responsável</small>
-                <strong>
-                    ${escapeHtml(
-                        u?.name ||
-                        "—"
-                    )}
-                </strong>
-            </div>
-
-            <div>
-                <small>Status</small>
-                <strong>
-                    ${statusLabel(
-                        lotStatus(l)
-                    )}
-                </strong>
-            </div>
-
-        </div>
-
-        ${
-            roleIsAdmin()
-                ? `
-
-                    <div
-                        class="modal-actions"
-                        style="margin-top:20px;"
-                    >
-
-                        <button
-                            type="button"
-                            class="primary"
-                            onclick="
-                                editLot('${l.id}')
-                            "
-                        >
-                            ✏️ EDITAR LOTE
-                        </button>
-
-                    </div>
-
-                `
-                : ""
-        }
-
-        ${
-            canEditProduction
-                ? `
-
-                    <form
-                        id="productionForm"
-                        class="production-form"
-                    >
-
-                        <p>
-                            O colaborador informa
-                            o peso produzido.
-                            O saldo e o percentual
-                            são calculados
-                            automaticamente.
-                        </p>
-
-                        <label>
-                            Peso produzido agora (kg)
-
-                            <input
-                                id="productionInput"
-                                type="number"
-                                step="0.001"
-                                min="0.001"
-                                required
-                            >
-                        </label>
-
-                        <label>
-                            Observação
-
-                            <textarea
-                                id="productionObs"
-                            ></textarea>
-                        </label>
-
-                        <button
-                            type="submit"
-                            class="primary"
-                        >
-                            Registrar produção
-                        </button>
-
-                    </form>
-
-                `
-                : ""
-        }
-
-        <div class="modal-actions">
-
-            ${
-                roleIsAdmin()
-                    ? `
-
-                        <button
-                            type="button"
-                            class="secondary"
-                            onclick="
-                                redistributeLot('${l.id}')
-                            "
-                        >
-                            Redistribuir lote
-                        </button>
-
-                    `
-                    : ""
-            }
-
-            <button
-                type="button"
-                class="secondary"
-                onclick="closeLotModal()"
-            >
-                Fechar
-            </button>
-
-        </div>
-
-        <div id="modalMessage"></div>
-    `;
-
-    if ($("lotModal")) {
-
-        $("lotModal")
-            .classList
-            .remove("hidden");
-    }
-
-    if (canEditProduction) {
-
-        if ($("productionForm")) {
-
-            $("productionForm").onsubmit =
-                e =>
-                    registerProduction(
-                        e,
-                        l
-                    );
-        }
-    }
-};
-
-// ============================================================
-// EDITAR LOTE - ADMIN PRINCIPAL
-// ============================================================
-
-window.editLot = async function (id) {
-
-    // Somente o administrador principal pode editar
-    if (!roleIsAdmin()) {
-
-        alert(
-            "Somente o administrador pode editar lotes."
-        );
-
-        return;
-    }
+window.openLot =
+async function(id) {
 
     const lot =
         allLots.find(
-            item => item.id === id
+            item =>
+                item.id === id
         );
+
 
     if (!lot) {
 
@@ -1472,355 +1911,1176 @@ window.editLot = async function (id) {
         );
 
         return;
+
     }
 
 
-    // --------------------------------------------------------
-    // Lista de colaboradores
-    // --------------------------------------------------------
-
-    const collaborators =
-        allUsers.filter(
-            user =>
-                user.role === "colaborador" &&
-                user.active !== false
+    const user =
+        allUsers.find(
+            item =>
+                item.id ===
+                lot.assignedTo
         );
 
 
-    // --------------------------------------------------------
-    // Montar formulário
-    // --------------------------------------------------------
-
-    $("lotModalContent").innerHTML = `
-
-        <h2>
-            ✏️ Editar lote
-        </h2>
-
-        <form
-            id="editLotForm"
-            class="form-grid"
-        >
-
-            <label>
-                Nome do lote
-
-                <input
-                    id="editLotName"
-                    value="${escapeHtml(
-                        lot.name || ""
-                    )}"
-                    required
-                >
-            </label>
+    const mine =
+        lot.assignedTo ===
+        currentUser?.uid;
 
 
-            <label>
-                OS
-
-                <input
-                    id="editLotOs"
-                    value="${escapeHtml(
-                        lot.os || ""
-                    )}"
-                    required
-                >
-            </label>
+    const canEditProduction =
+        roleIsAdmin() ||
+        mine;
 
 
-            <label>
-                Cliente
+    if (!$("lotModalContent")) {
 
-                <input
-                    id="editLotClient"
-                    value="${escapeHtml(
-                        lot.clientName ||
-                        lot.name ||
-                        ""
-                    )}"
-                    required
-                >
-            </label>
+        return;
+
+    }
 
 
-            <label>
-                Peso (kg)
+    $("lotModalContent")
+        .innerHTML = `
 
-                <input
-                    id="editLotWeight"
-                    type="number"
-                    step="0.001"
-                    min="0.001"
-                    value="${Number(
-                        lot.weight || 0
-                    )}"
-                    required
-                >
-            </label>
+            <h2>
+                ${escapeHtml(
+                    lot.name ||
+                    "Lote"
+                )}
+            </h2>
 
 
-            <label>
-                Data de entrada
+            <div class="modal-grid">
 
-                <input
-                    id="editLotEntry"
-                    type="date"
-                    value="${lot.entryDate || ""}"
-                    required
-                >
-            </label>
+                <div>
 
+                    <small>
+                        OS
+                    </small>
 
-            <label>
-                Data de programação
+                    <strong>
+                        ${escapeHtml(
+                            lot.os ||
+                            "—"
+                        )}
+                    </strong>
 
-                <input
-                    id="editLotProgram"
-                    type="date"
-                    value="${lot.programDate || ""}"
-                    required
-                >
-            </label>
+                </div>
 
 
-            <label>
-                Colaborador
+                <div>
 
-                <select
-                    id="editLotAssigned"
-                    required
-                >
+                    <small>
+                        Cliente
+                    </small>
 
-                    ${
-                        collaborators
-                            .map(
-                                user => `
+                    <strong>
+                        ${escapeHtml(
+                            lot.clientName ||
+                            lot.name ||
+                            "—"
+                        )}
+                    </strong>
 
-                                    <option
-                                        value="${user.id}"
-                                        ${
-                                            user.id ===
-                                            lot.assignedTo
-                                                ? "selected"
-                                                : ""
-                                        }
-                                    >
-                                        ${escapeHtml(
-                                            user.name ||
-                                            user.email ||
-                                            "Sem nome"
-                                        )}
-                                    </option>
-
-                                `
-                            )
-                            .join("")
-                    }
-
-                </select>
-
-            </label>
+                </div>
 
 
-            <div class="full">
+                <div>
+
+                    <small>
+                        Peso do lote
+                    </small>
+
+                    <strong>
+                        ${kg(
+                            lot.weight
+                        )}
+                    </strong>
+
+                </div>
+
+
+                <div>
+
+                    <small>
+                        Produzido
+                    </small>
+
+                    <strong>
+                        ${kg(
+                            lotProduced(lot)
+                        )}
+                    </strong>
+
+                </div>
+
+
+                <div>
+
+                    <small>
+                        Saldo
+                    </small>
+
+                    <strong>
+                        ${kg(
+                            lotRemaining(lot)
+                        )}
+                    </strong>
+
+                </div>
+
+
+                <div>
+
+                    <small>
+                        Data entrada
+                    </small>
+
+                    <strong>
+                        ${dateBR(
+                            lot.entryDate
+                        )}
+                    </strong>
+
+                </div>
+
+
+                <div>
+
+                    <small>
+                        Programação
+                    </small>
+
+                    <strong>
+                        ${dateBR(
+                            lot.programDate
+                        )}
+                    </strong>
+
+                </div>
+
+
+                <div>
+
+                    <small>
+                        Responsável
+                    </small>
+
+                    <strong>
+                        ${escapeHtml(
+                            user?.name ||
+                            "—"
+                        )}
+                    </strong>
+
+                </div>
+
+
+                <div>
+
+                    <small>
+                        Status
+                    </small>
+
+                    <strong>
+                        ${statusLabel(
+                            lotStatus(lot)
+                        )}
+                    </strong>
+
+                </div>
+
+
+                <div>
+
+                    <small>
+                        Percentual
+                    </small>
+
+                    <strong>
+                        ${pct(
+                            lotPercent(lot)
+                        )}
+                    </strong>
+
+                </div>
+
+            </div>
+
+
+            ${
+                roleIsAdmin()
+
+                    ? `
+
+                        <div
+                            class="modal-actions"
+                            style="
+                                margin-top:20px;
+                            "
+                        >
+
+                            <button
+                                type="button"
+                                class="primary"
+                                onclick="
+                                    window.editLot('${lot.id}')
+                                "
+                            >
+
+                                ✏️ EDITAR LOTE
+
+                            </button>
+
+                        </div>
+
+                    `
+
+                    : ""
+            }
+
+
+            ${
+                canEditProduction
+
+                    ? `
+
+                        <form
+                            id="productionForm"
+                            class="production-form"
+                        >
+
+                            <h3>
+                                Registrar produção
+                            </h3>
+
+
+                            <p>
+                                Informe o peso
+                                produzido nesta
+                                operação.
+                            </p>
+
+
+                            <label>
+
+                                Peso produzido agora (kg)
+
+                                <input
+                                    id="productionInput"
+                                    type="number"
+                                    step="0.001"
+                                    min="0.001"
+                                    required
+                                >
+
+                            </label>
+
+
+                            <label>
+
+                                Observação
+
+                                <textarea
+                                    id="productionObs"
+                                ></textarea>
+
+                            </label>
+
+
+                            <button
+                                type="submit"
+                                class="primary"
+                            >
+
+                                Registrar produção
+
+                            </button>
+
+                        </form>
+
+                    `
+
+                    : ""
+            }
+
+
+            <div
+                class="modal-actions"
+                style="
+                    display:flex;
+                    gap:8px;
+                    justify-content:flex-end;
+                    margin-top:15px;
+                "
+            >
+
+                ${
+                    roleIsAdmin()
+
+                        ? `
+
+                            <button
+                                type="button"
+                                class="secondary"
+                                onclick="
+                                    window.redistributeLot('${lot.id}')
+                                "
+                            >
+
+                                Redistribuir lote
+
+                            </button>
+
+                        `
+
+                        : ""
+                }
+
 
                 <button
-                    type="submit"
-                    class="primary"
+                    type="button"
+                    class="secondary"
+                    onclick="
+                        window.closeLotModal()
+                    "
                 >
-                    💾 Salvar alterações
+
+                    Fechar
+
                 </button>
 
             </div>
 
-        </form>
 
+            <div
+                id="modalMessage"
+            ></div>
 
-        <div class="modal-actions">
-
-            <button
-                type="button"
-                class="secondary"
-                onclick="openLot('${lot.id}')"
-            >
-                Voltar
-            </button>
-
-            <button
-                type="button"
-                class="secondary"
-                onclick="closeLotModal()"
-            >
-                Fechar
-            </button>
-
-        </div>
-
-
-        <div id="editLotMessage"></div>
-    `;
+        `;
 
 
     $("lotModal")
-        .classList
+        ?.classList
         .remove("hidden");
 
 
-    // --------------------------------------------------------
-    // SALVAR ALTERAÇÕES
-    // --------------------------------------------------------
+    if (canEditProduction) {
 
-    $("editLotForm").onsubmit =
-        async function (event) {
+        if ($("productionForm")) {
+
+            $("productionForm")
+                .onsubmit =
+                event =>
+                    registerProduction(
+                        event,
+                        lot
+                    );
+
+        }
+
+    }
+
+};
+
+
+// ============================================================
+// FECHAR MODAL
+// ============================================================
+
+window.closeLotModal =
+function() {
+
+    $("lotModal")
+        ?.classList
+        .add("hidden");
+
+};
+
+
+// ============================================================
+// FECHAR CLICANDO FORA
+// ============================================================
+
+function initModal() {
+
+    if (!$("lotModal")) {
+
+        return;
+
+    }
+
+
+    $("lotModal")
+        .addEventListener(
+            "click",
+            event => {
+
+                if (
+                    event.target ===
+                    $("lotModal")
+                ) {
+
+                    window.closeLotModal();
+
+                }
+
+            }
+        );
+
+}
+
+
+// ============================================================
+// REGISTRAR PRODUÇÃO
+// ============================================================
+
+async function registerProduction(
+    event,
+    lot
+) {
+
+    event.preventDefault();
+
+
+    if (!currentUser) {
+
+        return;
+
+    }
+
+
+    const input =
+        $("productionInput");
+
+
+    const obsInput =
+        $("productionObs");
+
+
+    const amount =
+        Number(
+            input?.value || 0
+        );
+
+
+    if (amount <= 0) {
+
+        if ($("modalMessage")) {
+
+            $("modalMessage")
+                .textContent =
+                "Informe um peso maior que zero.";
+
+        }
+
+        return;
+
+    }
+
+
+    if (
+        lotProduced(lot) +
+        amount >
+        Number(lot.weight) +
+        0.0001
+    ) {
+
+        if ($("modalMessage")) {
+
+            $("modalMessage")
+                .textContent =
+                "O peso produzido ultrapassa o peso do lote.";
+
+        }
+
+        return;
+
+    }
+
+
+    const observation =
+        obsInput?.value
+            ?.trim() ||
+        "";
+
+
+    try {
+
+        await db.runTransaction(
+            async transaction => {
+
+                const ref =
+                    db
+                        .collection("lots")
+                        .doc(lot.id);
+
+
+                const snap =
+                    await transaction
+                        .get(ref);
+
+
+                if (!snap.exists) {
+
+                    throw new Error(
+                        "Lote não encontrado."
+                    );
+
+                }
+
+
+                const data =
+                    snap.data();
+
+
+                const current =
+                    Number(
+                        data.producedWeight ||
+                        0
+                    );
+
+
+                const weight =
+                    Number(
+                        data.weight ||
+                        0
+                    );
+
+
+                const next =
+                    current +
+                    amount;
+
+
+                if (
+                    next >
+                    weight +
+                    0.0001
+                ) {
+
+                    throw new Error(
+                        "A produção ultrapassa o peso do lote."
+                    );
+
+                }
+
+
+                const newStatus =
+                    next >=
+                    weight -
+                    0.0001
+
+                        ? "finalizado"
+
+                        : "producao";
+
+
+                const productionLog = {
+
+                    weight:
+                        amount,
+
+                    obs:
+                        observation,
+
+                    userId:
+                        currentUser.uid,
+
+                    at:
+                        new Date()
+
+                };
+
+
+                transaction.update(
+                    ref,
+                    {
+
+                        producedWeight:
+                            next,
+
+                        status:
+                            newStatus,
+
+                        updatedAt:
+                            firebase.firestore
+                                .FieldValue
+                                .serverTimestamp(),
+
+                        lastObservation:
+                            observation,
+
+                        productionLogs:
+                            firebase.firestore
+                                .FieldValue
+                                .arrayUnion(
+                                    productionLog
+                                )
+
+                    }
+                );
+
+            }
+        );
+
+
+        window.closeLotModal();
+
+
+        await loadData();
+
+
+    } catch (error) {
+
+        console.error(
+            "Erro ao registrar produção:",
+            error
+        );
+
+
+        if ($("modalMessage")) {
+
+            $("modalMessage")
+                .textContent =
+                error.message ||
+                "Erro ao registrar produção.";
+
+        }
+
+    }
+
+}
+
+
+// ============================================================
+// EDITAR LOTE
+// ============================================================
+
+window.editLot =
+function(id) {
+
+    if (!roleIsAdmin()) {
+
+        alert(
+            "Somente o administrador principal pode editar lotes."
+        );
+
+        return;
+
+    }
+
+
+    const lot =
+        allLots.find(
+            item =>
+                item.id === id
+        );
+
+
+    if (!lot) {
+
+        alert(
+            "Lote não encontrado."
+        );
+
+        return;
+
+    }
+
+
+    if (!$("lotModalContent")) {
+
+        return;
+
+    }
+
+
+    // ========================================================
+    // COLABORADORES DISPONÍVEIS
+    // ========================================================
+
+    const collaborators =
+        allUsers.filter(
+            user => {
+
+                const isAssigned =
+                    user.id ===
+                    lot.assignedTo;
+
+
+                const isCollaborator =
+                    String(
+                        user.role ||
+                        ""
+                    )
+                        .toLowerCase() ===
+                    "colaborador";
+
+
+                const isActive =
+                    user.active !== false;
+
+
+                return (
+                    isAssigned ||
+                    (
+                        isCollaborator &&
+                        isActive
+                    )
+                );
+
+            }
+        );
+
+
+    $("lotModalContent")
+        .innerHTML = `
+
+            <h2>
+                ✏️ Editar lote
+            </h2>
+
+
+            <form
+                id="editLotForm"
+                class="form-grid"
+                style="
+                    margin-top:20px;
+                "
+            >
+
+                <label>
+
+                    Nome do lote
+
+                    <input
+                        id="editLotName"
+                        value="${escapeHtml(
+                            lot.name ||
+                            ""
+                        )}"
+                        required
+                    >
+
+                </label>
+
+
+                <label>
+
+                    OS
+
+                    <input
+                        id="editLotOs"
+                        value="${escapeHtml(
+                            lot.os ||
+                            ""
+                        )}"
+                        required
+                    >
+
+                </label>
+
+
+                <label>
+
+                    Cliente
+
+                    <input
+                        id="editLotClient"
+                        value="${escapeHtml(
+                            lot.clientName ||
+                            lot.name ||
+                            ""
+                        )}"
+                        required
+                    >
+
+                </label>
+
+
+                <label>
+
+                    Peso do lote (kg)
+
+                    <input
+                        id="editLotWeight"
+                        type="number"
+                        step="0.001"
+                        min="0.001"
+                        value="${Number(
+                            lot.weight ||
+                            0
+                        )}"
+                        required
+                    >
+
+                </label>
+
+
+                <label>
+
+                    Data de entrada
+
+                    <input
+                        id="editLotEntry"
+                        type="date"
+                        value="${escapeHtml(
+                            lot.entryDate ||
+                            ""
+                        )}"
+                        required
+                    >
+
+                </label>
+
+
+                <label>
+
+                    Data de programação
+
+                    <input
+                        id="editLotProgram"
+                        type="date"
+                        value="${escapeHtml(
+                            lot.programDate ||
+                            ""
+                        )}"
+                        required
+                    >
+
+                </label>
+
+
+                <label>
+
+                    Colaborador responsável
+
+                    <select
+                        id="editLotAssignedTo"
+                        required
+                    >
+
+                        ${
+                            collaborators
+                                .map(
+                                    user => `
+
+                                        <option
+                                            value="${escapeHtml(
+                                                user.id
+                                            )}"
+                                            ${
+                                                user.id ===
+                                                lot.assignedTo
+                                                    ? "selected"
+                                                    : ""
+                                            }
+                                        >
+
+                                            ${escapeHtml(
+                                                user.name ||
+                                                user.email ||
+                                                "Sem nome"
+                                            )}
+
+                                        </option>
+
+                                    `
+                                )
+                                .join("")
+                        }
+
+                    </select>
+
+                </label>
+
+
+                <label>
+
+                    Status
+
+                    <select
+                        id="editLotStatus"
+                        required
+                    >
+
+                        <option
+                            value="pendente"
+                            ${
+                                lot.status ===
+                                "pendente"
+                                    ? "selected"
+                                    : ""
+                            }
+                        >
+                            Pendente
+                        </option>
+
+
+                        <option
+                            value="producao"
+                            ${
+                                lot.status ===
+                                "producao"
+                                    ? "selected"
+                                    : ""
+                            }
+                        >
+                            Em produção
+                        </option>
+
+
+                        <option
+                            value="finalizado"
+                            ${
+                                lot.status ===
+                                "finalizado"
+                                    ? "selected"
+                                    : ""
+                            }
+                        >
+                            Finalizado
+                        </option>
+
+
+                        <option
+                            value="cancelado"
+                            ${
+                                lot.status ===
+                                "cancelado"
+                                    ? "selected"
+                                    : ""
+                            }
+                        >
+                            Cancelado
+                        </option>
+
+                    </select>
+
+                </label>
+
+
+                <div
+                    class="full"
+                    style="
+                        display:flex;
+                        gap:10px;
+                        margin-top:15px;
+                    "
+                >
+
+                    <button
+                        type="submit"
+                        class="primary"
+                    >
+
+                        💾 SALVAR ALTERAÇÕES
+
+                    </button>
+
+
+                    <button
+                        type="button"
+                        class="secondary"
+                        onclick="
+                            window.openLot('${lot.id}')
+                        "
+                    >
+
+                        Cancelar
+
+                    </button>
+
+                </div>
+
+            </form>
+
+
+            <div
+                id="editLotMessage"
+                style="
+                    margin-top:15px;
+                "
+            ></div>
+
+        `;
+
+
+    $("lotModal")
+        ?.classList
+        .remove("hidden");
+
+
+    if (!$("editLotForm")) {
+
+        return;
+
+    }
+
+
+    $("editLotForm")
+        .onsubmit =
+        async event => {
 
             event.preventDefault();
 
 
-            const name =
-                $("editLotName")
-                    .value
-                    .trim();
+            const message =
+                $("editLotMessage");
 
 
-            const os =
-                $("editLotOs")
-                    .value
-                    .trim();
+            if (message) {
 
+                message.className = "";
 
-            const clientName =
-                $("editLotClient")
-                    .value
-                    .trim();
+                message.textContent =
+                    "Salvando alterações...";
 
-
-            const weight =
-                Number(
-                    $("editLotWeight").value
-                );
-
-
-            const entryDate =
-                $("editLotEntry").value;
-
-
-            const programDate =
-                $("editLotProgram").value;
-
-
-            const assignedTo =
-                $("editLotAssigned").value;
-
-
-            // ------------------------------------------------
-            // Validações
-            // ------------------------------------------------
-
-            if (!name) {
-
-                $("editLotMessage")
-                    .textContent =
-                    "Informe o nome do lote.";
-
-                return;
-            }
-
-
-            if (!os) {
-
-                $("editLotMessage")
-                    .textContent =
-                    "Informe a OS.";
-
-                return;
-            }
-
-
-            if (!clientName) {
-
-                $("editLotMessage")
-                    .textContent =
-                    "Informe o cliente.";
-
-                return;
-            }
-
-
-            if (weight <= 0) {
-
-                $("editLotMessage")
-                    .textContent =
-                    "Informe um peso válido.";
-
-                return;
-            }
-
-
-            if (!entryDate) {
-
-                $("editLotMessage")
-                    .textContent =
-                    "Informe a data de entrada.";
-
-                return;
-            }
-
-
-            if (!programDate) {
-
-                $("editLotMessage")
-                    .textContent =
-                    "Informe a data de programação.";
-
-                return;
-            }
-
-
-            if (!assignedTo) {
-
-                $("editLotMessage")
-                    .textContent =
-                    "Selecione um colaborador.";
-
-                return;
-            }
-
-
-            // ------------------------------------------------
-            // Não permite diminuir o peso abaixo do produzido
-            // ------------------------------------------------
-
-            const produced =
-                lotProduced(lot);
-
-
-            if (
-                weight <
-                produced
-            ) {
-
-                $("editLotMessage")
-                    .textContent =
-                    `O peso do lote não pode ser menor que o peso já produzido (${kg(produced)}).`;
-
-                return;
             }
 
 
             try {
 
-                $("editLotMessage")
-                    .className = "";
+                const name =
+                    $("editLotName")
+                        .value
+                        .trim();
 
 
-                $("editLotMessage")
-                    .textContent =
-                    "Salvando alterações...";
+                const os =
+                    $("editLotOs")
+                        .value
+                        .trim();
 
+
+                const clientName =
+                    $("editLotClient")
+                        .value
+                        .trim();
+
+
+                const weight =
+                    Number(
+                        $("editLotWeight")
+                            .value
+                    );
+
+
+                const entryDate =
+                    $("editLotEntry")
+                        .value;
+
+
+                const programDate =
+                    $("editLotProgram")
+                        .value;
+
+
+                const assignedTo =
+                    $("editLotAssignedTo")
+                        .value;
+
+
+                const status =
+                    $("editLotStatus")
+                        .value;
+
+
+                if (!name) {
+
+                    throw new Error(
+                        "Informe o nome do lote."
+                    );
+
+                }
+
+
+                if (!os) {
+
+                    throw new Error(
+                        "Informe a OS."
+                    );
+
+                }
+
+
+                if (!clientName) {
+
+                    throw new Error(
+                        "Informe o cliente."
+                    );
+
+                }
+
+
+                if (
+                    !weight ||
+                    weight <= 0
+                ) {
+
+                    throw new Error(
+                        "Informe um peso válido."
+                    );
+
+                }
+
+
+                if (!entryDate) {
+
+                    throw new Error(
+                        "Informe a data de entrada."
+                    );
+
+                }
+
+
+                if (!programDate) {
+
+                    throw new Error(
+                        "Informe a data de programação."
+                    );
+
+                }
+
+
+                if (!assignedTo) {
+
+                    throw new Error(
+                        "Selecione um colaborador."
+                    );
+
+                }
+
+
+                // ------------------------------------------
+                // NÃO DEIXAR PESO MENOR QUE PRODUZIDO
+                // ------------------------------------------
+
+                const produced =
+                    lotProduced(lot);
+
+
+                if (
+                    weight <
+                    produced
+                ) {
+
+                    throw new Error(
+                        `O peso do lote não pode ser menor que o já produzido (${kg(produced)}).`
+                    );
+
+                }
+
+
+                // ------------------------------------------
+                // ATUALIZAR FIRESTORE
+                // ------------------------------------------
 
                 await db
                     .collection("lots")
-                    .doc(id)
+                    .doc(lot.id)
                     .update({
 
                         name,
@@ -1837,35 +3097,92 @@ window.editLot = async function (id) {
 
                         assignedTo,
 
+                        status,
+
                         updatedAt:
                             firebase.firestore
                                 .FieldValue
                                 .serverTimestamp()
+
                     });
 
 
-                $("editLotMessage")
-                    .className =
-                    "success";
+                if (message) {
+
+                    message.className =
+                        "success";
+
+                    message.textContent =
+                        "Lote alterado com sucesso.";
+
+                }
 
 
-                $("editLotMessage")
-                    .textContent =
-                    "Lote alterado com sucesso.";
+                // ------------------------------------------
+                // ATUALIZAR MEMÓRIA LOCAL
+                // ------------------------------------------
+
+                const index =
+                    allLots.findIndex(
+                        item =>
+                            item.id ===
+                            lot.id
+                    );
 
 
-                // Atualiza os dados
-                await loadData();
+                if (index >= 0) {
+
+                    allLots[index] = {
+
+                        ...allLots[index],
+
+                        name,
+
+                        os,
+
+                        clientName,
+
+                        weight,
+
+                        entryDate,
+
+                        programDate,
+
+                        assignedTo,
+
+                        status
+
+                    };
+
+                }
 
 
-                // Abre novamente o lote atualizado
+                // ------------------------------------------
+                // RENDERIZAR
+                // ------------------------------------------
+
+                renderDashboard();
+
+                renderKanban();
+
+                renderMine();
+
+                renderReport();
+
+
+                // ------------------------------------------
+                // REABRIR LOTE
+                // ------------------------------------------
+
                 setTimeout(
                     () => {
 
-                        openLot(id);
+                        window.openLot(
+                            lot.id
+                        );
 
                     },
-                    400
+                    500
                 );
 
 
@@ -1877,247 +3194,41 @@ window.editLot = async function (id) {
                 );
 
 
-                $("editLotMessage")
-                    .className =
-                    "error";
+                if (message) {
 
+                    message.className =
+                        "error";
 
-                $("editLotMessage")
-                    .textContent =
-                    error.message ||
-                    "Erro ao salvar alterações.";
-            }
-        };
-};
+                    message.textContent =
+                        error.message ||
+                        "Erro ao alterar lote.";
 
-// ============================================================
-// FECHAR MODAL
-// ============================================================
-
-window.closeLotModal = function() {
-
-    $("lotModal")
-        ?.classList
-        .add("hidden");
-};
-
-// ============================================================
-// FECHAR CLICANDO FORA
-// ============================================================
-
-if ($("lotModal")) {
-
-    $("lotModal").addEventListener(
-        "click",
-        event => {
-
-            if (
-                event.target ===
-                $("lotModal")
-            ) {
-
-                closeLotModal();
-            }
-        }
-    );
-}
-${
-    roleIsAdmin()
-        ? `
-            <button
-                type="button"
-                onclick="
-                    event.stopPropagation();
-                    window.editLot('${l.id}');
-                "
-                style="
-                    display:block !important;
-                    width:100% !important;
-                    margin-top:15px !important;
-                    padding:10px !important;
-                    cursor:pointer !important;
-                    opacity:1 !important;
-                    visibility:visible !important;
-                "
-            >
-                ✏️ EDITAR LOTE
-            </button>
-        `
-        : ""
-}
-// ============================================================
-// REGISTRAR PRODUÇÃO
-// ============================================================
-
-async function registerProduction(
-    event,
-    lot
-) {
-
-    event.preventDefault();
-
-    const amount =
-        Number(
-            $("productionInput").value || 0
-        );
-
-    if (amount <= 0) {
-
-        $("modalMessage").textContent =
-            "Informe um peso maior que zero.";
-
-        return;
-    }
-
-    if (
-        lotProduced(lot) +
-        amount >
-        Number(lot.weight) +
-        0.0001
-    ) {
-
-        $("modalMessage").textContent =
-            "O peso produzido ultrapassa o peso do lote.";
-
-        return;
-    }
-
-    const now =
-        firebase.firestore
-            .FieldValue
-            .serverTimestamp();
-
-    const observation =
-        $("productionObs")
-            .value
-            .trim();
-
-    try {
-
-        await db.runTransaction(
-            async transaction => {
-
-                const ref =
-                    db.collection("lots")
-                        .doc(lot.id);
-
-                const snap =
-                    await transaction.get(ref);
-
-                if (!snap.exists) {
-
-                    throw new Error(
-                        "Lote não encontrado."
-                    );
                 }
 
-                const data =
-                    snap.data();
-
-                const current =
-                    Number(
-                        data.producedWeight || 0
-                    );
-
-                const weight =
-                    Number(
-                        data.weight || 0
-                    );
-
-                const next =
-                    current + amount;
-
-                const newStatus =
-                    next >= weight - 0.0001
-                        ? "finalizado"
-                        : "producao";
-
-                const productionLog = {
-
-                    weight: amount,
-
-                    obs: observation,
-
-                    userId:
-                        currentUser.uid,
-
-                    at:
-                        new Date()
-                };
-
-                transaction.update(
-                    ref,
-                    {
-
-                        producedWeight:
-                            next,
-
-                        status:
-                            newStatus,
-
-                        updatedAt:
-                            now,
-
-                        lastObservation:
-                            observation,
-
-                        productionLogs:
-                            firebase.firestore
-                                .FieldValue
-                                .arrayUnion(
-                                    productionLog
-                                )
-                    }
-                );
             }
-        );
 
-        closeLotModal();
+        };
 
-        await loadData();
+};
 
-    } catch (error) {
-
-        console.error(error);
-
-        if ($("modalMessage")) {
-
-            $("modalMessage").textContent =
-                error.message ||
-                "Erro ao registrar produção.";
-        }
-    }
-}
 
 // ============================================================
-// EDITAR LOTE
+// REDISTRIBUIR LOTE
 // ============================================================
-//
-// SOMENTE O ADMINISTRADOR PRINCIPAL PODE EDITAR.
-//
-// Permite alterar:
-// - Nome
-// - OS
-// - Cliente
-// - Peso
-// - Data de entrada
-// - Data de programação
-// - Colaborador responsável
-// - Status
-//
 
-window.editLot = async function(id) {
-
-    // Segurança principal
+window.redistributeLot =
+async function(id) {
 
     if (!roleIsAdmin()) {
 
         alert(
-            "Você não possui permissão para editar lotes."
+            "Somente o administrador pode redistribuir lotes."
         );
 
         return;
+
     }
+
 
     const lot =
         allLots.find(
@@ -2125,731 +3236,86 @@ window.editLot = async function(id) {
                 item.id === id
         );
 
+
     if (!lot) {
 
-        alert(
-            "Lote não encontrado."
-        );
-
         return;
+
     }
+
 
     const activeUsers =
-        allUsers
-            .filter(
-                user =>
-                    user.role === "colaborador" &&
-                    user.active !== false
-            );
-
-    const currentUserAssigned =
-        allUsers.find(
+        allUsers.filter(
             user =>
-                user.id ===
-                lot.assignedTo
+                user.active !== false &&
+                String(
+                    user.role ||
+                    ""
+                )
+                    .toLowerCase() ===
+                "colaborador"
         );
 
-    if (!$("lotModalContent")) {
+
+    if (!activeUsers.length) {
+
+        alert(
+            "Não existem colaboradores ativos."
+        );
+
         return;
+
     }
 
-    $("lotModalContent").innerHTML = `
 
-        <h2>
-            ✏️ Editar lote
-        </h2>
+    const loads = {};
 
-        <p>
-            Alteração administrativa completa do lote.
-        </p>
 
-        <form
-            id="editLotForm"
-            class="form-grid"
-        >
-
-            <label>
-                Nome do lote
-
-                <input
-                    id="editLotName"
-                    value="${escapeHtml(
-                        lot.name || ""
-                    )}"
-                    required
-                >
-            </label>
-
-            <label>
-                OS
-
-                <input
-                    id="editLotOs"
-                    value="${escapeHtml(
-                        lot.os || ""
-                    )}"
-                    required
-                >
-            </label>
-
-            <label>
-                Cliente
-
-                <input
-                    id="editLotClient"
-                    value="${escapeHtml(
-                        lot.clientName ||
-                        lot.name ||
-                        ""
-                    )}"
-                >
-            </label>
-
-            <label>
-                Peso (kg)
-
-                <input
-                    id="editLotWeight"
-                    type="number"
-                    step="0.001"
-                    min="0.001"
-                    value="${Number(
-                        lot.weight || 0
-                    )}"
-                    required
-                >
-            </label>
-
-            <label>
-                Data de entrada
-
-                <input
-                    id="editLotEntry"
-                    type="date"
-                    value="${lot.entryDate || ""}"
-                    required
-                >
-            </label>
-
-            <label>
-                Data de programação
-
-                <input
-                    id="editLotProgram"
-                    type="date"
-                    value="${lot.programDate || ""}"
-                    required
-                >
-            </label>
-
-            <label>
-                Colaborador responsável
-
-                <select
-                    id="editLotAssigned"
-                    required
-                >
-
-                    ${
-                        activeUsers.length
-                            ? activeUsers.map(
-                                user => `
-                                    <option
-                                        value="${user.id}"
-                                        ${
-                                            user.id ===
-                                            lot.assignedTo
-                                                ? "selected"
-                                                : ""
-                                        }
-                                    >
-                                        ${escapeHtml(
-                                            user.name ||
-                                            user.email ||
-                                            "Sem nome"
-                                        )}
-                                    </option>
-                                `
-                            ).join("")
-                            : `
-                                <option value="">
-                                    Nenhum colaborador ativo
-                                </option>
-                            `
-                    }
-
-                </select>
-
-            </label>
-
-            <label>
-                Status
-
-                <select
-                    id="editLotStatus"
-                >
-
-                    <option
-                        value="pendente"
-                        ${
-                            lot.status === "pendente"
-                                ? "selected"
-                                : ""
-                        }
-                    >
-                        Pendente
-                    </option>
-
-                    <option
-                        value="producao"
-                        ${
-                            lot.status === "producao"
-                                ? "selected"
-                                : ""
-                        }
-                    >
-                        Em produção
-                    </option>
-
-                    <option
-                        value="finalizado"
-                        ${
-                            lot.status === "finalizado"
-                                ? "selected"
-                                : ""
-                        }
-                    >
-                        Finalizado
-                    </option>
-
-                    <option
-                        value="cancelado"
-                        ${
-                            lot.status === "cancelado"
-                                ? "selected"
-                                : ""
-                        }
-                    >
-                        Cancelado
-                    </option>
-
-                </select>
-
-            </label>
-
-            <div class="full">
-
-                <button
-                    type="submit"
-                    class="primary"
-                >
-                    💾 Salvar alterações
-                </button>
-
-            </div>
-
-        </form>
-
-        <div
-            id="editLotMessage"
-            style="margin-top:15px;"
-        ></div>
-
-        <div class="modal-actions">
-
-            <button
-                type="button"
-                class="secondary"
-                onclick="openLot('${lot.id}')"
-            >
-                Voltar
-            </button>
-
-            <button
-                type="button"
-                class="secondary"
-                onclick="closeLotModal()"
-            >
-                Fechar
-            </button>
-
-        </div>
-    `;
-
-    $("lotModal")
-        ?.classList
-        .remove("hidden");
-
-    if ($("editLotForm")) {
-
-        $("editLotForm").onsubmit =
-            async event => {
-
-                event.preventDefault();
-
-                const message =
-                    $("editLotMessage");
-
-                if (message) {
-                    message.className = "";
-                    message.textContent =
-                        "Salvando...";
-                }
-
-                const newName =
-                    $("editLotName")
-                        .value
-                        .trim();
-
-                const newOs =
-                    $("editLotOs")
-                        .value
-                        .trim();
-
-                const newClient =
-                    $("editLotClient")
-                        .value
-                        .trim();
-
-                const newWeight =
-                    Number(
-                        $("editLotWeight")
-                            .value
-                    );
-
-                const newEntry =
-                    $("editLotEntry")
-                        .value;
-
-                const newProgram =
-                    $("editLotProgram")
-                        .value;
-
-                const newAssigned =
-                    $("editLotAssigned")
-                        .value;
-
-                const newStatus =
-                    $("editLotStatus")
-                        .value;
-
-                if (!newName) {
-
-                    if (message) {
-                        message.className = "error";
-                        message.textContent =
-                            "Informe o nome do lote.";
-                    }
-
-                    return;
-                }
-
-                if (!newOs) {
-
-                    if (message) {
-                        message.className = "error";
-                        message.textContent =
-                            "Informe a OS.";
-                    }
-
-                    return;
-                }
-
-                if (
-                    !newWeight ||
-                    newWeight <= 0
-                ) {
-
-                    if (message) {
-                        message.className = "error";
-                        message.textContent =
-                            "Informe um peso válido.";
-                    }
-
-                    return;
-                }
-
-                if (!newEntry) {
-
-                    if (message) {
-                        message.className = "error";
-                        message.textContent =
-                            "Informe a data de entrada.";
-                    }
-
-                    return;
-                }
-
-                if (!newProgram) {
-
-                    if (message) {
-                        message.className = "error";
-                        message.textContent =
-                            "Informe a data de programação.";
-                    }
-
-                    return;
-                }
-
-                if (!newAssigned) {
-
-                    if (message) {
-                        message.className = "error";
-                        message.textContent =
-                            "Selecione o colaborador.";
-                    }
-
-                    return;
-                }
-
-                // Não permite diminuir o peso abaixo
-                // do que já foi produzido.
-
-                const produced =
-                    lotProduced(lot);
-
-                if (
-                    newWeight <
-                    produced
-                ) {
-
-                    if (message) {
-                        message.className = "error";
-                        message.textContent =
-                            `O peso do lote não pode ser menor que o peso já produzido (${kg(produced)}).`;
-                    }
-
-                    return;
-                }
-
-                try {
-
-                    await db
-                        .collection("lots")
-                        .doc(id)
-                        .update({
-
-                            name:
-                                newName,
-
-                            os:
-                                newOs,
-
-                            clientName:
-                                newClient ||
-                                newName,
-
-                            weight:
-                                newWeight,
-
-                            entryDate:
-                                newEntry,
-
-                            programDate:
-                                newProgram,
-
-                            assignedTo:
-                                newAssigned,
-
-                            status:
-                                newStatus,
-
-                            updatedAt:
-                                firebase.firestore
-                                    .FieldValue
-                                    .serverTimestamp()
-                        });
-
-                    if (message) {
-
-                        message.className =
-                            "success";
-
-                        message.textContent =
-                            "Lote atualizado com sucesso.";
-                    }
-
-                    await loadData();
-
-                    // Reabre o lote atualizado
-                    // após um pequeno intervalo.
-
-                    setTimeout(
-                        () => {
-                            openLot(id);
-                        },
-                        300
-                    );
-
-                } catch (error) {
-
-                    console.error(
-                        "Erro ao editar lote:",
-                        error
-                    );
-
-                    if (message) {
-
-                        message.className =
-                            "error";
-
-                        message.textContent =
-                            error.message ||
-                            "Erro ao salvar alterações.";
-                    }
-                }
-            };
-    }
-};
-
-// ============================================================
-// CADASTRAR LOTE
-// ============================================================
-
-if ($("lotForm")) {
-
-    $("lotForm").addEventListener(
-        "submit",
-        async event => {
-
-            event.preventDefault();
-
-            if (!roleIsAdmin()) {
-
-                return;
-            }
-
-            $("lotFormMessage").textContent = "";
-
-            const weight =
-                Number(
-                    $("lotWeight").value
-                );
-
-            if (weight <= 0) {
-
-                $("lotFormMessage")
-                    .className = "error";
-
-                $("lotFormMessage")
-                    .textContent =
-                    "Informe um peso válido.";
-
-                return;
-            }
-
-            try {
-
-                const activeUsers =
-                    allUsers.filter(
-                        user =>
-                            user.active !== false &&
-                            user.role ===
-                                "colaborador"
-                    );
-
-                if (!activeUsers.length) {
-
-                    throw new Error(
-                        "Não existem colaboradores ativos para distribuição."
-                    );
-                }
-
-                const loads = {};
-
-                allLots.forEach(lot => {
-
-                    if (
-                        [
-                            "pendente",
-                            "producao"
-                        ].includes(
-                            lotStatus(lot)
-                        )
-                    ) {
-
-                        loads[lot.assignedTo] =
-                            (
-                                loads[lot.assignedTo] ||
-                                0
-                            ) +
-                            lotRemaining(lot);
-                    }
-                });
-
-                activeUsers.sort(
-                    (a, b) =>
-                        (
-                            loads[a.id] || 0
-                        ) -
-                        (
-                            loads[b.id] || 0
-                        )
-                );
-
-                const chosen =
-                    activeUsers[0];
-
-                const ref =
-                    db
-                        .collection("lots")
-                        .doc();
-
-                const name =
-                    $("lotName")
-                        .value
-                        .trim();
-
-                const data = {
-
-                    name,
-
-                    os:
-                        $("lotOs")
-                            .value
-                            .trim(),
-
-                    weight,
-
-                    entryDate:
-                        $("lotEntry")
-                            .value,
-
-                    programDate:
-                        $("lotProgram")
-                            .value,
-
-                    assignedTo:
-                        chosen.id,
-
-                    producedWeight:
-                        0,
-
-                    status:
-                        "pendente",
-
-                    clientName:
-                        name,
-
-                    createdBy:
-                        currentUser.uid,
-
-                    createdAt:
-                        firebase.firestore
-                            .FieldValue
-                            .serverTimestamp(),
-
-                    updatedAt:
-                        firebase.firestore
-                            .FieldValue
-                            .serverTimestamp()
-                };
-
-                await ref.set(data);
-
-                $("lotFormMessage")
-                    .className = "success";
-
-                $("lotFormMessage")
-                    .textContent =
-                    `Lote distribuído para ${chosen.name}. ` +
-                    `Carga pendente atual: ${
-                        kg(loads[chosen.id] || 0)
-                    }.`;
-
-                event.target.reset();
-
-                await loadData();
-
-            } catch (error) {
-
-                console.error(error);
-
-                $("lotFormMessage")
-                    .className = "error";
-
-                $("lotFormMessage")
-                    .textContent =
-                    error.message ||
-                    "Erro ao cadastrar lote.";
-            }
-        }
-    );
-}
-
-// ============================================================
-// REDISTRIBUIR LOTE
-// ============================================================
-
-window.redistributeLot =
-    async function(id) {
-
-        if (!roleIsAdmin()) {
-
-            alert(
-                "Somente o administrador pode redistribuir lotes."
-            );
-
-            return;
-        }
-
-        const activeUsers =
-            allUsers.filter(
-                user =>
-                    user.active !== false &&
-                    user.role ===
-                        "colaborador"
-            );
-
-        const lot =
-            allLots.find(
-                item =>
-                    item.id === id
-            );
+    allLots.forEach(item => {
 
         if (
-            !lot ||
-            !activeUsers.length
+            item.id !== id
+            &&
+            [
+                "pendente",
+                "producao"
+            ].includes(
+                lotStatus(item)
+            )
         ) {
 
-            return;
+            loads[item.assignedTo] =
+                (
+                    loads[item.assignedTo] ||
+                    0
+                )
+                +
+                lotRemaining(item);
+
         }
 
-        const loads = {};
+    });
 
-        allLots.forEach(item => {
 
-            if (
-                item.id !== id &&
-                [
-                    "pendente",
-                    "producao"
-                ].includes(
-                    lotStatus(item)
-                )
-            ) {
+    activeUsers.sort(
+        (a, b) =>
+            (
+                loads[a.id] ||
+                0
+            )
+            -
+            (
+                loads[b.id] ||
+                0
+            )
+    );
 
-                loads[item.assignedTo] =
-                    (
-                        loads[item.assignedTo] ||
-                        0
-                    ) +
-                    lotRemaining(item);
-            }
-        });
 
-        activeUsers.sort(
-            (a, b) =>
-                (
-                    loads[a.id] || 0
-                ) -
-                (
-                    loads[b.id] || 0
-                )
-        );
+    const chosen =
+        activeUsers[0];
 
-        const chosen =
-            activeUsers[0];
+
+    try {
 
         await db
             .collection("lots")
@@ -2863,12 +3329,286 @@ window.redistributeLot =
                     firebase.firestore
                         .FieldValue
                         .serverTimestamp()
+
             });
+
 
         await loadData();
 
-        openLot(id);
-    };
+
+        window.openLot(id);
+
+
+    } catch (error) {
+
+        console.error(
+            "Erro ao redistribuir:",
+            error
+        );
+
+
+        alert(
+            error.message ||
+            "Erro ao redistribuir lote."
+        );
+
+    }
+
+};
+
+
+// ============================================================
+// CADASTRAR LOTE
+// ============================================================
+
+function initLotForm() {
+
+    if (!$("lotForm")) {
+
+        return;
+
+    }
+
+
+    $("lotForm")
+        .addEventListener(
+            "submit",
+            async event => {
+
+                event.preventDefault();
+
+
+                if (!roleIsAdmin()) {
+
+                    return;
+
+                }
+
+
+                if ($("lotFormMessage")) {
+
+                    $("lotFormMessage")
+                        .textContent = "";
+
+                }
+
+
+                try {
+
+                    const weight =
+                        Number(
+                            $("lotWeight")
+                                .value
+                        );
+
+
+                    if (
+                        !weight ||
+                        weight <= 0
+                    ) {
+
+                        throw new Error(
+                            "Informe um peso válido."
+                        );
+
+                    }
+
+
+                    const activeUsers =
+                        allUsers.filter(
+                            user =>
+                                user.active !== false &&
+                                String(
+                                    user.role ||
+                                    ""
+                                )
+                                    .toLowerCase() ===
+                                "colaborador"
+                        );
+
+
+                    if (
+                        !activeUsers.length
+                    ) {
+
+                        throw new Error(
+                            "Não existem colaboradores ativos para distribuição."
+                        );
+
+                    }
+
+
+                    const loads = {};
+
+
+                    allLots.forEach(
+                        lot => {
+
+                            if (
+                                [
+                                    "pendente",
+                                    "producao"
+                                ].includes(
+                                    lotStatus(lot)
+                                )
+                            ) {
+
+                                loads[
+                                    lot.assignedTo
+                                ] =
+                                    (
+                                        loads[
+                                            lot.assignedTo
+                                        ] ||
+                                        0
+                                    )
+                                    +
+                                    lotRemaining(
+                                        lot
+                                    );
+
+                            }
+
+                        }
+                    );
+
+
+                    activeUsers.sort(
+                        (a, b) =>
+                            (
+                                loads[a.id] ||
+                                0
+                            )
+                            -
+                            (
+                                loads[b.id] ||
+                                0
+                            )
+                    );
+
+
+                    const chosen =
+                        activeUsers[0];
+
+
+                    const ref =
+                        db
+                            .collection("lots")
+                            .doc();
+
+
+                    const lotName =
+                        $("lotName")
+                            .value
+                            .trim();
+
+
+                    const lotOs =
+                        $("lotOs")
+                            .value
+                            .trim();
+
+
+                    const data = {
+
+                        name:
+                            lotName,
+
+                        os:
+                            lotOs,
+
+                        weight,
+
+                        entryDate:
+                            $("lotEntry")
+                                .value,
+
+                        programDate:
+                            $("lotProgram")
+                                .value,
+
+                        assignedTo:
+                            chosen.id,
+
+                        producedWeight:
+                            0,
+
+                        status:
+                            "pendente",
+
+                        clientName:
+                            lotName,
+
+                        createdBy:
+                            currentUser.uid,
+
+                        createdAt:
+                            firebase.firestore
+                                .FieldValue
+                                .serverTimestamp(),
+
+                        updatedAt:
+                            firebase.firestore
+                                .FieldValue
+                                .serverTimestamp()
+
+                    };
+
+
+                    await ref.set(
+                        data
+                    );
+
+
+                    if ($("lotFormMessage")) {
+
+                        $("lotFormMessage")
+                            .className =
+                            "success";
+
+
+                        $("lotFormMessage")
+                            .textContent =
+                            `Lote distribuído para ${chosen.name}. Carga pendente atual: ${kg(loads[chosen.id] || 0)}.`;
+
+                    }
+
+
+                    event.target.reset();
+
+
+                    await loadData();
+
+
+                } catch (error) {
+
+                    console.error(
+                        "Erro ao cadastrar lote:",
+                        error
+                    );
+
+
+                    if ($("lotFormMessage")) {
+
+                        $("lotFormMessage")
+                            .className =
+                            "error";
+
+
+                        $("lotFormMessage")
+                            .textContent =
+                            error.message ||
+                            "Erro ao cadastrar lote.";
+
+                    }
+
+                }
+
+            }
+        );
+
+}
+
 
 // ============================================================
 // RELATÓRIO
@@ -2877,26 +3617,38 @@ window.redistributeLot =
 function renderReport() {
 
     if (!$("reportSummary")) {
+
         return;
+
     }
+
 
     let lots =
         dateRange(
-            $("reportFrom")?.value,
-            $("reportTo")?.value
+            $("reportFrom")
+                ?.value || "",
+
+            $("reportTo")
+                ?.value || ""
         );
 
+
     const uid =
-        $("reportUser")?.value;
+        $("reportUser")
+            ?.value || "";
+
 
     if (uid) {
 
         lots =
             lots.filter(
                 lot =>
-                    lot.assignedTo === uid
+                    lot.assignedTo ===
+                    uid
             );
+
     }
+
 
     if (!roleIsAdmin()) {
 
@@ -2906,17 +3658,21 @@ function renderReport() {
                     lot.assignedTo ===
                     currentUser.uid
             );
+
     }
+
 
     const planned =
         lots.reduce(
             (total, lot) =>
                 total +
                 Number(
-                    lot.weight || 0
+                    lot.weight ||
+                    0
                 ),
             0
         );
+
 
     const produced =
         lots.reduce(
@@ -2925,6 +3681,7 @@ function renderReport() {
                 lotProduced(lot),
             0
         );
+
 
     const clients =
         new Set(
@@ -2937,70 +3694,81 @@ function renderReport() {
                 .filter(Boolean)
         );
 
-    $("reportSummary").innerHTML = [
 
-        [
-            "Programado",
-            kg(planned)
-        ],
+    $("reportSummary")
+        .innerHTML = [
 
-        [
-            "Produzido",
-            kg(produced)
-        ],
+            [
+                "Programado",
+                kg(planned)
+            ],
 
-        [
-            "Saldo",
-            kg(
-                planned - produced
-            )
-        ],
+            [
+                "Produzido",
+                kg(produced)
+            ],
 
-        [
-            "Realização",
-            pct(
-                planned
-                    ? produced /
-                      planned *
-                      100
-                    : 0
-            )
-        ],
+            [
+                "Saldo",
+                kg(
+                    planned -
+                    produced
+                )
+            ],
 
-        [
-            "Clientes",
-            clients.size
+            [
+                "Realização",
+                pct(
+                    planned
+                        ? produced /
+                          planned *
+                          100
+                        : 0
+                )
+            ],
+
+            [
+                "Clientes",
+                clients.size
+            ]
+
         ]
+            .map(
+                item => `
 
-    ].map(item => `
+                    <div class="card">
 
-        <div class="card">
+                        <small>
+                            ${item[0]}
+                        </small>
 
-            <small>
-                ${item[0]}
-            </small>
+                        <strong>
+                            ${item[1]}
+                        </strong>
 
-            <strong>
-                ${item[1]}
-            </strong>
+                    </div>
 
-        </div>
+                `
+            )
+            .join("");
 
-    `).join("");
 
     const by = {};
+
 
     lots.forEach(lot => {
 
         const user =
             allUsers.find(
-                x =>
-                    x.id ===
+                item =>
+                    item.id ===
                     lot.assignedTo
             );
 
+
         const key =
             `${lot.programDate}|${lot.assignedTo}`;
+
 
         if (!by[key]) {
 
@@ -3024,16 +3792,22 @@ function renderReport() {
 
                 lots:
                     0
+
             };
+
         }
+
 
         by[key].planned +=
             Number(
-                lot.weight || 0
+                lot.weight ||
+                0
             );
+
 
         by[key].produced +=
             lotProduced(lot);
+
 
         by[key].clients.add(
             lot.clientName ||
@@ -3041,271 +3815,1112 @@ function renderReport() {
             "Sem cliente"
         );
 
+
         by[key].lots++;
+
     });
+
 
     const rows =
         Object.values(by)
             .sort(
                 (a, b) =>
-                    a.date.localeCompare(
-                        b.date
-                    ) ||
+                    (
+                        a.date ||
+                        ""
+                    ).localeCompare(
+                        b.date ||
+                        ""
+                    )
+                    ||
                     a.user.localeCompare(
                         b.user
                     )
             );
 
+
     if ($("reportByCollaborator")) {
 
-        $("reportByCollaborator").innerHTML = `
+        $("reportByCollaborator")
+            .innerHTML = `
 
-            <h3>
-                Produção por colaborador e por dia
-            </h3>
+                <h3>
+                    Produção por colaborador e por dia
+                </h3>
 
-            <div class="table-wrap">
 
-                <table class="data-table">
+                <div class="table-wrap">
 
-                    <thead>
+                    <table class="data-table">
 
-                        <tr>
+                        <thead>
 
-                            <th>Data</th>
+                            <tr>
 
-                            <th>Colaborador</th>
+                                <th>
+                                    Data
+                                </th>
 
-                            <th>Peso do dia</th>
+                                <th>
+                                    Colaborador
+                                </th>
 
-                            <th>Programado</th>
+                                <th>
+                                    Peso do dia
+                                </th>
 
-                            <th>Clientes</th>
+                                <th>
+                                    Programado
+                                </th>
 
-                            <th>Lotes</th>
+                                <th>
+                                    Clientes
+                                </th>
 
-                        </tr>
+                                <th>
+                                    Lotes
+                                </th>
 
-                    </thead>
+                            </tr>
 
-                    <tbody>
+                        </thead>
 
-                        ${
-                            rows.length
 
-                                ? rows.map(row => `
+                        <tbody>
 
-                                    <tr>
+                            ${
+                                rows.length
 
-                                        <td>
-                                            ${dateBR(
-                                                row.date
-                                            )}
-                                        </td>
+                                    ? rows
+                                        .map(
+                                            row => `
 
-                                        <td>
-                                            ${escapeHtml(
-                                                row.user
-                                            )}
-                                        </td>
+                                                <tr>
 
-                                        <td>
-                                            ${kg(
-                                                row.produced
-                                            )}
-                                        </td>
+                                                    <td>
+                                                        ${dateBR(
+                                                            row.date
+                                                        )}
+                                                    </td>
 
-                                        <td>
-                                            ${kg(
-                                                row.planned
-                                            )}
-                                        </td>
+                                                    <td>
+                                                        ${escapeHtml(
+                                                            row.user
+                                                        )}
+                                                    </td>
 
-                                        <td>
-                                            ${escapeHtml(
-                                                [
-                                                    ...row.clients
-                                                ].join(", ")
-                                            )}
-                                        </td>
+                                                    <td>
+                                                        ${kg(
+                                                            row.produced
+                                                        )}
+                                                    </td>
 
-                                        <td>
-                                            ${row.lots}
-                                        </td>
+                                                    <td>
+                                                        ${kg(
+                                                            row.planned
+                                                        )}
+                                                    </td>
 
-                                    </tr>
+                                                    <td>
+                                                        ${escapeHtml(
+                                                            [
+                                                                ...row.clients
+                                                            ].join(", ")
+                                                        )}
+                                                    </td>
 
-                                `).join("")
+                                                    <td>
+                                                        ${row.lots}
+                                                    </td>
 
-                                : `
+                                                </tr>
 
-                                    <tr>
+                                            `
+                                        )
+                                        .join("")
 
-                                        <td colspan="6">
-                                            Sem dados.
-                                        </td>
+                                    : `
 
-                                    </tr>
+                                        <tr>
 
-                                `
-                        }
+                                            <td colspan="6">
+                                                Sem dados.
+                                            </td>
 
-                    </tbody>
+                                        </tr>
 
-                </table>
+                                    `
+                            }
 
-            </div>
-        `;
+                        </tbody>
+
+                    </table>
+
+                </div>
+
+            `;
+
     }
+
 
     if ($("reportDetails")) {
 
-        $("reportDetails").innerHTML = `
+        $("reportDetails")
+            .innerHTML = `
 
-            <h3>
-                Detalhamento dos lotes
-            </h3>
+                <h3>
+                    Detalhamento dos lotes
+                </h3>
 
-            <div class="table-wrap">
 
-                <table class="data-table">
+                <div class="table-wrap">
 
-                    <thead>
+                    <table class="data-table">
 
-                        <tr>
+                        <thead>
 
-                            <th>Programação</th>
+                            <tr>
 
-                            <th>OS</th>
+                                <th>
+                                    Programação
+                                </th>
 
-                            <th>Lote</th>
+                                <th>
+                                    OS
+                                </th>
 
-                            <th>Colaborador</th>
+                                <th>
+                                    Lote
+                                </th>
 
-                            <th>Peso</th>
+                                <th>
+                                    Colaborador
+                                </th>
 
-                            <th>Produzido</th>
+                                <th>
+                                    Peso
+                                </th>
 
-                            <th>Saldo</th>
+                                <th>
+                                    Produzido
+                                </th>
 
-                            <th>Status</th>
+                                <th>
+                                    Saldo
+                                </th>
 
-                        </tr>
+                                <th>
+                                    Status
+                                </th>
 
-                    </thead>
+                            </tr>
 
-                    <tbody>
+                        </thead>
 
-                        ${
-                            lots.length
 
-                                ? [...lots]
-                                    .sort(
-                                        (a, b) =>
-                                            (
-                                                a.programDate ||
-                                                ""
-                                            ).localeCompare(
-                                                b.programDate ||
-                                                ""
-                                            )
-                                    )
-                                    .map(lot => {
+                        <tbody>
 
-                                        const user =
-                                            allUsers.find(
-                                                x =>
-                                                    x.id ===
-                                                    lot.assignedTo
-                                            );
+                            ${
+                                lots.length
 
-                                        return `
+                                    ? [...lots]
+                                        .sort(
+                                            (a, b) =>
+                                                (
+                                                    a.programDate ||
+                                                    ""
+                                                ).localeCompare(
+                                                    b.programDate ||
+                                                    ""
+                                                )
+                                        )
+                                        .map(
+                                            lot => {
 
-                                            <tr>
+                                                const user =
+                                                    allUsers.find(
+                                                        item =>
+                                                            item.id ===
+                                                            lot.assignedTo
+                                                    );
 
-                                                <td>
-                                                    ${dateBR(
-                                                        lot.programDate
-                                                    )}
-                                                </td>
 
-                                                <td>
-                                                    ${escapeHtml(
-                                                        lot.os ||
-                                                        "—"
-                                                    )}
-                                                </td>
+                                                return `
 
-                                                <td>
-                                                    ${escapeHtml(
-                                                        lot.name ||
-                                                        "—"
-                                                    )}
-                                                </td>
+                                                    <tr>
 
-                                                <td>
-                                                    ${escapeHtml(
-                                                        user?.name ||
-                                                        "—"
-                                                    )}
-                                                </td>
+                                                        <td>
+                                                            ${dateBR(
+                                                                lot.programDate
+                                                            )}
+                                                        </td>
 
-                                                <td>
-                                                    ${kg(
-                                                        lot.weight
-                                                    )}
-                                                </td>
+                                                        <td>
+                                                            ${escapeHtml(
+                                                                lot.os ||
+                                                                "—"
+                                                            )}
+                                                        </td>
 
-                                                <td>
-                                                    ${kg(
-                                                        lotProduced(lot)
-                                                    )}
-                                                </td>
+                                                        <td>
+                                                            ${escapeHtml(
+                                                                lot.name ||
+                                                                "—"
+                                                            )}
+                                                        </td>
 
-                                                <td>
-                                                    ${kg(
-                                                        lotRemaining(lot)
-                                                    )}
-                                                </td>
+                                                        <td>
+                                                            ${escapeHtml(
+                                                                user?.name ||
+                                                                "—"
+                                                            )}
+                                                        </td>
 
-                                                <td>
-                                                    ${statusLabel(
-                                                        lotStatus(lot)
-                                                    )}
-                                                </td>
+                                                        <td>
+                                                            ${kg(
+                                                                lot.weight
+                                                            )}
+                                                        </td>
 
-                                            </tr>
+                                                        <td>
+                                                            ${kg(
+                                                                lotProduced(
+                                                                    lot
+                                                                )
+                                                            )}
+                                                        </td>
 
-                                        `;
-                                    })
-                                    .join("")
+                                                        <td>
+                                                            ${kg(
+                                                                lotRemaining(
+                                                                    lot
+                                                                )
+                                                            )}
+                                                        </td>
 
-                                : `
+                                                        <td>
+                                                            ${statusLabel(
+                                                                lotStatus(
+                                                                    lot
+                                                                )
+                                                            )}
+                                                        </td>
 
-                                    <tr>
+                                                    </tr>
 
-                                        <td colspan="8">
-                                            Sem dados.
-                                        </td>
+                                                `;
 
-                                    </tr>
+                                            }
+                                        )
+                                        .join("")
 
-                                `
-                        }
+                                    : `
 
-                    </tbody>
+                                        <tr>
 
-                </table>
+                                            <td colspan="8">
+                                                Sem dados.
+                                            </td>
 
-            </div>
-        `;
+                                        </tr>
+
+                                    `
+                            }
+
+                        </tbody>
+
+                    </table>
+
+                </div>
+
+            `;
+
     }
+
 }
 
-if ($("reportFilterBtn")) {
-    $("reportFilterBtn").onclick =
-        renderReport;
+
+// ============================================================
+// PDF
+// ============================================================
+
+function pdfBase(
+    title,
+    from,
+    to
+) {
+
+    const jsPDF =
+        window.jspdf?.jsPDF;
+
+
+    if (!jsPDF) {
+
+        throw new Error(
+            "Biblioteca jsPDF não carregada."
+        );
+
+    }
+
+
+    const doc =
+        new jsPDF({
+
+            orientation:
+                "landscape"
+
+        });
+
+
+    doc.setFontSize(
+        18
+    );
+
+
+    doc.text(
+        title,
+        14,
+        16
+    );
+
+
+    doc.setFontSize(
+        9
+    );
+
+
+    doc.text(
+        `Programação: ${dateBR(from)} a ${dateBR(to)}`,
+        14,
+        23
+    );
+
+
+    doc.text(
+        `Gerado em: ${new Date().toLocaleString("pt-BR")}`,
+        200,
+        23
+    );
+
+
+    return doc;
+
 }
+
+
+function pdfRows(lots) {
+
+    return lots.map(
+        lot => {
+
+            const user =
+                allUsers.find(
+                    item =>
+                        item.id ===
+                        lot.assignedTo
+                );
+
+
+            return [
+
+                dateBR(
+                    lot.programDate
+                ),
+
+                lot.os ||
+                "—",
+
+                lot.name ||
+                "—",
+
+                user?.name ||
+                "—",
+
+                kg(
+                    lot.weight
+                ),
+
+                kg(
+                    lotProduced(
+                        lot
+                    )
+                ),
+
+                kg(
+                    lotRemaining(
+                        lot
+                    )
+                ),
+
+                statusLabel(
+                    lotStatus(
+                        lot
+                    )
+                )
+
+            ];
+
+        }
+    );
+
+}
+
+
+function savePdf(
+    doc,
+    name
+) {
+
+    doc.save(
+        name
+            .replace(
+                /\s+/g,
+                "_"
+            )
+        +
+        ".pdf"
+    );
+
+}
+
+
+// ============================================================
+// PDF GERAL
+// ============================================================
+
+function initPdfButtons() {
+
+    if ($("pdfGeneralBtn")) {
+
+        $("pdfGeneralBtn")
+            .onclick =
+            () => {
+
+                if (!roleIsAdmin()) {
+
+                    alert(
+                        "Somente o administrador pode gerar o PDF geral."
+                    );
+
+                    return;
+
+                }
+
+
+                try {
+
+                    const from =
+                        $("reportFrom")
+                            .value;
+
+
+                    const to =
+                        $("reportTo")
+                            .value;
+
+
+                    const lots =
+                        dateRange(
+                            from,
+                            to
+                        );
+
+
+                    const doc =
+                        pdfBase(
+                            "RELATÓRIO GERAL DE PRODUÇÃO",
+                            from,
+                            to
+                        );
+
+
+                    const planned =
+                        lots.reduce(
+                            (total, lot) =>
+                                total +
+                                Number(
+                                    lot.weight ||
+                                    0
+                                ),
+                            0
+                        );
+
+
+                    const produced =
+                        lots.reduce(
+                            (total, lot) =>
+                                total +
+                                lotProduced(
+                                    lot
+                                ),
+                            0
+                        );
+
+
+                    doc.setFontSize(
+                        11
+                    );
+
+
+                    doc.text(
+
+                        `Programado: ${kg(planned)}   ` +
+
+                        `Produzido: ${kg(produced)}   ` +
+
+                        `Saldo: ${kg(planned - produced)}   ` +
+
+                        `Realização: ${
+                            pct(
+                                planned
+                                    ? produced /
+                                      planned *
+                                      100
+                                    : 0
+                            )
+                        }`,
+
+                        14,
+                        31
+
+                    );
+
+
+                    const by = {};
+
+
+                    lots.forEach(
+                        lot => {
+
+                            const user =
+                                allUsers.find(
+                                    item =>
+                                        item.id ===
+                                        lot.assignedTo
+                                );
+
+
+                            const key =
+                                `${lot.programDate}|${lot.assignedTo}`;
+
+
+                            if (!by[key]) {
+
+                                by[key] = {
+
+                                    date:
+                                        lot.programDate,
+
+                                    name:
+                                        user?.name ||
+                                        "—",
+
+                                    produced:
+                                        0,
+
+                                    clients:
+                                        new Set(),
+
+                                    lots:
+                                        0
+
+                                };
+
+                            }
+
+
+                            by[key].produced +=
+                                lotProduced(
+                                    lot
+                                );
+
+
+                            by[key].clients.add(
+                                lot.clientName ||
+                                lot.name ||
+                                "Sem cliente"
+                            );
+
+
+                            by[key].lots++;
+
+                        }
+                    );
+
+
+                    doc.autoTable({
+
+                        startY:
+                            38,
+
+                        head: [[
+
+                            "Data",
+
+                            "Colaborador",
+
+                            "Peso do dia",
+
+                            "Clientes",
+
+                            "Lotes"
+
+                        ]],
+
+                        body:
+                            Object.values(
+                                by
+                            )
+                                .sort(
+                                    (a, b) =>
+                                        (
+                                            a.date ||
+                                            ""
+                                        ).localeCompare(
+                                            b.date ||
+                                            ""
+                                        )
+                                )
+                                .map(
+                                    row => [
+
+                                        dateBR(
+                                            row.date
+                                        ),
+
+                                        row.name,
+
+                                        kg(
+                                            row.produced
+                                        ),
+
+                                        [
+                                            ...row.clients
+                                        ].join(", "),
+
+                                        row.lots
+
+                                    ]
+                                )
+
+                    });
+
+
+                    doc.addPage();
+
+
+                    doc.setFontSize(
+                        14
+                    );
+
+
+                    doc.text(
+                        "DETALHAMENTO DOS LOTES",
+                        14,
+                        16
+                    );
+
+
+                    doc.autoTable({
+
+                        startY:
+                            22,
+
+                        head: [[
+
+                            "Programação",
+
+                            "OS",
+
+                            "Lote",
+
+                            "Colaborador",
+
+                            "Peso",
+
+                            "Produzido",
+
+                            "Saldo",
+
+                            "Status"
+
+                        ]],
+
+                        body:
+                            pdfRows(
+                                lots
+                            )
+
+                    });
+
+
+                    savePdf(
+                        doc,
+                        `Relatorio_Geral_${from}_${to}`
+                    );
+
+
+                } catch (error) {
+
+                    console.error(
+                        error
+                    );
+
+
+                    alert(
+                        error.message ||
+                        "Erro ao gerar PDF."
+                    );
+
+                }
+
+            };
+
+    }
+
+
+    // ========================================================
+    // PDF INDIVIDUAL
+    // ========================================================
+
+    if ($("pdfIndividualBtn")) {
+
+        $("pdfIndividualBtn")
+            .onclick =
+            () => {
+
+                try {
+
+                    const uid =
+                        $("reportUser")
+                            .value;
+
+
+                    if (!uid) {
+
+                        alert(
+                            "Selecione um colaborador para o PDF individual."
+                        );
+
+                        return;
+
+                    }
+
+
+                    const from =
+                        $("reportFrom")
+                            .value;
+
+
+                    const to =
+                        $("reportTo")
+                            .value;
+
+
+                    const user =
+                        allUsers.find(
+                            item =>
+                                item.id ===
+                                uid
+                        );
+
+
+                    const lots =
+                        dateRange(
+                            from,
+                            to
+                        )
+                            .filter(
+                                lot =>
+                                    lot.assignedTo ===
+                                    uid
+                            );
+
+
+                    const doc =
+                        pdfBase(
+                            `RELATÓRIO INDIVIDUAL - ${
+                                user?.name ||
+                                "Colaborador"
+                            }`,
+                            from,
+                            to
+                        );
+
+
+                    const planned =
+                        lots.reduce(
+                            (total, lot) =>
+                                total +
+                                Number(
+                                    lot.weight ||
+                                    0
+                                ),
+                            0
+                        );
+
+
+                    const produced =
+                        lots.reduce(
+                            (total, lot) =>
+                                total +
+                                lotProduced(
+                                    lot
+                                ),
+                            0
+                        );
+
+
+                    const clients =
+                        new Set(
+                            lots.map(
+                                lot =>
+                                    lot.clientName ||
+                                    lot.name
+                            )
+                        );
+
+
+                    doc.setFontSize(
+                        11
+                    );
+
+
+                    doc.text(
+
+                        `Programado: ${kg(planned)}   ` +
+
+                        `Produzido: ${kg(produced)}   ` +
+
+                        `Saldo: ${kg(planned - produced)}   ` +
+
+                        `Realização: ${
+                            pct(
+                                planned
+                                    ? produced /
+                                      planned *
+                                      100
+                                    : 0
+                            )
+                        }   ` +
+
+                        `Clientes: ${clients.size}`,
+
+                        14,
+                        31
+
+                    );
+
+
+                    const by = {};
+
+
+                    lots.forEach(
+                        lot => {
+
+                            const date =
+                                lot.programDate;
+
+
+                            if (!by[date]) {
+
+                                by[date] = {
+
+                                    produced:
+                                        0,
+
+                                    clients:
+                                        new Set(),
+
+                                    lots:
+                                        0
+
+                                };
+
+                            }
+
+
+                            by[date].produced +=
+                                lotProduced(
+                                    lot
+                                );
+
+
+                            by[date].clients.add(
+                                lot.clientName ||
+                                lot.name ||
+                                "Sem cliente"
+                            );
+
+
+                            by[date].lots++;
+
+                        }
+                    );
+
+
+                    doc.autoTable({
+
+                        startY:
+                            38,
+
+                        head: [[
+
+                            "Data",
+
+                            "Peso do dia",
+
+                            "Clientes",
+
+                            "Lotes"
+
+                        ]],
+
+                        body:
+                            Object.entries(
+                                by
+                            )
+                                .sort(
+                                    (a, b) =>
+                                        a[0].localeCompare(
+                                            b[0]
+                                        )
+                                )
+                                .map(
+                                    ([date, row]) => [
+
+                                        dateBR(
+                                            date
+                                        ),
+
+                                        kg(
+                                            row.produced
+                                        ),
+
+                                        [
+                                            ...row.clients
+                                        ].join(", "),
+
+                                        row.lots
+
+                                    ]
+                                )
+
+                    });
+
+
+                    doc.addPage();
+
+
+                    doc.setFontSize(
+                        14
+                    );
+
+
+                    doc.text(
+                        "DETALHAMENTO DOS LOTES",
+                        14,
+                        16
+                    );
+
+
+                    doc.autoTable({
+
+                        startY:
+                            22,
+
+                        head: [[
+
+                            "Programação",
+
+                            "OS",
+
+                            "Lote",
+
+                            "Peso",
+
+                            "Produzido",
+
+                            "Saldo",
+
+                            "Status"
+
+                        ]],
+
+                        body:
+                            lots.map(
+                                lot => [
+
+                                    dateBR(
+                                        lot.programDate
+                                    ),
+
+                                    lot.os ||
+                                    "—",
+
+                                    lot.name ||
+                                    "—",
+
+                                    kg(
+                                        lot.weight
+                                    ),
+
+                                    kg(
+                                        lotProduced(
+                                            lot
+                                        )
+                                    ),
+
+                                    kg(
+                                        lotRemaining(
+                                            lot
+                                        )
+                                    ),
+
+                                    statusLabel(
+                                        lotStatus(
+                                            lot
+                                        )
+                                    )
+
+                                ]
+                            )
+
+                    });
+
+
+                    savePdf(
+
+                        doc,
+
+                        `Relatorio_${
+                            user?.name ||
+                            "Colaborador"
+                        }_${from}_${to}`
+
+                    );
+
+
+                } catch (error) {
+
+                    console.error(
+                        error
+                    );
+
+
+                    alert(
+                        error.message ||
+                        "Erro ao gerar PDF."
+                    );
+
+                }
+
+            };
+
+    }
+
+}
+
 
 // ============================================================
 // COLABORADORES
@@ -3316,258 +4931,427 @@ function renderUsers() {
     if (!roleIsAdmin()) {
 
         return;
+
     }
+
 
     if (!$("usersTable")) {
+
         return;
+
     }
 
-    $("usersTable").innerHTML = `
 
-        <div class="table-wrap">
+    $("usersTable")
+        .innerHTML = `
 
-            <table class="data-table">
+            <div class="table-wrap">
 
-                <thead>
+                <table class="data-table">
 
-                    <tr>
+                    <thead>
 
-                        <th>Nome</th>
+                        <tr>
 
-                        <th>E-mail</th>
+                            <th>
+                                Nome
+                            </th>
 
-                        <th>Perfil</th>
+                            <th>
+                                E-mail
+                            </th>
 
-                        <th>Ativo</th>
+                            <th>
+                                Perfil
+                            </th>
 
-                        <th>Carga pendente</th>
+                            <th>
+                                Ativo
+                            </th>
 
-                    </tr>
+                            <th>
+                                Carga pendente
+                            </th>
 
-                </thead>
+                        </tr>
 
-                <tbody>
+                    </thead>
 
-                    ${
-                        allUsers.length
 
-                            ? allUsers.map(user => {
+                    <tbody>
 
-                                const load =
-                                    allLots
-                                        .filter(
-                                            lot =>
-                                                lot.assignedTo ===
-                                                    user.id &&
-                                                [
-                                                    "pendente",
-                                                    "producao"
-                                                ].includes(
-                                                    lotStatus(lot)
-                                                )
-                                        )
-                                        .reduce(
-                                            (total, lot) =>
-                                                total +
-                                                lotRemaining(lot),
-                                            0
-                                        );
+                        ${
+                            allUsers.length
 
-                                return `
+                                ? allUsers
+                                    .map(
+                                        user => {
+
+                                            const load =
+                                                allLots
+                                                    .filter(
+                                                        lot =>
+                                                            lot.assignedTo ===
+                                                            user.id
+                                                            &&
+                                                            [
+                                                                "pendente",
+                                                                "producao"
+                                                            ].includes(
+                                                                lotStatus(
+                                                                    lot
+                                                                )
+                                                            )
+                                                    )
+                                                    .reduce(
+                                                        (total, lot) =>
+                                                            total +
+                                                            lotRemaining(
+                                                                lot
+                                                            ),
+                                                        0
+                                                    );
+
+
+                                            return `
+
+                                                <tr>
+
+                                                    <td>
+                                                        ${escapeHtml(
+                                                            user.name ||
+                                                            "—"
+                                                        )}
+                                                    </td>
+
+                                                    <td>
+                                                        ${escapeHtml(
+                                                            user.email ||
+                                                            "—"
+                                                        )}
+                                                    </td>
+
+                                                    <td>
+                                                        ${escapeHtml(
+                                                            user.role ||
+                                                            "—"
+                                                        )}
+                                                    </td>
+
+                                                    <td>
+                                                        ${
+                                                            user.active !== false
+                                                                ? "Sim"
+                                                                : "Não"
+                                                        }
+                                                    </td>
+
+                                                    <td>
+                                                        ${kg(
+                                                            load
+                                                        )}
+                                                    </td>
+
+                                                </tr>
+
+                                            `;
+
+                                        }
+                                    )
+                                    .join("")
+
+                                : `
 
                                     <tr>
 
-                                        <td>
-                                            ${escapeHtml(
-                                                user.name ||
-                                                "—"
-                                            )}
-                                        </td>
-
-                                        <td>
-                                            ${escapeHtml(
-                                                user.email ||
-                                                "—"
-                                            )}
-                                        </td>
-
-                                        <td>
-                                            ${escapeHtml(
-                                                user.role ||
-                                                "—"
-                                            )}
-                                        </td>
-
-                                        <td>
-                                            ${
-                                                user.active !== false
-                                                    ? "Sim"
-                                                    : "Não"
-                                            }
-                                        </td>
-
-                                        <td>
-                                            ${kg(load)}
+                                        <td colspan="5">
+                                            Nenhum colaborador cadastrado.
                                         </td>
 
                                     </tr>
 
-                                `;
+                                `
+                        }
 
-                            }).join("")
+                    </tbody>
 
-                            : `
+                </table>
 
-                                <tr>
+            </div>
 
-                                    <td colspan="5">
-                                        Nenhum colaborador cadastrado.
-                                    </td>
+        `;
 
-                                </tr>
-
-                            `
-                    }
-
-                </tbody>
-
-            </table>
-
-        </div>
-    `;
 }
+
 
 // ============================================================
 // CRIAR COLABORADOR
 // ============================================================
 
-if ($("userForm")) {
+function initUserForm() {
 
-    $("userForm").addEventListener(
-        "submit",
-        async event => {
+    if (!$("userForm")) {
 
-            event.preventDefault();
+        return;
 
-            if (!roleIsAdmin()) {
+    }
 
-                return;
-            }
 
-            const name =
-                $("newUserName")
-                    .value
-                    .trim();
+    $("userForm")
+        .addEventListener(
+            "submit",
+            async event => {
 
-            const email =
-                $("newUserEmail")
-                    .value
-                    .trim();
+                event.preventDefault();
 
-            const password =
-                $("newUserPassword")
-                    .value;
 
-            $("userFormMessage")
-                .textContent = "";
+                if (!roleIsAdmin()) {
 
-            try {
-
-                /*
-                 * App secundário.
-                 * Evita deslogar o administrador.
-                 */
-
-                const secondaryName =
-                    "secondary-" +
-                    Date.now();
-
-                const secondary =
-                    firebase.initializeApp(
-                        firebaseConfig,
-                        secondaryName
+                    alert(
+                        "Somente o administrador pode criar colaboradores."
                     );
 
-                const secondaryAuth =
-                    secondary.auth();
+                    return;
 
-                const credential =
-                    await secondaryAuth
-                        .createUserWithEmailAndPassword(
-                            email,
-                            password
+                }
+
+
+                const name =
+                    $("newUserName")
+                        .value
+                        .trim();
+
+
+                const email =
+                    $("newUserEmail")
+                        .value
+                        .trim();
+
+
+                const password =
+                    $("newUserPassword")
+                        .value;
+
+
+                if ($("userFormMessage")) {
+
+                    $("userFormMessage")
+                        .textContent = "";
+
+                }
+
+
+                if (
+                    password.length <
+                    6
+                ) {
+
+                    if ($("userFormMessage")) {
+
+                        $("userFormMessage")
+                            .className =
+                            "error";
+
+                        $("userFormMessage")
+                            .textContent =
+                            "A senha precisa ter pelo menos 6 caracteres.";
+
+                    }
+
+                    return;
+
+                }
+
+
+                let secondary = null;
+
+
+                try {
+
+                    // ======================================
+                    // APP SECUNDÁRIO
+                    // ======================================
+
+                    const secondaryName =
+                        "secondary-" +
+                        Date.now();
+
+
+                    secondary =
+                        firebase.initializeApp(
+                            firebaseConfig,
+                            secondaryName
                         );
 
-                await db
-                    .collection("users")
-                    .doc(
-                        credential.user.uid
-                    )
-                    .set({
 
-                        name,
+                    const secondaryAuth =
+                        secondary.auth();
 
-                        email,
 
-                        role:
-                            "colaborador",
+                    const credential =
+                        await secondaryAuth
+                            .createUserWithEmailAndPassword(
+                                email,
+                                password
+                            );
 
-                        active:
-                            true,
 
-                        createdAt:
-                            firebase.firestore
-                                .FieldValue
-                                .serverTimestamp()
-                    });
+                    // ======================================
+                    // CRIAR PERFIL
+                    // ======================================
 
-                await secondary.delete();
+                    await db
+                        .collection("users")
+                        .doc(
+                            credential.user.uid
+                        )
+                        .set({
 
-                $("userFormMessage")
-                    .className =
-                    "success";
+                            name,
 
-                $("userFormMessage")
-                    .textContent =
-                    "Colaborador criado com sucesso.";
+                            email,
 
-                event.target.reset();
+                            role:
+                                "colaborador",
 
-                await loadData();
+                            active:
+                                true,
 
-            } catch (error) {
+                            createdAt:
+                                firebase.firestore
+                                    .FieldValue
+                                    .serverTimestamp()
 
-                console.error(error);
+                        });
 
-                $("userFormMessage")
-                    .className =
-                    "error";
 
-                $("userFormMessage")
-                    .textContent =
-                    error.message ||
-                    "Erro ao criar colaborador.";
+                    if ($("userFormMessage")) {
+
+                        $("userFormMessage")
+                            .className =
+                            "success";
+
+
+                        $("userFormMessage")
+                            .textContent =
+                            "Colaborador criado com sucesso.";
+
+                    }
+
+
+                    event.target.reset();
+
+
+                    await loadData();
+
+
+                } catch (error) {
+
+                    console.error(
+                        "Erro ao criar colaborador:",
+                        error
+                    );
+
+
+                    if ($("userFormMessage")) {
+
+                        $("userFormMessage")
+                            .className =
+                            "error";
+
+
+                        $("userFormMessage")
+                            .textContent =
+                            error.message ||
+                            "Erro ao criar colaborador.";
+
+                    }
+
+                } finally {
+
+                    // ======================================
+                    // ENCERRAR APP SECUNDÁRIO
+                    // ======================================
+
+                    if (secondary) {
+
+                        try {
+
+                            await secondary.delete();
+
+                        } catch (error) {
+
+                            console.warn(
+                                "Não foi possível excluir o app secundário:",
+                                error
+                            );
+
+                        }
+
+                    }
+
+                }
+
             }
-        }
-    );
+        );
+
 }
+
 
 // ============================================================
 // INICIALIZAÇÃO
 // ============================================================
 
-document.addEventListener(
-    "DOMContentLoaded",
-    () => {
+function initializeAppUI() {
 
-        console.log(
-            "Reluz Produção carregado."
-        );
+    console.log(
+        "Reluz Produção carregado."
+    );
 
-        console.log(
-            "Administrador principal:",
-            MASTER_ADMIN_UID
-        );
-    }
-);
-```
+
+    console.log(
+        "MASTER ADMIN UID:",
+        MASTER_ADMIN_UID
+    );
+
+
+    initLogin();
+
+    initLogout();
+
+    initRefresh();
+
+    initNavigation();
+
+    initFilters();
+
+    initModal();
+
+    initLotForm();
+
+    initUserForm();
+
+    initPdfButtons();
+
+}
+
+
+// ============================================================
+// DOM READY
+// ============================================================
+
+if (
+    document.readyState ===
+    "loading"
+) {
+
+    document.addEventListener(
+        "DOMContentLoaded",
+        initializeAppUI
+    );
+
+} else {
+
+    initializeAppUI();
+
+}
