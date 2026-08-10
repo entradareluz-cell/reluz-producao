@@ -64,7 +64,6 @@ function escapeHtml(s = "") {
 }
 
 function dateRange(from, to) {
-
     return allLots.filter(l =>
         (!from || l.programDate >= from) &&
         (!to || l.programDate <= to)
@@ -155,9 +154,7 @@ auth.onAuthStateChanged(async user => {
         console.error(e);
 
         if ($("loginError")) {
-
-            $("loginError").textContent =
-                e.message;
+            $("loginError").textContent = e.message;
         }
 
         await auth.signOut();
@@ -452,7 +449,7 @@ function fillUserSelects() {
             active
                 .map(u =>
                     `<option value="${u.id}">
-                        ${escapeHtml(u.name)}
+                        ${escapeHtml(u.name || u.email || "Sem nome")}
                     </option>`
                 )
                 .join("");
@@ -467,7 +464,7 @@ function fillUserSelects() {
             active
                 .map(u =>
                     `<option value="${u.id}">
-                        ${escapeHtml(u.name)}
+                        ${escapeHtml(u.name || u.email || "Sem nome")}
                     </option>`
                 )
                 .join("");
@@ -1270,6 +1267,7 @@ window.openLot = async function(id) {
 
 // ============================================================
 // EDITAR LOTE
+// ADMINISTRADOR
 // ============================================================
 
 window.editLot = function(id) {
@@ -1303,7 +1301,7 @@ window.editLot = function(id) {
     }
 
     // ========================================================
-    // COLABORADORES DISPONÍVEIS PARA ATRIBUIÇÃO
+    // COLABORADORES DISPONÍVEIS
     // ========================================================
 
     const activeUsers =
@@ -1381,7 +1379,7 @@ window.editLot = function(id) {
 
             <label>
 
-                Peso do lote (kg)
+                ⚖️ Peso do lote (kg)
 
                 <input
                     id="editLotWeight"
@@ -1398,7 +1396,7 @@ window.editLot = function(id) {
 
             <label>
 
-                Data de entrada
+                📅 Data de entrada
 
                 <input
                     id="editLotEntry"
@@ -1412,7 +1410,7 @@ window.editLot = function(id) {
 
             <label>
 
-                Data de programação
+                📅 Data de programação
 
                 <input
                     id="editLotProgram"
@@ -1628,8 +1626,8 @@ async function saveLotEdit(
     const produced =
         lotProduced(originalLot);
 
-    // Não permite reduzir o lote para abaixo
-    // do que já foi produzido.
+    // Não permite peso menor que o
+    // peso já produzido.
 
     if (
         weight <
@@ -1768,10 +1766,6 @@ async function saveLotEdit(
             message.textContent =
                 `Lote atualizado com sucesso. Responsável: ${collaborator.name || collaborator.email}.`;
         }
-
-        // ====================================================
-        // RECARREGAR TODAS AS INFORMAÇÕES
-        // ====================================================
 
         await loadData();
 
