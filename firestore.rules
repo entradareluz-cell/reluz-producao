@@ -1,81 +1,201 @@
 rules_version = '2';
 
 service cloud.firestore {
+
   match /databases/{database}/documents {
 
-    // ============================================================
+    // ========================================================
+    // USUÁRIO LOGADO
+    // ========================================================
+
+    function isSignedIn() {
+
+      return request.auth != null;
+
+    }
+
+    // ========================================================
+    // DADOS DO USUÁRIO LOGADO
+    // ========================================================
+
+    function userData() {
+
+      return get(
+        /databases/$(database)/documents/users/$(request.auth.uid)
+      ).data;
+
+    }
+
+    // ========================================================
+    // ADMINISTRADOR
+    // ========================================================
+
+    function isAdmin() {
+
+      return isSignedIn()
+        && userData().role == "admin";
+
+    }
+
+    // ========================================================
+    // COLABORADOR ATIVO
+    // ========================================================
+
+    function isCollaborator() {
+
+      return isSignedIn()
+        && userData().role == "colaborador"
+        && userData().active == true;
+
+    }
+
+    // ========================================================
     // USUÁRIOS
-    // ============================================================
+    // ========================================================
 
     match /users/{userId} {
 
-      // Usuário autenticado pode consultar seu próprio perfil.
-      // Administrador pode consultar todos os usuários.
-      allow read: if request.auth != null &&
-        (
-          request.auth.uid == userId ||
-          get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role
-            in ['admin', 'administrador', 'administrator']
+      // ------------------------------------------------------
+      // LEITURA
+      // ------------------------------------------------------
+
+      // Admin:
+      // pode visualizar todos os usuários.
+      //
+      // Colaborador:
+      // pode visualizar somente o próprio perfil.
+      // ------------------------------------------------------
+
+      allow read: if isSignedIn()
+        && (
+          isAdmin()
+          ||
+          request.auth.uid == userId
         );
 
-      // Somente administrador pode criar, editar ou excluir usuários.
-      allow create, update, delete: if request.auth != null &&
-        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role
-          in ['admin', 'administrador', 'administrator'];
+      // ------------------------------------------------------
+      // CRIAR
+      // ------------------------------------------------------
+
+      // Somente administrador.
+      // ------------------------------------------------------
+
+      allow create: if isAdmin();
+
+      // ------------------------------------------------------
+      // ALTERAR
+      // ------------------------------------------------------
+
+      // Somente administrador.
+      // ------------------------------------------------------
+
+      allow update: if isAdmin();
+
+      // ------------------------------------------------------
+      // EXCLUIR
+      // ------------------------------------------------------
+
+      // Somente administrador.
+      // ------------------------------------------------------
+
+      allow delete: if isAdmin();
     }
 
-
-    // ============================================================
+    // ========================================================
     // LOTES
-    // ============================================================
+    // ========================================================
 
     match /lots/{lotId} {
 
-      // ==========================================================
-      // ADMINISTRADOR
-      // ==========================================================
+      // ------------------------------------------------------
+      // LEITURA
+      // ------------------------------------------------------
 
-      // Administrador pode visualizar todos os lotes.
-      allow read: if request.auth != null &&
-        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role
-          in ['admin', 'administrador', 'administrator'];
-
-      // Administrador pode criar, editar e excluir lotes.
-      allow create, update, delete: if request.auth != null &&
-        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role
-          in ['admin', 'administrador', 'administrator'];
-
-
-      // ==========================================================
-      // COLABORADOR
-      // ==========================================================
-
-      // Colaborador pode visualizar somente os lotes atribuídos a ele.
-      allow read: if request.auth != null &&
-        resource.data.assignedTo == request.auth.uid;
-
-
-      // Colaborador pode atualizar somente seus próprios lotes.
+      // ADMIN:
+      // vê todos os lotes.
       //
-      // A regra permite registrar produção e atualizar os campos
-      // necessários do lote, mas não permite que o colaborador
-      // troque o responsável pelo lote.
-      allow update: if request.auth != null &&
-        resource.data.assignedTo == request.auth.uid &&
-        request.resource.data.assignedTo == resource.data.assignedTo;
+      // COLABORADOR:
+      // vê somente lotes atribuídos a ele.
+      // ------------------------------------------------------
 
+      allow read: if isSignedIn()
+        && (
+          isAdmin()
+          ||
+          (
+            isCollaborator()
+            &&
+            resource.data.assignedTo ==
+            request.auth.uid
+          )
+        );
 
-      // Colaborador NÃO pode criar lotes.
-      // Colaborador NÃO pode excluir lotes.
+      // ------------------------------------------------------
+      // CRIAR LOTE
+      // ------------------------------------------------------
+
+      // Somente administrador.
+      // ------------------------------------------------------
+
+      allow create: if isAdmin();
+
+      // ------------------------------------------------------
+      // ALTERAR LOTE
+      // ------------------------------------------------------
+
+      // ADMIN:
+      // pode alterar qualquer lote.
+      //
+      // COLABORADOR:
+      // pode alterar somente produção
+      // do lote que está atribuído a ele.
+      // ------------------------------------------------------
+
+      allow update: if isAdmin()
+        ||
+        (
+          isCollaborator()
+          &&
+          resource.data.assignedTo ==
+          request.auth.uid
+          &&
+          request.resource.data.assignedTo ==
+          request.auth.uid
+          &&
+          request.resource.data.name ==
+          resource.data.name
+          &&
+          request.resource.data.os ==
+          resource.data.os
+          &&
+          request.resource.data.clientName ==
+          resource.data.clientName
+          &&
+          request.resource.data.weight ==
+          resource.data.weight
+          &&
+          request.resource.data.entryDate ==
+          resource.data.entryDate
+          &&
+          request.resource.data.programDate ==
+          resource.data.programDate
+          &&
+          request.resource.data.createdBy ==
+          resource.data.createdBy
+          &&
+          request.resource.data.createdAt ==
+          resource.data.createdAt
+        );
+
+      // ------------------------------------------------------
+      // EXCLUIR
+      // ------------------------------------------------------
+
+      // Somente administrador.
+      // ------------------------------------------------------
+
+      allow delete: if isAdmin();
     }
 
-
-    // ============================================================
-    // NEGAR QUALQUER OUTRA COLEÇÃO
-    // ============================================================
-
-    match /{document=**} {
-      allow read, write: if false;
-    }
   }
 }
