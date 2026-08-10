@@ -798,6 +798,7 @@ if ($("dashFilterBtn")) {
         renderDashboard;
 }
 
+```js
 // ============================================================
 // CARD DO KANBAN
 // ============================================================
@@ -816,12 +817,11 @@ function lotCard(l) {
 
     return `
 
-        <div
-            class="lot-card"
-            onclick="openLot('${l.id}')"
-        >
+        <div class="lot-card">
 
-            <div class="lot-status">
+            <div
+                class="lot-status"
+            >
                 ${statusLabel(st)}
             </div>
 
@@ -874,9 +874,41 @@ function lotCard(l) {
 
             </div>
 
+            ${
+                roleIsAdmin()
+                    ? `
+
+                        <div
+                            class="lot-card-actions"
+                            style="
+                                margin-top:12px;
+                                display:flex;
+                                gap:8px;
+                            "
+                        >
+
+                            <button
+                                type="button"
+                                class="primary"
+                                style="
+                                    width:100%;
+                                    cursor:pointer;
+                                "
+                                onclick="event.stopPropagation(); editLot('${l.id}')"
+                            >
+                                ✏️ EDITAR
+                            </button>
+
+                        </div>
+
+                    `
+                    : ""
+            }
+
         </div>
     `;
 }
+```
 
 // ============================================================
 // KANBAN
