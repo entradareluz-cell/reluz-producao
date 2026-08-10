@@ -1,25 +1,21 @@
-// ===============================
-// RELUZ PRODUÇÃO - APP
-// Configure o Firebase em firebaseConfig.
-// ===============================
+// Import the functions you need from the SDKs you need
+import { initializeApp } from "firebase/app";
+// TODO: Add SDKs for Firebase products that you want to use
+// https://firebase.google.com/docs/web/setup#available-libraries
 
+// Your web app's Firebase configuration
 const firebaseConfig = {
-  apiKey: "COLOQUE_SUA_API_KEY",
-  authDomain: "SEU_PROJETO.firebaseapp.com",
-  projectId: "SEU_PROJETO",
-  storageBucket: "SEU_PROJETO.firebasestorage.app",
-  messagingSenderId: "SEU_MESSAGING_SENDER_ID",
-  appId: "SEU_APP_ID"
+  apiKey: "AIzaSyCOVy3L_TD3JSWBsM7BuqGooaBE74-HG7Y",
+  authDomain: "reluz-producao.firebaseapp.com",
+  databaseURL: "https://reluz-producao-default-rtdb.firebaseio.com",
+  projectId: "reluz-producao",
+  storageBucket: "reluz-producao.firebasestorage.app",
+  messagingSenderId: "910724669287",
+  appId: "1:910724669287:web:e2ff572555c8cabafd59c2"
 };
 
-firebase.initializeApp(firebaseConfig);
-const auth = firebase.auth();
-const db = firebase.firestore();
-
-let currentUser = null;
-let currentProfile = null;
-let allLots = [];
-let allUsers = [];
+// Initialize Firebase
+const app = initializeApp(firebaseConfig);
 
 const $ = id => document.getElementById(id);
 const kg = n => `${Number(n || 0).toLocaleString("pt-BR",{maximumFractionDigits:3})} kg`;
