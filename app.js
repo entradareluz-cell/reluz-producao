@@ -1,3 +1,4 @@
+```javascript
 // ============================================================
 // RELUZ PRODUÇÃO - APP.JS
 // ============================================================
@@ -23,26 +24,20 @@ if (!firebase.apps.length) {
 const auth = firebase.auth();
 const db = firebase.firestore();
 
-
 // ============================================================
-// CONFIGURAÇÃO DO ADMINISTRADOR PRINCIPAL
+// ADMINISTRADOR PRINCIPAL
 // ============================================================
-
-// COLOQUE AQUI O UID DO SEU LOGIN.
-//
-// Firebase Console
-// → Authentication
-// → Users
-// → clique no seu usuário
-// → copie User UID
-//
-// Exemplo:
-// const MASTER_ADMIN_UID = "abc123...";
 //
 // SOMENTE ESTE UID terá acesso administrativo completo.
+//
+// UID informado:
+// 3QlkmlndAXaGxErEpCL17Mun35E3
+//
+// NÃO altere este valor, a menos que queira trocar o
+// administrador principal.
+//
 
-const MASTER_ADMIN_UID = "SEU_UID_AQUI";
-
+const MASTER_ADMIN_UID = "3QlkmlndAXaGxErEpCL17Mun35E3";
 
 // ============================================================
 // VARIÁVEIS GLOBAIS
@@ -53,7 +48,6 @@ let currentProfile = null;
 
 let allLots = [];
 let allUsers = [];
-
 
 // ============================================================
 // HELPERS
@@ -79,7 +73,6 @@ const dateBR = d =>
         ? String(d).split("-").reverse().join("/")
         : "—";
 
-
 function escapeHtml(s = "") {
     return String(s).replace(/[&<>"']/g, m => ({
         "&": "&amp;",
@@ -90,61 +83,25 @@ function escapeHtml(s = "") {
     }[m]));
 }
 
-
 function dateRange(from, to) {
-
     return allLots.filter(l =>
         (!from || l.programDate >= from) &&
         (!to || l.programDate <= to)
     );
-
 }
-
 
 // ============================================================
 // ADMINISTRADOR PRINCIPAL
 // ============================================================
 
-function isMasterAdmin() {
-
-    return !!(
-        currentUser &&
-        MASTER_ADMIN_UID !== "SEU_UID_AQUI" &&
-        currentUser.uid === MASTER_ADMIN_UID
-    );
-
-}
-
-
-// ============================================================
-// ADMINISTRADOR
-// ============================================================
-
 function roleIsAdmin() {
 
-    if (!currentProfile) {
+    if (!currentUser) {
         return false;
     }
 
-    const role = String(
-        currentProfile.role ||
-        currentProfile.perfil ||
-        currentProfile.type ||
-        ""
-    )
-        .trim()
-        .toLowerCase();
-
-    return (
-        isMasterAdmin() &&
-        [
-            "admin",
-            "administrador",
-            "administrator"
-        ].includes(role)
-    );
+    return currentUser.uid === MASTER_ADMIN_UID;
 }
-
 
 // ============================================================
 // COLABORADOR
@@ -167,7 +124,6 @@ function roleIsCollaborator() {
 
     return role === "colaborador";
 }
-
 
 // ============================================================
 // AUTENTICAÇÃO
@@ -218,16 +174,11 @@ auth.onAuthStateChanged(async user => {
 
         console.log(
             "UID:",
-            user.uid
+            currentUser.uid
         );
 
         console.log(
             "É ADMIN PRINCIPAL?",
-            isMasterAdmin()
-        );
-
-        console.log(
-            "É ADMIN?",
             roleIsAdmin()
         );
 
@@ -251,9 +202,7 @@ auth.onAuthStateChanged(async user => {
 
         await auth.signOut();
     }
-
 });
-
 
 // ============================================================
 // MOSTRAR LOGIN
@@ -269,7 +218,6 @@ function showLogin() {
         ?.classList
         .add("hidden");
 }
-
 
 // ============================================================
 // MOSTRAR APP
@@ -288,8 +236,8 @@ function showApp() {
     if ($("userName")) {
 
         $("userName").textContent =
-            currentProfile.name ||
-            currentUser.email ||
+            currentProfile?.name ||
+            currentUser?.email ||
             "Usuário";
     }
 
@@ -303,12 +251,14 @@ function showApp() {
 
     document
         .querySelectorAll(".admin-only")
-        .forEach(x =>
+        .forEach(x => {
+
             x.classList.toggle(
                 "hidden",
                 !roleIsAdmin()
-            )
-        );
+            );
+
+        });
 
     if ($("todayLabel")) {
 
@@ -330,7 +280,7 @@ function showApp() {
         "reportFrom"
     ].forEach(id => {
 
-        if ($(id)) {
+        if ($(id) && !$(id).value) {
             $(id).value = t;
         }
 
@@ -343,14 +293,12 @@ function showApp() {
         "reportTo"
     ].forEach(id => {
 
-        if ($(id)) {
+        if ($(id) && !$(id).value) {
             $(id).value = t;
         }
 
     });
-
 }
-
 
 // ============================================================
 // LOGIN
@@ -385,12 +333,9 @@ if ($("loginForm")) {
                         "E-mail ou senha inválidos.";
                 }
             }
-
         }
     );
-
 }
-
 
 // ============================================================
 // LOGOUT
@@ -398,11 +343,9 @@ if ($("loginForm")) {
 
 if ($("logoutBtn")) {
 
-    $("logoutBtn").onclick =
-        () => auth.signOut();
-
+    $("logoutBtn").onclick = () =>
+        auth.signOut();
 }
-
 
 // ============================================================
 // ATUALIZAR
@@ -410,11 +353,12 @@ if ($("logoutBtn")) {
 
 if ($("refreshBtn")) {
 
-    $("refreshBtn").onclick =
-        () => loadData();
+    $("refreshBtn").onclick = async () => {
 
+        await loadData();
+
+    };
 }
-
 
 // ============================================================
 // NAVEGAÇÃO
@@ -426,7 +370,10 @@ document
 
         btn.onclick = () => {
 
-            // Segurança visual
+            // Segurança adicional:
+            // qualquer botão admin-only não funciona
+            // para quem não é o administrador principal.
+
             if (
                 btn.classList.contains("admin-only") &&
                 !roleIsAdmin()
@@ -461,45 +408,30 @@ document
                     btn.textContent.trim();
             }
 
-            if (
-                btn.dataset.view ===
-                "dashboard"
-            ) {
-                renderDashboard();
-            }
+            switch (btn.dataset.view) {
 
-            if (
-                btn.dataset.view ===
-                "kanban"
-            ) {
-                renderKanban();
-            }
+                case "dashboard":
+                    renderDashboard();
+                    break;
 
-            if (
-                btn.dataset.view ===
-                "meus-lotes"
-            ) {
-                renderMine();
-            }
+                case "kanban":
+                    renderKanban();
+                    break;
 
-            if (
-                btn.dataset.view ===
-                "relatorio"
-            ) {
-                renderReport();
-            }
+                case "meus-lotes":
+                    renderMine();
+                    break;
 
-            if (
-                btn.dataset.view ===
-                "colaboradores"
-            ) {
-                renderUsers();
-            }
+                case "relatorio":
+                    renderReport();
+                    break;
 
+                case "colaboradores":
+                    renderUsers();
+                    break;
+            }
         };
-
     });
-
 
 // ============================================================
 // CARREGAR DADOS
@@ -507,7 +439,15 @@ document
 
 async function loadData() {
 
+    if (!currentUser) {
+        return;
+    }
+
     try {
+
+        // ====================================================
+        // ADMIN PRINCIPAL
+        // ====================================================
 
         if (roleIsAdmin()) {
 
@@ -523,7 +463,6 @@ async function loadData() {
                 db
                     .collection("users")
                     .get()
-
             ]);
 
             allLots =
@@ -538,7 +477,13 @@ async function loadData() {
                     ...d.data()
                 }));
 
-        } else {
+        }
+
+        // ====================================================
+        // COLABORADOR
+        // ====================================================
+
+        else {
 
             const lotsSnap =
                 await db
@@ -589,20 +534,25 @@ async function loadData() {
             err
         );
 
+        const message =
+            err.message ||
+            "Permissão insuficiente.";
+
+        if ($("loginError")) {
+            $("loginError").textContent =
+                "Erro ao carregar dados do Firebase: " +
+                message;
+        }
+
         alert(
             "Erro ao carregar dados do Firebase:\n\n" +
-            (
-                err.message ||
-                "Permissão insuficiente."
-            )
+            message
         );
     }
-
 }
 
-
 // ============================================================
-// SELECTS
+// SELECTS DE USUÁRIOS
 // ============================================================
 
 function fillUserSelects() {
@@ -647,9 +597,7 @@ function fillUserSelects() {
                 )
                 .join("");
     }
-
 }
-
 
 // ============================================================
 // FUNÇÕES DOS LOTES
@@ -660,9 +608,7 @@ function lotProduced(l) {
     return Number(
         l.producedWeight || 0
     );
-
 }
-
 
 function lotRemaining(l) {
 
@@ -671,9 +617,7 @@ function lotRemaining(l) {
         Number(l.weight || 0) -
         lotProduced(l)
     );
-
 }
-
 
 function lotPercent(l) {
 
@@ -687,9 +631,7 @@ function lotPercent(l) {
             )
         ) * 100
     );
-
 }
-
 
 function lotStatus(l) {
 
@@ -697,17 +639,20 @@ function lotStatus(l) {
         return "cancelado";
     }
 
-    if (lotRemaining(l) <= 0.0001) {
+    if (
+        lotRemaining(l) <= 0.0001
+    ) {
         return "finalizado";
     }
 
-    if (lotProduced(l) > 0) {
+    if (
+        lotProduced(l) > 0
+    ) {
         return "producao";
     }
 
     return "pendente";
 }
-
 
 function statusLabel(s) {
 
@@ -717,9 +662,7 @@ function statusLabel(s) {
         finalizado: "Finalizado",
         cancelado: "Cancelado"
     })[s] || s;
-
 }
-
 
 // ============================================================
 // DASHBOARD
@@ -974,17 +917,12 @@ function renderDashboard() {
             </div>
         `;
     }
-
 }
-
 
 if ($("dashFilterBtn")) {
-
     $("dashFilterBtn").onclick =
         renderDashboard;
-
 }
-
 
 // ============================================================
 // CARD DO KANBAN
@@ -1003,7 +941,6 @@ function lotCard(l) {
         lotStatus(l);
 
     return `
-
         <div
             class="lot-card"
             onclick="openLot('${l.id}')"
@@ -1035,12 +972,16 @@ function lotCard(l) {
 
             <div>
                 Entrada:
-                ${dateBR(l.entryDate)}
+                ${dateBR(
+                    l.entryDate
+                )}
             </div>
 
             <div>
                 Programação:
-                ${dateBR(l.programDate)}
+                ${dateBR(
+                    l.programDate
+                )}
             </div>
 
             <div>
@@ -1081,11 +1022,13 @@ function lotCard(l) {
                                 window.editLot('${l.id}');
                             "
                             style="
-                                display:block;
-                                width:100%;
-                                margin-top:15px;
-                                padding:10px;
-                                cursor:pointer;
+                                display:block !important;
+                                width:100% !important;
+                                margin-top:15px !important;
+                                padding:10px !important;
+                                cursor:pointer !important;
+                                opacity:1 !important;
+                                visibility:visible !important;
                             "
                         >
                             ✏️ EDITAR LOTE
@@ -1097,7 +1040,6 @@ function lotCard(l) {
         </div>
     `;
 }
-
 
 // ============================================================
 // KANBAN
@@ -1121,7 +1063,8 @@ function renderKanban() {
         lots =
             lots.filter(
                 l =>
-                    l.assignedTo === uid
+                    l.assignedTo ===
+                    uid
             );
     }
 
@@ -1140,7 +1083,6 @@ function renderKanban() {
         lots
     );
 }
-
 
 function renderMine() {
 
@@ -1163,8 +1105,10 @@ function renderMine() {
     );
 }
 
-
-function renderKanbanInto(id, lots) {
+function renderKanbanInto(
+    id,
+    lots
+) {
 
     if (!$(id)) return;
 
@@ -1234,22 +1178,15 @@ function renderKanbanInto(id, lots) {
         ).join("");
 }
 
-
 if ($("kanbanFilterBtn")) {
-
     $("kanbanFilterBtn").onclick =
         renderKanban;
-
 }
-
 
 if ($("mineFilterBtn")) {
-
     $("mineFilterBtn").onclick =
         renderMine;
-
 }
-
 
 // ============================================================
 // MODAL DO LOTE
@@ -1415,6 +1352,9 @@ window.openLot = async function(id) {
                         <p>
                             O colaborador informa
                             o peso produzido.
+                            O saldo e o percentual
+                            são calculados
+                            automaticamente.
                         </p>
 
                         <label>
@@ -1502,387 +1442,7 @@ window.openLot = async function(id) {
                     );
         }
     }
-
 };
-
-
-// ============================================================
-// EDITAR LOTE
-// ============================================================
-
-window.editLot = async function(id) {
-
-    if (!roleIsAdmin()) {
-
-        alert(
-            "Você não possui permissão para editar lotes."
-        );
-
-        return;
-    }
-
-    const lot =
-        allLots.find(
-            x =>
-                x.id === id
-        );
-
-    if (!lot) {
-
-        alert("Lote não encontrado.");
-
-        return;
-    }
-
-    const currentAssigned =
-        allUsers.find(
-            u =>
-                u.id ===
-                lot.assignedTo
-        );
-
-    const collaborators =
-        allUsers.filter(
-            u =>
-                u.role === "colaborador" &&
-                u.active !== false
-        );
-
-    if (!$("lotModalContent")) return;
-
-    $("lotModalContent").innerHTML = `
-
-        <h2>
-            ✏️ Editar lote
-        </h2>
-
-        <form
-            id="editLotForm"
-            class="form-grid"
-        >
-
-            <label>
-                Nome do lote
-
-                <input
-                    id="editLotName"
-                    value="${escapeHtml(lot.name || "")}"
-                    required
-                >
-            </label>
-
-            <label>
-                OS
-
-                <input
-                    id="editLotOs"
-                    value="${escapeHtml(lot.os || "")}"
-                    required
-                >
-            </label>
-
-            <label>
-                Cliente
-
-                <input
-                    id="editLotClient"
-                    value="${escapeHtml(
-                        lot.clientName ||
-                        lot.name ||
-                        ""
-                    )}"
-                >
-            </label>
-
-            <label>
-                Peso (kg)
-
-                <input
-                    id="editLotWeight"
-                    type="number"
-                    step="0.001"
-                    min="0.001"
-                    value="${Number(lot.weight || 0)}"
-                    required
-                >
-            </label>
-
-            <label>
-                Data de entrada
-
-                <input
-                    id="editLotEntry"
-                    type="date"
-                    value="${lot.entryDate || ""}"
-                    required
-                >
-            </label>
-
-            <label>
-                Data de programação
-
-                <input
-                    id="editLotProgram"
-                    type="date"
-                    value="${lot.programDate || ""}"
-                    required
-                >
-            </label>
-
-            <label>
-                Colaborador
-
-                <select
-                    id="editLotAssigned"
-                    required
-                >
-
-                    ${
-                        collaborators
-                            .map(user => `
-                                <option
-                                    value="${user.id}"
-                                    ${
-                                        user.id ===
-                                        lot.assignedTo
-                                            ? "selected"
-                                            : ""
-                                    }
-                                >
-                                    ${escapeHtml(
-                                        user.name ||
-                                        user.email ||
-                                        user.id
-                                    )}
-                                </option>
-                            `)
-                            .join("")
-                    }
-
-                </select>
-            </label>
-
-            <label>
-                Status
-
-                <select id="editLotStatus">
-
-                    <option
-                        value="pendente"
-                        ${
-                            lot.status === "pendente"
-                                ? "selected"
-                                : ""
-                        }
-                    >
-                        Pendente
-                    </option>
-
-                    <option
-                        value="producao"
-                        ${
-                            lot.status === "producao"
-                                ? "selected"
-                                : ""
-                        }
-                    >
-                        Em produção
-                    </option>
-
-                    <option
-                        value="finalizado"
-                        ${
-                            lot.status === "finalizado"
-                                ? "selected"
-                                : ""
-                        }
-                    >
-                        Finalizado
-                    </option>
-
-                    <option
-                        value="cancelado"
-                        ${
-                            lot.status === "cancelado"
-                                ? "selected"
-                                : ""
-                        }
-                    >
-                        Cancelado
-                    </option>
-
-                </select>
-            </label>
-
-            <div class="full">
-
-                <button
-                    type="submit"
-                    class="primary"
-                >
-                    💾 SALVAR ALTERAÇÕES
-                </button>
-
-            </div>
-
-        </form>
-
-        <div
-            id="editLotMessage"
-            style="margin-top:15px;"
-        ></div>
-
-        <div class="modal-actions">
-
-            <button
-                type="button"
-                class="secondary"
-                onclick="
-                    openLot('${lot.id}')
-                "
-            >
-                Voltar
-            </button>
-
-            <button
-                type="button"
-                class="secondary"
-                onclick="closeLotModal()"
-            >
-                Fechar
-            </button>
-
-        </div>
-    `;
-
-    $("lotModal")
-        ?.classList
-        .remove("hidden");
-
-
-    $("editLotForm").onsubmit =
-        async event => {
-
-            event.preventDefault();
-
-            const message =
-                $("editLotMessage");
-
-            message.className = "";
-            message.textContent =
-                "Salvando...";
-
-            const weight =
-                Number(
-                    $("editLotWeight").value
-                );
-
-            if (weight <= 0) {
-
-                message.className =
-                    "error";
-
-                message.textContent =
-                    "O peso deve ser maior que zero.";
-
-                return;
-            }
-
-            const produced =
-                lotProduced(lot);
-
-            if (
-                produced >
-                weight + 0.0001
-            ) {
-
-                message.className =
-                    "error";
-
-                message.textContent =
-                    "O novo peso não pode ser menor que o peso já produzido.";
-
-                return;
-            }
-
-            try {
-
-                await db
-                    .collection("lots")
-                    .doc(lot.id)
-                    .update({
-
-                        name:
-                            $("editLotName")
-                                .value
-                                .trim(),
-
-                        os:
-                            $("editLotOs")
-                                .value
-                                .trim(),
-
-                        clientName:
-                            $("editLotClient")
-                                .value
-                                .trim(),
-
-                        weight,
-
-                        entryDate:
-                            $("editLotEntry")
-                                .value,
-
-                        programDate:
-                            $("editLotProgram")
-                                .value,
-
-                        assignedTo:
-                            $("editLotAssigned")
-                                .value,
-
-                        status:
-                            $("editLotStatus")
-                                .value,
-
-                        updatedAt:
-                            firebase.firestore
-                                .FieldValue
-                                .serverTimestamp()
-
-                    });
-
-                message.className =
-                    "success";
-
-                message.textContent =
-                    "Lote atualizado com sucesso.";
-
-                await loadData();
-
-                setTimeout(
-                    () => {
-                        closeLotModal();
-                    },
-                    500
-                );
-
-            } catch (error) {
-
-                console.error(error);
-
-                message.className =
-                    "error";
-
-                message.textContent =
-                    error.message ||
-                    "Erro ao atualizar lote.";
-            }
-
-        };
-
-};
-
 
 // ============================================================
 // FECHAR MODAL
@@ -1893,9 +1453,7 @@ window.closeLotModal = function() {
     $("lotModal")
         ?.classList
         .add("hidden");
-
 };
-
 
 // ============================================================
 // FECHAR CLICANDO FORA
@@ -1914,12 +1472,9 @@ if ($("lotModal")) {
 
                 closeLotModal();
             }
-
         }
     );
-
 }
-
 
 // ============================================================
 // REGISTRAR PRODUÇÃO
@@ -2004,25 +1559,21 @@ async function registerProduction(
                     current + amount;
 
                 const newStatus =
-                    next >=
-                    weight - 0.0001
+                    next >= weight - 0.0001
                         ? "finalizado"
                         : "producao";
 
                 const productionLog = {
 
-                    weight:
-                        amount,
+                    weight: amount,
 
-                    obs:
-                        observation,
+                    obs: observation,
 
                     userId:
                         currentUser.uid,
 
                     at:
                         new Date()
-
                 };
 
                 transaction.update(
@@ -2047,10 +1598,8 @@ async function registerProduction(
                                 .arrayUnion(
                                     productionLog
                                 )
-
                     }
                 );
-
             }
         );
 
@@ -2062,13 +1611,527 @@ async function registerProduction(
 
         console.error(error);
 
-        $("modalMessage").textContent =
-            error.message ||
-            "Erro ao registrar produção.";
-    }
+        if ($("modalMessage")) {
 
+            $("modalMessage").textContent =
+                error.message ||
+                "Erro ao registrar produção.";
+        }
+    }
 }
 
+// ============================================================
+// EDITAR LOTE
+// ============================================================
+//
+// SOMENTE O ADMINISTRADOR PRINCIPAL PODE EDITAR.
+//
+// Permite alterar:
+// - Nome
+// - OS
+// - Cliente
+// - Peso
+// - Data de entrada
+// - Data de programação
+// - Colaborador responsável
+// - Status
+//
+
+window.editLot = async function(id) {
+
+    // Segurança principal
+
+    if (!roleIsAdmin()) {
+
+        alert(
+            "Você não possui permissão para editar lotes."
+        );
+
+        return;
+    }
+
+    const lot =
+        allLots.find(
+            item =>
+                item.id === id
+        );
+
+    if (!lot) {
+
+        alert(
+            "Lote não encontrado."
+        );
+
+        return;
+    }
+
+    const activeUsers =
+        allUsers
+            .filter(
+                user =>
+                    user.role === "colaborador" &&
+                    user.active !== false
+            );
+
+    const currentUserAssigned =
+        allUsers.find(
+            user =>
+                user.id ===
+                lot.assignedTo
+        );
+
+    if (!$("lotModalContent")) {
+        return;
+    }
+
+    $("lotModalContent").innerHTML = `
+
+        <h2>
+            ✏️ Editar lote
+        </h2>
+
+        <p>
+            Alteração administrativa completa do lote.
+        </p>
+
+        <form
+            id="editLotForm"
+            class="form-grid"
+        >
+
+            <label>
+                Nome do lote
+
+                <input
+                    id="editLotName"
+                    value="${escapeHtml(
+                        lot.name || ""
+                    )}"
+                    required
+                >
+            </label>
+
+            <label>
+                OS
+
+                <input
+                    id="editLotOs"
+                    value="${escapeHtml(
+                        lot.os || ""
+                    )}"
+                    required
+                >
+            </label>
+
+            <label>
+                Cliente
+
+                <input
+                    id="editLotClient"
+                    value="${escapeHtml(
+                        lot.clientName ||
+                        lot.name ||
+                        ""
+                    )}"
+                >
+            </label>
+
+            <label>
+                Peso (kg)
+
+                <input
+                    id="editLotWeight"
+                    type="number"
+                    step="0.001"
+                    min="0.001"
+                    value="${Number(
+                        lot.weight || 0
+                    )}"
+                    required
+                >
+            </label>
+
+            <label>
+                Data de entrada
+
+                <input
+                    id="editLotEntry"
+                    type="date"
+                    value="${lot.entryDate || ""}"
+                    required
+                >
+            </label>
+
+            <label>
+                Data de programação
+
+                <input
+                    id="editLotProgram"
+                    type="date"
+                    value="${lot.programDate || ""}"
+                    required
+                >
+            </label>
+
+            <label>
+                Colaborador responsável
+
+                <select
+                    id="editLotAssigned"
+                    required
+                >
+
+                    ${
+                        activeUsers.length
+                            ? activeUsers.map(
+                                user => `
+                                    <option
+                                        value="${user.id}"
+                                        ${
+                                            user.id ===
+                                            lot.assignedTo
+                                                ? "selected"
+                                                : ""
+                                        }
+                                    >
+                                        ${escapeHtml(
+                                            user.name ||
+                                            user.email ||
+                                            "Sem nome"
+                                        )}
+                                    </option>
+                                `
+                            ).join("")
+                            : `
+                                <option value="">
+                                    Nenhum colaborador ativo
+                                </option>
+                            `
+                    }
+
+                </select>
+
+            </label>
+
+            <label>
+                Status
+
+                <select
+                    id="editLotStatus"
+                >
+
+                    <option
+                        value="pendente"
+                        ${
+                            lot.status === "pendente"
+                                ? "selected"
+                                : ""
+                        }
+                    >
+                        Pendente
+                    </option>
+
+                    <option
+                        value="producao"
+                        ${
+                            lot.status === "producao"
+                                ? "selected"
+                                : ""
+                        }
+                    >
+                        Em produção
+                    </option>
+
+                    <option
+                        value="finalizado"
+                        ${
+                            lot.status === "finalizado"
+                                ? "selected"
+                                : ""
+                        }
+                    >
+                        Finalizado
+                    </option>
+
+                    <option
+                        value="cancelado"
+                        ${
+                            lot.status === "cancelado"
+                                ? "selected"
+                                : ""
+                        }
+                    >
+                        Cancelado
+                    </option>
+
+                </select>
+
+            </label>
+
+            <div class="full">
+
+                <button
+                    type="submit"
+                    class="primary"
+                >
+                    💾 Salvar alterações
+                </button>
+
+            </div>
+
+        </form>
+
+        <div
+            id="editLotMessage"
+            style="margin-top:15px;"
+        ></div>
+
+        <div class="modal-actions">
+
+            <button
+                type="button"
+                class="secondary"
+                onclick="openLot('${lot.id}')"
+            >
+                Voltar
+            </button>
+
+            <button
+                type="button"
+                class="secondary"
+                onclick="closeLotModal()"
+            >
+                Fechar
+            </button>
+
+        </div>
+    `;
+
+    $("lotModal")
+        ?.classList
+        .remove("hidden");
+
+    if ($("editLotForm")) {
+
+        $("editLotForm").onsubmit =
+            async event => {
+
+                event.preventDefault();
+
+                const message =
+                    $("editLotMessage");
+
+                if (message) {
+                    message.className = "";
+                    message.textContent =
+                        "Salvando...";
+                }
+
+                const newName =
+                    $("editLotName")
+                        .value
+                        .trim();
+
+                const newOs =
+                    $("editLotOs")
+                        .value
+                        .trim();
+
+                const newClient =
+                    $("editLotClient")
+                        .value
+                        .trim();
+
+                const newWeight =
+                    Number(
+                        $("editLotWeight")
+                            .value
+                    );
+
+                const newEntry =
+                    $("editLotEntry")
+                        .value;
+
+                const newProgram =
+                    $("editLotProgram")
+                        .value;
+
+                const newAssigned =
+                    $("editLotAssigned")
+                        .value;
+
+                const newStatus =
+                    $("editLotStatus")
+                        .value;
+
+                if (!newName) {
+
+                    if (message) {
+                        message.className = "error";
+                        message.textContent =
+                            "Informe o nome do lote.";
+                    }
+
+                    return;
+                }
+
+                if (!newOs) {
+
+                    if (message) {
+                        message.className = "error";
+                        message.textContent =
+                            "Informe a OS.";
+                    }
+
+                    return;
+                }
+
+                if (
+                    !newWeight ||
+                    newWeight <= 0
+                ) {
+
+                    if (message) {
+                        message.className = "error";
+                        message.textContent =
+                            "Informe um peso válido.";
+                    }
+
+                    return;
+                }
+
+                if (!newEntry) {
+
+                    if (message) {
+                        message.className = "error";
+                        message.textContent =
+                            "Informe a data de entrada.";
+                    }
+
+                    return;
+                }
+
+                if (!newProgram) {
+
+                    if (message) {
+                        message.className = "error";
+                        message.textContent =
+                            "Informe a data de programação.";
+                    }
+
+                    return;
+                }
+
+                if (!newAssigned) {
+
+                    if (message) {
+                        message.className = "error";
+                        message.textContent =
+                            "Selecione o colaborador.";
+                    }
+
+                    return;
+                }
+
+                // Não permite diminuir o peso abaixo
+                // do que já foi produzido.
+
+                const produced =
+                    lotProduced(lot);
+
+                if (
+                    newWeight <
+                    produced
+                ) {
+
+                    if (message) {
+                        message.className = "error";
+                        message.textContent =
+                            `O peso do lote não pode ser menor que o peso já produzido (${kg(produced)}).`;
+                    }
+
+                    return;
+                }
+
+                try {
+
+                    await db
+                        .collection("lots")
+                        .doc(id)
+                        .update({
+
+                            name:
+                                newName,
+
+                            os:
+                                newOs,
+
+                            clientName:
+                                newClient ||
+                                newName,
+
+                            weight:
+                                newWeight,
+
+                            entryDate:
+                                newEntry,
+
+                            programDate:
+                                newProgram,
+
+                            assignedTo:
+                                newAssigned,
+
+                            status:
+                                newStatus,
+
+                            updatedAt:
+                                firebase.firestore
+                                    .FieldValue
+                                    .serverTimestamp()
+                        });
+
+                    if (message) {
+
+                        message.className =
+                            "success";
+
+                        message.textContent =
+                            "Lote atualizado com sucesso.";
+                    }
+
+                    await loadData();
+
+                    // Reabre o lote atualizado
+                    // após um pequeno intervalo.
+
+                    setTimeout(
+                        () => {
+                            openLot(id);
+                        },
+                        300
+                    );
+
+                } catch (error) {
+
+                    console.error(
+                        "Erro ao editar lote:",
+                        error
+                    );
+
+                    if (message) {
+
+                        message.className =
+                            "error";
+
+                        message.textContent =
+                            error.message ||
+                            "Erro ao salvar alterações.";
+                    }
+                }
+            };
+    }
+};
 
 // ============================================================
 // CADASTRAR LOTE
@@ -2083,10 +2146,6 @@ if ($("lotForm")) {
             event.preventDefault();
 
             if (!roleIsAdmin()) {
-
-                alert(
-                    "Somente o administrador principal pode cadastrar lotes."
-                );
 
                 return;
             }
@@ -2117,7 +2176,7 @@ if ($("lotForm")) {
                         user =>
                             user.active !== false &&
                             user.role ===
-                            "colaborador"
+                                "colaborador"
                     );
 
                 if (!activeUsers.length) {
@@ -2147,7 +2206,6 @@ if ($("lotForm")) {
                             ) +
                             lotRemaining(lot);
                     }
-
                 });
 
                 activeUsers.sort(
@@ -2164,7 +2222,8 @@ if ($("lotForm")) {
                     activeUsers[0];
 
                 const ref =
-                    db.collection("lots")
+                    db
+                        .collection("lots")
                         .doc();
 
                 const name =
@@ -2215,7 +2274,6 @@ if ($("lotForm")) {
                         firebase.firestore
                             .FieldValue
                             .serverTimestamp()
-
                 };
 
                 await ref.set(data);
@@ -2246,12 +2304,9 @@ if ($("lotForm")) {
                     error.message ||
                     "Erro ao cadastrar lote.";
             }
-
         }
     );
-
 }
-
 
 // ============================================================
 // REDISTRIBUIR LOTE
@@ -2263,7 +2318,7 @@ window.redistributeLot =
         if (!roleIsAdmin()) {
 
             alert(
-                "Somente o administrador principal pode redistribuir lotes."
+                "Somente o administrador pode redistribuir lotes."
             );
 
             return;
@@ -2274,7 +2329,7 @@ window.redistributeLot =
                 user =>
                     user.active !== false &&
                     user.role ===
-                    "colaborador"
+                        "colaborador"
             );
 
         const lot =
@@ -2312,7 +2367,6 @@ window.redistributeLot =
                     ) +
                     lotRemaining(item);
             }
-
         });
 
         activeUsers.sort(
@@ -2340,15 +2394,12 @@ window.redistributeLot =
                     firebase.firestore
                         .FieldValue
                         .serverTimestamp()
-
             });
-
-        closeLotModal();
 
         await loadData();
 
+        openLot(id);
     };
-
 
 // ============================================================
 // RELATÓRIO
@@ -2356,16 +2407,18 @@ window.redistributeLot =
 
 function renderReport() {
 
-    if (!$("reportSummary")) return;
+    if (!$("reportSummary")) {
+        return;
+    }
 
     let lots =
         dateRange(
-            $("reportFrom").value,
-            $("reportTo").value
+            $("reportFrom")?.value,
+            $("reportTo")?.value
         );
 
     const uid =
-        $("reportUser").value;
+        $("reportUser")?.value;
 
     if (uid) {
 
@@ -2390,7 +2443,9 @@ function renderReport() {
         lots.reduce(
             (total, lot) =>
                 total +
-                Number(lot.weight || 0),
+                Number(
+                    lot.weight || 0
+                ),
             0
         );
 
@@ -2427,14 +2482,18 @@ function renderReport() {
 
         [
             "Saldo",
-            kg(planned - produced)
+            kg(
+                planned - produced
+            )
         ],
 
         [
             "Realização",
             pct(
                 planned
-                    ? produced / planned * 100
+                    ? produced /
+                      planned *
+                      100
                     : 0
             )
         ],
@@ -2482,7 +2541,8 @@ function renderReport() {
                     lot.programDate,
 
                 user:
-                    user?.name || "—",
+                    user?.name ||
+                    "—",
 
                 produced:
                     0,
@@ -2499,7 +2559,9 @@ function renderReport() {
         }
 
         by[key].planned +=
-            Number(lot.weight || 0);
+            Number(
+                lot.weight || 0
+            );
 
         by[key].produced +=
             lotProduced(lot);
@@ -2511,241 +2573,270 @@ function renderReport() {
         );
 
         by[key].lots++;
-
     });
 
     const rows =
         Object.values(by)
-            .sort((a, b) =>
-                a.date.localeCompare(
-                    b.date
-                ) ||
-                a.user.localeCompare(
-                    b.user
-                )
+            .sort(
+                (a, b) =>
+                    a.date.localeCompare(
+                        b.date
+                    ) ||
+                    a.user.localeCompare(
+                        b.user
+                    )
             );
 
-    $("reportByCollaborator").innerHTML = `
+    if ($("reportByCollaborator")) {
 
-        <h3>
-            Produção por colaborador e por dia
-        </h3>
+        $("reportByCollaborator").innerHTML = `
 
-        <div class="table-wrap">
+            <h3>
+                Produção por colaborador e por dia
+            </h3>
 
-            <table class="data-table">
+            <div class="table-wrap">
 
-                <thead>
+                <table class="data-table">
 
-                    <tr>
+                    <thead>
 
-                        <th>Data</th>
-                        <th>Colaborador</th>
-                        <th>Peso do dia</th>
-                        <th>Programado</th>
-                        <th>Clientes</th>
-                        <th>Lotes</th>
+                        <tr>
 
-                    </tr>
+                            <th>Data</th>
 
-                </thead>
+                            <th>Colaborador</th>
 
-                <tbody>
+                            <th>Peso do dia</th>
 
-                    ${
-                        rows.length
+                            <th>Programado</th>
 
-                            ? rows.map(row => `
+                            <th>Clientes</th>
 
-                                <tr>
+                            <th>Lotes</th>
 
-                                    <td>
-                                        ${dateBR(row.date)}
-                                    </td>
+                        </tr>
 
-                                    <td>
-                                        ${escapeHtml(row.user)}
-                                    </td>
+                    </thead>
 
-                                    <td>
-                                        ${kg(row.produced)}
-                                    </td>
+                    <tbody>
 
-                                    <td>
-                                        ${kg(row.planned)}
-                                    </td>
+                        ${
+                            rows.length
 
-                                    <td>
-                                        ${escapeHtml(
-                                            [...row.clients]
-                                                .join(", ")
-                                        )}
-                                    </td>
+                                ? rows.map(row => `
 
-                                    <td>
-                                        ${row.lots}
-                                    </td>
+                                    <tr>
 
-                                </tr>
+                                        <td>
+                                            ${dateBR(
+                                                row.date
+                                            )}
+                                        </td>
 
-                            `).join("")
+                                        <td>
+                                            ${escapeHtml(
+                                                row.user
+                                            )}
+                                        </td>
 
-                            : `
+                                        <td>
+                                            ${kg(
+                                                row.produced
+                                            )}
+                                        </td>
 
-                                <tr>
+                                        <td>
+                                            ${kg(
+                                                row.planned
+                                            )}
+                                        </td>
 
-                                    <td colspan="6">
-                                        Sem dados.
-                                    </td>
+                                        <td>
+                                            ${escapeHtml(
+                                                [
+                                                    ...row.clients
+                                                ].join(", ")
+                                            )}
+                                        </td>
 
-                                </tr>
+                                        <td>
+                                            ${row.lots}
+                                        </td>
 
-                            `
-                    }
+                                    </tr>
 
-                </tbody>
+                                `).join("")
 
-            </table>
+                                : `
 
-        </div>
-    `;
+                                    <tr>
 
-    $("reportDetails").innerHTML = `
+                                        <td colspan="6">
+                                            Sem dados.
+                                        </td>
 
-        <h3>
-            Detalhamento dos lotes
-        </h3>
+                                    </tr>
 
-        <div class="table-wrap">
+                                `
+                        }
 
-            <table class="data-table">
+                    </tbody>
 
-                <thead>
+                </table>
 
-                    <tr>
+            </div>
+        `;
+    }
 
-                        <th>Programação</th>
-                        <th>OS</th>
-                        <th>Lote</th>
-                        <th>Colaborador</th>
-                        <th>Peso</th>
-                        <th>Produzido</th>
-                        <th>Saldo</th>
-                        <th>Status</th>
+    if ($("reportDetails")) {
 
-                    </tr>
+        $("reportDetails").innerHTML = `
 
-                </thead>
+            <h3>
+                Detalhamento dos lotes
+            </h3>
 
-                <tbody>
+            <div class="table-wrap">
 
-                    ${
-                        lots.length
+                <table class="data-table">
 
-                            ? [...lots]
-                                .sort(
-                                    (a, b) =>
-                                        (
-                                            a.programDate || ""
-                                        ).localeCompare(
-                                            b.programDate || ""
-                                        )
-                                )
-                                .map(lot => {
+                    <thead>
 
-                                    const user =
-                                        allUsers.find(
-                                            x =>
-                                                x.id ===
-                                                lot.assignedTo
-                                        );
+                        <tr>
 
-                                    return `
+                            <th>Programação</th>
 
-                                        <tr>
+                            <th>OS</th>
 
-                                            <td>
-                                                ${dateBR(
-                                                    lot.programDate
-                                                )}
-                                            </td>
+                            <th>Lote</th>
 
-                                            <td>
-                                                ${escapeHtml(
-                                                    lot.os || "—"
-                                                )}
-                                            </td>
+                            <th>Colaborador</th>
 
-                                            <td>
-                                                ${escapeHtml(
-                                                    lot.name || "—"
-                                                )}
-                                            </td>
+                            <th>Peso</th>
 
-                                            <td>
-                                                ${escapeHtml(
-                                                    user?.name || "—"
-                                                )}
-                                            </td>
+                            <th>Produzido</th>
 
-                                            <td>
-                                                ${kg(lot.weight)}
-                                            </td>
+                            <th>Saldo</th>
 
-                                            <td>
-                                                ${kg(
-                                                    lotProduced(lot)
-                                                )}
-                                            </td>
+                            <th>Status</th>
 
-                                            <td>
-                                                ${kg(
-                                                    lotRemaining(lot)
-                                                )}
-                                            </td>
+                        </tr>
 
-                                            <td>
-                                                ${statusLabel(
-                                                    lotStatus(lot)
-                                                )}
-                                            </td>
+                    </thead>
 
-                                        </tr>
+                    <tbody>
 
-                                    `;
-                                })
-                                .join("")
+                        ${
+                            lots.length
 
-                            : `
+                                ? [...lots]
+                                    .sort(
+                                        (a, b) =>
+                                            (
+                                                a.programDate ||
+                                                ""
+                                            ).localeCompare(
+                                                b.programDate ||
+                                                ""
+                                            )
+                                    )
+                                    .map(lot => {
 
-                                <tr>
+                                        const user =
+                                            allUsers.find(
+                                                x =>
+                                                    x.id ===
+                                                    lot.assignedTo
+                                            );
 
-                                    <td colspan="8">
-                                        Sem dados.
-                                    </td>
+                                        return `
 
-                                </tr>
+                                            <tr>
 
-                            `
-                    }
+                                                <td>
+                                                    ${dateBR(
+                                                        lot.programDate
+                                                    )}
+                                                </td>
 
-                </tbody>
+                                                <td>
+                                                    ${escapeHtml(
+                                                        lot.os ||
+                                                        "—"
+                                                    )}
+                                                </td>
 
-            </table>
+                                                <td>
+                                                    ${escapeHtml(
+                                                        lot.name ||
+                                                        "—"
+                                                    )}
+                                                </td>
 
-        </div>
-    `;
+                                                <td>
+                                                    ${escapeHtml(
+                                                        user?.name ||
+                                                        "—"
+                                                    )}
+                                                </td>
 
+                                                <td>
+                                                    ${kg(
+                                                        lot.weight
+                                                    )}
+                                                </td>
+
+                                                <td>
+                                                    ${kg(
+                                                        lotProduced(lot)
+                                                    )}
+                                                </td>
+
+                                                <td>
+                                                    ${kg(
+                                                        lotRemaining(lot)
+                                                    )}
+                                                </td>
+
+                                                <td>
+                                                    ${statusLabel(
+                                                        lotStatus(lot)
+                                                    )}
+                                                </td>
+
+                                            </tr>
+
+                                        `;
+                                    })
+                                    .join("")
+
+                                : `
+
+                                    <tr>
+
+                                        <td colspan="8">
+                                            Sem dados.
+                                        </td>
+
+                                    </tr>
+
+                                `
+                        }
+
+                    </tbody>
+
+                </table>
+
+            </div>
+        `;
+    }
 }
-
 
 if ($("reportFilterBtn")) {
-
     $("reportFilterBtn").onclick =
         renderReport;
-
 }
-
 
 // ============================================================
 // COLABORADORES
@@ -2755,14 +2846,12 @@ function renderUsers() {
 
     if (!roleIsAdmin()) {
 
-        if ($("usersTable")) {
-            $("usersTable").innerHTML = "";
-        }
-
         return;
     }
 
-    if (!$("usersTable")) return;
+    if (!$("usersTable")) {
+        return;
+    }
 
     $("usersTable").innerHTML = `
 
@@ -2775,9 +2864,13 @@ function renderUsers() {
                     <tr>
 
                         <th>Nome</th>
+
                         <th>E-mail</th>
+
                         <th>Perfil</th>
+
                         <th>Ativo</th>
+
                         <th>Carga pendente</th>
 
                     </tr>
@@ -2875,7 +2968,6 @@ function renderUsers() {
     `;
 }
 
-
 // ============================================================
 // CRIAR COLABORADOR
 // ============================================================
@@ -2889,10 +2981,6 @@ if ($("userForm")) {
             event.preventDefault();
 
             if (!roleIsAdmin()) {
-
-                alert(
-                    "Somente o administrador principal pode criar colaboradores."
-                );
 
                 return;
             }
@@ -2915,6 +3003,11 @@ if ($("userForm")) {
                 .textContent = "";
 
             try {
+
+                /*
+                 * App secundário.
+                 * Evita deslogar o administrador.
+                 */
 
                 const secondaryName =
                     "secondary-" +
@@ -2957,7 +3050,6 @@ if ($("userForm")) {
                             firebase.firestore
                                 .FieldValue
                                 .serverTimestamp()
-
                     });
 
                 await secondary.delete();
@@ -2987,12 +3079,9 @@ if ($("userForm")) {
                     error.message ||
                     "Erro ao criar colaborador.";
             }
-
         }
     );
-
 }
-
 
 // ============================================================
 // INICIALIZAÇÃO
@@ -3006,5 +3095,10 @@ document.addEventListener(
             "Reluz Produção carregado."
         );
 
+        console.log(
+            "Administrador principal:",
+            MASTER_ADMIN_UID
+        );
     }
 );
+```
