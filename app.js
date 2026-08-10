@@ -1,4 +1,3 @@
-```javascript
 // ===============================
 // RELUZ PRODUÇÃO - APP
 // ===============================
@@ -1135,6 +1134,29 @@ window.openLot = async function(id) {
         </div>
 
         ${
+            roleIsAdmin()
+                ? `
+
+                    <div
+                        class="modal-actions"
+                        style="margin-top:20px;"
+                    >
+
+                        <button
+                            type="button"
+                            class="primary"
+                            onclick="editLot('${l.id}')"
+                        >
+                            ✏️ Editar lote
+                        </button>
+
+                    </div>
+
+                `
+                : ""
+        }
+
+        ${
             canEdit
                 ? `
 
@@ -1233,6 +1255,535 @@ window.openLot = async function(id) {
                 );
     }
 };
+
+
+// ===============================
+// EDITAR LOTE
+// ===============================
+
+window.editLot = function(id) {
+
+    if (!roleIsAdmin()) {
+
+        alert(
+            "Somente administradores podem editar lotes."
+        );
+
+        return;
+    }
+
+    const l =
+        allLots.find(
+            x =>
+                x.id === id
+        );
+
+    if (!l) {
+
+        alert(
+            "Lote não encontrado."
+        );
+
+        return;
+    }
+
+    if (!$("lotModalContent")) {
+        return;
+    }
+
+    const activeUsers =
+        allUsers.filter(
+            u =>
+                u.active !== false &&
+                u.role === "colaborador"
+        );
+
+    $("lotModalContent").innerHTML = `
+
+        <h2>
+            ✏️ Editar lote
+        </h2>
+
+        <form
+            id="editLotForm"
+            class="production-form"
+        >
+
+            <label>
+
+                Nome do lote
+
+                <input
+                    id="editLotName"
+                    type="text"
+                    value="${escapeHtml(
+                        l.name || ""
+                    )}"
+                    required
+                >
+
+            </label>
+
+
+            <label>
+
+                OS
+
+                <input
+                    id="editLotOs"
+                    type="text"
+                    value="${escapeHtml(
+                        l.os || ""
+                    )}"
+                >
+
+            </label>
+
+
+            <label>
+
+                Cliente
+
+                <input
+                    id="editLotClient"
+                    type="text"
+                    value="${escapeHtml(
+                        l.clientName ||
+                        l.name ||
+                        ""
+                    )}"
+                >
+
+            </label>
+
+
+            <label>
+
+                Peso do lote (kg)
+
+                <input
+                    id="editLotWeight"
+                    type="number"
+                    step="0.001"
+                    min="0.001"
+                    value="${Number(
+                        l.weight || 0
+                    )}"
+                    required
+                >
+
+            </label>
+
+
+            <label>
+
+                Data de entrada
+
+                <input
+                    id="editLotEntry"
+                    type="date"
+                    value="${escapeHtml(
+                        l.entryDate || ""
+                    )}"
+                >
+
+            </label>
+
+
+            <label>
+
+                Data de programação
+
+                <input
+                    id="editLotProgram"
+                    type="date"
+                    value="${escapeHtml(
+                        l.programDate || ""
+                    )}"
+                    required
+                >
+
+            </label>
+
+
+            <label>
+
+                Colaborador responsável
+
+                <select
+                    id="editLotCollaborator"
+                    required
+                >
+
+                    <option value="">
+                        Selecione o colaborador
+                    </option>
+
+                    ${
+                        activeUsers
+                            .map(u => `
+
+                                <option
+                                    value="${u.id}"
+                                    ${
+                                        l.assignedTo === u.id
+                                            ? "selected"
+                                            : ""
+                                    }
+                                >
+                                    ${escapeHtml(
+                                        u.name
+                                    )}
+                                </option>
+
+                            `)
+                            .join("")
+                    }
+
+                </select>
+
+            </label>
+
+
+            <div
+                style="
+                    padding:12px;
+                    border-radius:8px;
+                    background:#f5f5f5;
+                    margin-top:10px;
+                "
+            >
+
+                <strong>
+                    Produzido atualmente:
+                </strong>
+
+                ${kg(
+                    lotProduced(l)
+                )}
+
+            </div>
+
+
+            <div
+                id="editLotMessage"
+                style="margin-top:10px;"
+            ></div>
+
+
+            <div
+                class="modal-actions"
+                style="margin-top:20px;"
+            >
+
+                <button
+                    type="submit"
+                    class="primary"
+                >
+                    💾 Salvar alterações
+                </button>
+
+                <button
+                    type="button"
+                    class="secondary"
+                    onclick="openLot('${l.id}')"
+                >
+                    Cancelar
+                </button>
+
+            </div>
+
+        </form>
+    `;
+
+    $("editLotForm").onsubmit =
+        e =>
+            saveLotEdit(
+                e,
+                l
+            );
+};
+
+
+// ===============================
+// SALVAR EDIÇÃO DO LOTE
+// ===============================
+
+async function saveLotEdit(
+    e,
+    originalLot
+) {
+
+    e.preventDefault();
+
+    if (!roleIsAdmin()) {
+
+        alert(
+            "Somente administradores podem editar lotes."
+        );
+
+        return;
+    }
+
+    const message =
+        $("editLotMessage");
+
+    if (message) {
+
+        message.textContent =
+            "";
+
+        message.className =
+            "";
+    }
+
+    const name =
+        $("editLotName")
+            ?.value
+            .trim() ||
+        "";
+
+    const os =
+        $("editLotOs")
+            ?.value
+            .trim() ||
+        "";
+
+    const clientName =
+        $("editLotClient")
+            ?.value
+            .trim() ||
+        "";
+
+    const weight =
+        Number(
+            $("editLotWeight")
+                ?.value ||
+            0
+        );
+
+    const entryDate =
+        $("editLotEntry")
+            ?.value ||
+        "";
+
+    const programDate =
+        $("editLotProgram")
+            ?.value ||
+        "";
+
+    const assignedTo =
+        $("editLotCollaborator")
+            ?.value ||
+        "";
+
+    if (!name) {
+
+        if (message) {
+
+            message.className =
+                "error";
+
+            message.textContent =
+                "Informe o nome do lote.";
+        }
+
+        return;
+    }
+
+    if (weight <= 0) {
+
+        if (message) {
+
+            message.className =
+                "error";
+
+            message.textContent =
+                "O peso precisa ser maior que zero.";
+        }
+
+        return;
+    }
+
+    /*
+     * Não permite colocar o peso do lote
+     * abaixo do peso que já foi produzido.
+     */
+
+    const produced =
+        lotProduced(
+            originalLot
+        );
+
+    if (
+        weight <
+        produced - 0.0001
+    ) {
+
+        if (message) {
+
+            message.className =
+                "error";
+
+            message.textContent =
+                `O peso do lote não pode ser menor que o peso já produzido (${kg(produced)}).`;
+        }
+
+        return;
+    }
+
+    if (!programDate) {
+
+        if (message) {
+
+            message.className =
+                "error";
+
+            message.textContent =
+                "Informe a data de programação.";
+        }
+
+        return;
+    }
+
+    if (!assignedTo) {
+
+        if (message) {
+
+            message.className =
+                "error";
+
+            message.textContent =
+                "Selecione o colaborador responsável.";
+        }
+
+        return;
+    }
+
+    const collaborator =
+        allUsers.find(
+            u =>
+                u.id ===
+                assignedTo
+        );
+
+    if (!collaborator) {
+
+        if (message) {
+
+            message.className =
+                "error";
+
+            message.textContent =
+                "Colaborador selecionado não encontrado.";
+        }
+
+        return;
+    }
+
+    try {
+
+        const newStatus =
+            originalLot.status ===
+            "cancelado"
+
+                ? "cancelado"
+
+                : (
+                    weight -
+                    produced <=
+                    0.0001
+
+                        ? "finalizado"
+
+                        : produced > 0
+
+                            ? "producao"
+
+                            : "pendente"
+                );
+
+        await db
+            .collection("lots")
+            .doc(
+                originalLot.id
+            )
+            .update({
+
+                name,
+
+                os,
+
+                clientName,
+
+                weight,
+
+                entryDate,
+
+                programDate,
+
+                assignedTo,
+
+                status:
+                    newStatus,
+
+                updatedAt:
+                    firebase.firestore
+                        .FieldValue
+                        .serverTimestamp(),
+
+                lastEditedBy:
+                    currentUser.uid,
+
+                lastEditedAt:
+                    firebase.firestore
+                        .FieldValue
+                        .serverTimestamp()
+            });
+
+        if (message) {
+
+            message.className =
+                "success";
+
+            message.textContent =
+                "Lote atualizado com sucesso.";
+        }
+
+        await loadData();
+
+        /*
+         * Reabre o lote atualizado
+         * para mostrar os novos dados.
+         */
+
+        setTimeout(
+            () => {
+                openLot(
+                    originalLot.id
+                );
+            },
+            300
+        );
+
+    } catch (err) {
+
+        console.error(
+            "Erro ao editar lote:",
+            err
+        );
+
+        if (message) {
+
+            message.className =
+                "error";
+
+            message.textContent =
+                err.message ||
+                "Não foi possível salvar as alterações.";
+        }
+    }
+}
 
 
 // ===============================
@@ -3001,4 +3552,3 @@ console.log(
     "Firebase:",
     firebase.app().options.projectId
 );
-```
