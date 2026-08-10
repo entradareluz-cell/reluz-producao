@@ -21,7 +21,6 @@ firebase.initializeApp(firebaseConfig);
 const auth = firebase.auth();
 const db = firebase.firestore();
 
-
 // ===============================
 // VARIÁVEIS GLOBAIS
 // ===============================
@@ -30,7 +29,6 @@ let currentUser = null;
 let currentProfile = null;
 let allLots = [];
 let allUsers = [];
-
 
 // ===============================
 // HELPERS
@@ -71,10 +69,31 @@ function dateRange(from, to) {
     );
 }
 
-function roleIsAdmin() {
-    return currentProfile?.role === "admin";
-}
+// ===============================
+// VERIFICAÇÃO DE ADMINISTRADOR
+// ===============================
 
+function roleIsAdmin() {
+
+    if (!currentProfile) {
+        return false;
+    }
+
+    const role = String(
+        currentProfile.role ||
+        currentProfile.perfil ||
+        currentProfile.type ||
+        ""
+    )
+        .trim()
+        .toLowerCase();
+
+    return [
+        "admin",
+        "administrador",
+        "administrator"
+    ].includes(role);
+}
 
 // ===============================
 // AUTENTICAÇÃO
@@ -83,6 +102,8 @@ function roleIsAdmin() {
 auth.onAuthStateChanged(async user => {
 
     if (!user) {
+        currentUser = null;
+        currentProfile = null;
         showLogin();
         return;
     }
@@ -101,7 +122,7 @@ auth.onAuthStateChanged(async user => {
             await auth.signOut();
 
             throw new Error(
-                "Usuário sem perfil cadastrado."
+                "Usuário sem perfil cadastrado no Firestore."
             );
         }
 
@@ -110,11 +131,23 @@ auth.onAuthStateChanged(async user => {
             ...snap.data()
         };
 
+        console.log(
+            "PERFIL ATUAL:",
+            currentProfile
+        );
+
+        console.log(
+            "É ADMIN?",
+            roleIsAdmin()
+        );
+
         showApp();
 
         await loadData();
 
     } catch (e) {
+
+        console.error(e);
 
         if ($("loginError")) {
             $("loginError").textContent =
@@ -124,7 +157,6 @@ auth.onAuthStateChanged(async user => {
         await auth.signOut();
     }
 });
-
 
 // ===============================
 // LOGIN / APP
@@ -152,12 +184,15 @@ function showApp() {
         .remove("hidden");
 
     if ($("userName")) {
+
         $("userName").textContent =
             currentProfile.name ||
-            currentUser.email;
+            currentUser.email ||
+            "Usuário";
     }
 
     if ($("userRole")) {
+
         $("userRole").textContent =
             roleIsAdmin()
                 ? "Administrador"
@@ -174,6 +209,7 @@ function showApp() {
         );
 
     if ($("todayLabel")) {
+
         $("todayLabel").textContent =
             new Date().toLocaleDateString(
                 "pt-BR",
@@ -195,7 +231,6 @@ function showApp() {
         if ($(id)) {
             $(id).value = t;
         }
-
     });
 
     [
@@ -208,13 +243,11 @@ function showApp() {
         if ($(id)) {
             $(id).value = t;
         }
-
     });
 }
 
-
 // ===============================
-// FORMULÁRIO DE LOGIN
+// LOGIN
 // ===============================
 
 if ($("loginForm")) {
@@ -231,13 +264,14 @@ if ($("loginForm")) {
 
             try {
 
-                await auth
-                    .signInWithEmailAndPassword(
-                        $("loginEmail").value,
-                        $("loginPassword").value
-                    );
+                await auth.signInWithEmailAndPassword(
+                    $("loginEmail").value.trim(),
+                    $("loginPassword").value
+                );
 
             } catch (err) {
+
+                console.error(err);
 
                 if ($("loginError")) {
                     $("loginError").textContent =
@@ -248,7 +282,6 @@ if ($("loginForm")) {
     );
 }
 
-
 // ===============================
 // LOGOUT
 // ===============================
@@ -257,9 +290,7 @@ if ($("logoutBtn")) {
 
     $("logoutBtn").onclick =
         () => auth.signOut();
-
 }
-
 
 // ===============================
 // ATUALIZAR
@@ -269,9 +300,7 @@ if ($("refreshBtn")) {
 
     $("refreshBtn").onclick =
         () => loadData();
-
 }
-
 
 // ===============================
 // NAVEGAÇÃO
@@ -286,9 +315,7 @@ document
             document
                 .querySelectorAll(".nav-btn")
                 .forEach(b =>
-                    b.classList.remove(
-                        "active"
-                    )
+                    b.classList.remove("active")
                 );
 
             btn.classList.add("active");
@@ -296,21 +323,18 @@ document
             document
                 .querySelectorAll(".view")
                 .forEach(v =>
-                    v.classList.add(
-                        "hidden"
-                    )
+                    v.classList.add("hidden")
                 );
 
             const view =
                 $("view-" + btn.dataset.view);
 
             if (view) {
-                view.classList.remove(
-                    "hidden"
-                );
+                view.classList.remove("hidden");
             }
 
             if ($("pageTitle")) {
+
                 $("pageTitle").textContent =
                     btn.textContent.trim();
             }
@@ -350,9 +374,7 @@ document
                 renderUsers();
             }
         };
-
     });
-
 
 // ===============================
 // CARREGAR DADOS
@@ -360,42 +382,50 @@ document
 
 async function loadData() {
 
-    const [
-        lotsSnap,
-        usersSnap
-    ] = await Promise.all([
+    try {
 
-        db
-            .collection("lots")
-            .get(),
+        const [
+            lotsSnap,
+            usersSnap
+        ] = await Promise.all([
 
-        db
-            .collection("users")
-            .get()
+            db
+                .collection("lots")
+                .get(),
 
-    ]);
+            db
+                .collection("users")
+                .get()
+        ]);
 
-    allLots =
-        lotsSnap.docs.map(d => ({
-            id: d.id,
-            ...d.data()
-        }));
+        allLots =
+            lotsSnap.docs.map(d => ({
+                id: d.id,
+                ...d.data()
+            }));
 
-    allUsers =
-        usersSnap.docs.map(d => ({
-            id: d.id,
-            ...d.data()
-        }));
+        allUsers =
+            usersSnap.docs.map(d => ({
+                id: d.id,
+                ...d.data()
+            }));
 
-    fillUserSelects();
+        fillUserSelects();
 
-    renderDashboard();
-    renderKanban();
-    renderMine();
-    renderReport();
-    renderUsers();
+        renderDashboard();
+        renderKanban();
+        renderMine();
+        renderReport();
+        renderUsers();
+
+    } catch (err) {
+
+        console.error(
+            "Erro ao carregar dados:",
+            err
+        );
+    }
 }
-
 
 // ===============================
 // SELECTS DE USUÁRIOS
@@ -437,7 +467,6 @@ function fillUserSelects() {
     }
 }
 
-
 // ===============================
 // FUNÇÕES DOS LOTES
 // ===============================
@@ -475,15 +504,13 @@ function lotPercent(l) {
 function lotStatus(l) {
 
     if (
-        l.status ===
-        "cancelado"
+        l.status === "cancelado"
     ) {
         return "cancelado";
     }
 
     if (
-        lotRemaining(l) <=
-        0.0001
+        lotRemaining(l) <= 0.0001
     ) {
         return "finalizado";
     }
@@ -506,7 +533,6 @@ function statusLabel(s) {
         cancelado: "Cancelado"
     })[s] || s;
 }
-
 
 // ===============================
 // DASHBOARD
@@ -587,13 +613,13 @@ function renderDashboard() {
             ]
 
         ]
-        .map(x =>
-            `<div class="card">
-                <small>${x[0]}</small>
-                <strong>${x[1]}</strong>
-            </div>`
-        )
-        .join("");
+            .map(x =>
+                `<div class="card">
+                    <small>${x[0]}</small>
+                    <strong>${x[1]}</strong>
+                </div>`
+            )
+            .join("");
     }
 
     const by = {};
@@ -649,18 +675,13 @@ function renderDashboard() {
     const rows =
         Object.values(by).sort(
             (a, b) =>
-                a.date.localeCompare(
-                    b.date
-                ) ||
-                a.name.localeCompare(
-                    b.name
-                )
+                a.date.localeCompare(b.date) ||
+                a.name.localeCompare(b.name)
         );
 
     if ($("dailyCollaboratorTable")) {
 
-        $("dailyCollaboratorTable")
-            .innerHTML = `
+        $("dailyCollaboratorTable").innerHTML = `
 
             <div class="table-wrap">
 
@@ -683,46 +704,43 @@ function renderDashboard() {
                         ${
                             rows.length
 
-                            ? rows.map(r => `
+                                ? rows.map(r => `
 
-                                <tr>
+                                    <tr>
 
-                                    <td>
-                                        ${dateBR(r.date)}
-                                    </td>
+                                        <td>
+                                            ${dateBR(r.date)}
+                                        </td>
 
-                                    <td>
-                                        ${escapeHtml(
-                                            r.name
-                                        )}
-                                    </td>
+                                        <td>
+                                            ${escapeHtml(r.name)}
+                                        </td>
 
-                                    <td>
-                                        ${kg(r.weight)}
-                                    </td>
+                                        <td>
+                                            ${kg(r.weight)}
+                                        </td>
 
-                                    <td>
-                                        ${escapeHtml(
-                                            [...r.clients]
-                                                .join(", ")
-                                        )}
-                                    </td>
+                                        <td>
+                                            ${escapeHtml(
+                                                [...r.clients].join(", ")
+                                            )}
+                                        </td>
 
-                                    <td>
-                                        ${r.lots}
-                                    </td>
+                                        <td>
+                                            ${r.lots}
+                                        </td>
 
-                                </tr>
+                                    </tr>
 
-                            `).join("")
+                                `).join("")
 
-                            : `
-                                <tr>
-                                    <td colspan="5">
-                                        Sem dados.
-                                    </td>
-                                </tr>
-                            `
+                                : `
+                                    <tr>
+                                        <td colspan="5">
+                                            Sem dados.
+                                        </td>
+                                    </tr>
+                                `
                         }
 
                     </tbody>
@@ -776,7 +794,6 @@ if ($("dashFilterBtn")) {
         renderDashboard;
 }
 
-
 // ===============================
 // CARD DO KANBAN
 // ===============================
@@ -823,9 +840,7 @@ function lotCard(l) {
 
             <div>
                 Programação:
-                ${dateBR(
-                    l.programDate
-                )}
+                ${dateBR(l.programDate)}
             </div>
 
             <div>
@@ -858,7 +873,6 @@ function lotCard(l) {
         </div>
     `;
 }
-
 
 // ===============================
 // KANBAN
@@ -911,11 +925,11 @@ function renderMine() {
             $("mineFrom").value,
             $("mineTo").value
         )
-        .filter(
-            l =>
-                l.assignedTo ===
-                currentUser.uid
-        );
+            .filter(
+                l =>
+                    l.assignedTo ===
+                    currentUser.uid
+            );
 
     renderKanbanInto(
         "mineKanban",
@@ -966,9 +980,7 @@ function renderKanbanInto(
 
                 return `
 
-                    <div
-                        class="kanban-column"
-                    >
+                    <div class="kanban-column">
 
                         <h3>
 
@@ -1008,7 +1020,6 @@ if ($("mineFilterBtn")) {
         renderMine;
 }
 
-
 // ===============================
 // MODAL DO LOTE
 // ===============================
@@ -1034,7 +1045,7 @@ window.openLot = async function(id) {
         l.assignedTo ===
         currentUser.uid;
 
-    const canEdit =
+    const canEditProduction =
         roleIsAdmin() ||
         mine;
 
@@ -1080,36 +1091,28 @@ window.openLot = async function(id) {
             <div>
                 <small>Produzido</small>
                 <strong>
-                    ${kg(
-                        lotProduced(l)
-                    )}
+                    ${kg(lotProduced(l))}
                 </strong>
             </div>
 
             <div>
                 <small>Saldo</small>
                 <strong>
-                    ${kg(
-                        lotRemaining(l)
-                    )}
+                    ${kg(lotRemaining(l))}
                 </strong>
             </div>
 
             <div>
                 <small>Data entrada</small>
                 <strong>
-                    ${dateBR(
-                        l.entryDate
-                    )}
+                    ${dateBR(l.entryDate)}
                 </strong>
             </div>
 
             <div>
                 <small>Programação</small>
                 <strong>
-                    ${dateBR(
-                        l.programDate
-                    )}
+                    ${dateBR(l.programDate)}
                 </strong>
             </div>
 
@@ -1147,7 +1150,7 @@ window.openLot = async function(id) {
                             class="primary"
                             onclick="editLot('${l.id}')"
                         >
-                            ✏️ Editar lote
+                            ✏️ EDITAR LOTE
                         </button>
 
                     </div>
@@ -1157,7 +1160,7 @@ window.openLot = async function(id) {
         }
 
         ${
-            canEdit
+            canEditProduction
                 ? `
 
                     <form
@@ -1183,7 +1186,6 @@ window.openLot = async function(id) {
                                 min="0.001"
                                 required
                             >
-
                         </label>
 
                         <label>
@@ -1192,7 +1194,6 @@ window.openLot = async function(id) {
                             <textarea
                                 id="productionObs"
                             ></textarea>
-
                         </label>
 
                         <button
@@ -1240,28 +1241,46 @@ window.openLot = async function(id) {
     `;
 
     if ($("lotModal")) {
+
         $("lotModal")
             .classList
             .remove("hidden");
     }
 
-    if (canEdit) {
+    if (canEditProduction) {
 
-        $("productionForm").onsubmit =
-            e =>
-                registerProduction(
-                    e,
-                    l
-                );
+        if ($("productionForm")) {
+
+            $("productionForm").onsubmit =
+                e =>
+                    registerProduction(
+                        e,
+                        l
+                    );
+        }
     }
 };
-
 
 // ===============================
 // EDITAR LOTE
 // ===============================
 
 window.editLot = function(id) {
+
+    console.log(
+        "Tentando editar lote:",
+        id
+    );
+
+    console.log(
+        "Perfil:",
+        currentProfile
+    );
+
+    console.log(
+        "Administrador:",
+        roleIsAdmin()
+    );
 
     if (!roleIsAdmin()) {
 
@@ -1295,13 +1314,16 @@ window.editLot = function(id) {
         allUsers.filter(
             u =>
                 u.active !== false &&
-                u.role === "colaborador"
+                (
+                    u.role === "colaborador" ||
+                    u.role === "admin"
+                )
         );
 
     $("lotModalContent").innerHTML = `
 
         <h2>
-            ✏️ Editar lote
+            ✏️ EDITAR LOTE
         </h2>
 
         <form
@@ -1324,7 +1346,6 @@ window.editLot = function(id) {
 
             </label>
 
-
             <label>
 
                 OS
@@ -1338,7 +1359,6 @@ window.editLot = function(id) {
                 >
 
             </label>
-
 
             <label>
 
@@ -1355,7 +1375,6 @@ window.editLot = function(id) {
                 >
 
             </label>
-
 
             <label>
 
@@ -1374,7 +1393,6 @@ window.editLot = function(id) {
 
             </label>
 
-
             <label>
 
                 Data de entrada
@@ -1388,7 +1406,6 @@ window.editLot = function(id) {
                 >
 
             </label>
-
 
             <label>
 
@@ -1404,7 +1421,6 @@ window.editLot = function(id) {
                 >
 
             </label>
-
 
             <label>
 
@@ -1444,7 +1460,6 @@ window.editLot = function(id) {
 
             </label>
 
-
             <div
                 style="
                     padding:12px;
@@ -1458,18 +1473,14 @@ window.editLot = function(id) {
                     Produzido atualmente:
                 </strong>
 
-                ${kg(
-                    lotProduced(l)
-                )}
+                ${kg(lotProduced(l))}
 
             </div>
-
 
             <div
                 id="editLotMessage"
                 style="margin-top:10px;"
             ></div>
-
 
             <div
                 class="modal-actions"
@@ -1480,7 +1491,7 @@ window.editLot = function(id) {
                     type="submit"
                     class="primary"
                 >
-                    💾 Salvar alterações
+                    💾 SALVAR ALTERAÇÕES
                 </button>
 
                 <button
@@ -1496,17 +1507,19 @@ window.editLot = function(id) {
         </form>
     `;
 
-    $("editLotForm").onsubmit =
-        e =>
-            saveLotEdit(
-                e,
-                l
-            );
+    if ($("editLotForm")) {
+
+        $("editLotForm").onsubmit =
+            e =>
+                saveLotEdit(
+                    e,
+                    l
+                );
+    }
 };
 
-
 // ===============================
-// SALVAR EDIÇÃO DO LOTE
+// SALVAR EDIÇÃO
 // ===============================
 
 async function saveLotEdit(
@@ -1530,52 +1543,42 @@ async function saveLotEdit(
 
     if (message) {
 
-        message.textContent =
-            "";
-
-        message.className =
-            "";
+        message.textContent = "";
+        message.className = "";
     }
 
     const name =
         $("editLotName")
             ?.value
-            .trim() ||
-        "";
+            .trim() || "";
 
     const os =
         $("editLotOs")
             ?.value
-            .trim() ||
-        "";
+            .trim() || "";
 
     const clientName =
         $("editLotClient")
             ?.value
-            .trim() ||
-        "";
+            .trim() || "";
 
     const weight =
         Number(
             $("editLotWeight")
-                ?.value ||
-            0
+                ?.value || 0
         );
 
     const entryDate =
         $("editLotEntry")
-            ?.value ||
-        "";
+            ?.value || "";
 
     const programDate =
         $("editLotProgram")
-            ?.value ||
-        "";
+            ?.value || "";
 
     const assignedTo =
         $("editLotCollaborator")
-            ?.value ||
-        "";
+            ?.value || "";
 
     if (!name) {
 
@@ -1605,15 +1608,8 @@ async function saveLotEdit(
         return;
     }
 
-    /*
-     * Não permite colocar o peso do lote
-     * abaixo do peso que já foi produzido.
-     */
-
     const produced =
-        lotProduced(
-            originalLot
-        );
+        lotProduced(originalLot);
 
     if (
         weight <
@@ -1663,8 +1659,7 @@ async function saveLotEdit(
     const collaborator =
         allUsers.find(
             u =>
-                u.id ===
-                assignedTo
+                u.id === assignedTo
         );
 
     if (!collaborator) {
@@ -1690,9 +1685,7 @@ async function saveLotEdit(
                 ? "cancelado"
 
                 : (
-                    weight -
-                    produced <=
-                    0.0001
+                    weight - produced <= 0.0001
 
                         ? "finalizado"
 
@@ -1705,9 +1698,7 @@ async function saveLotEdit(
 
         await db
             .collection("lots")
-            .doc(
-                originalLot.id
-            )
+            .doc(originalLot.id)
             .update({
 
                 name,
@@ -1752,16 +1743,13 @@ async function saveLotEdit(
 
         await loadData();
 
-        /*
-         * Reabre o lote atualizado
-         * para mostrar os novos dados.
-         */
-
         setTimeout(
             () => {
+
                 openLot(
                     originalLot.id
                 );
+
             },
             300
         );
@@ -1785,7 +1773,6 @@ async function saveLotEdit(
     }
 }
 
-
 // ===============================
 // FECHAR MODAL
 // ===============================
@@ -1799,9 +1786,7 @@ window.closeLotModal =
                 .classList
                 .add("hidden");
         }
-
     };
-
 
 // ===============================
 // REGISTRAR PRODUÇÃO
@@ -1817,8 +1802,7 @@ async function registerProduction(
     const amount =
         Number(
             $("productionInput")
-                ?.value ||
-            0
+                ?.value || 0
         );
 
     if (amount <= 0) {
@@ -1872,8 +1856,7 @@ async function registerProduction(
 
                 const next =
                     Number(
-                        data.producedWeight ||
-                        0
+                        data.producedWeight || 0
                     ) +
                     amount;
 
@@ -1893,8 +1876,7 @@ async function registerProduction(
 
                     obs:
                         $("productionObs")
-                            ?.value ||
-                        "",
+                            ?.value || "",
 
                     userId:
                         currentUser.uid,
@@ -1922,9 +1904,7 @@ async function registerProduction(
                         productionLogs:
                             firebase.firestore
                                 .FieldValue
-                                .arrayUnion(
-                                    log
-                                )
+                                .arrayUnion(log)
                     }
                 );
             }
@@ -1945,7 +1925,6 @@ async function registerProduction(
         }
     }
 }
-
 
 // ===============================
 // CADASTRAR NOVO LOTE
@@ -1975,8 +1954,7 @@ if ($("lotForm")) {
             const weight =
                 Number(
                     $("lotWeight")
-                        ?.value ||
-                    0
+                        ?.value || 0
                 );
 
             if (weight <= 0) {
@@ -1994,8 +1972,7 @@ if ($("lotForm")) {
                     allUsers.filter(
                         u =>
                             u.active !== false &&
-                            u.role ===
-                            "colaborador"
+                            u.role === "colaborador"
                     );
 
                 if (!active.length) {
@@ -2020,24 +1997,20 @@ if ($("lotForm")) {
 
                         loads[l.assignedTo] =
                             (
-                                loads[
-                                    l.assignedTo
-                                ] || 0
+                                loads[l.assignedTo] ||
+                                0
                             ) +
                             lotRemaining(l);
                     }
-
                 });
 
                 active.sort(
                     (a, b) =>
                         (
-                            loads[a.id] ||
-                            0
+                            loads[a.id] || 0
                         ) -
                         (
-                            loads[b.id] ||
-                            0
+                            loads[b.id] || 0
                         )
                 );
 
@@ -2052,8 +2025,7 @@ if ($("lotForm")) {
                 const lotName =
                     $("lotName")
                         ?.value
-                        .trim() ||
-                    "";
+                        .trim() || "";
 
                 const data = {
 
@@ -2063,20 +2035,17 @@ if ($("lotForm")) {
                     os:
                         $("lotOs")
                             ?.value
-                            .trim() ||
-                        "",
+                            .trim() || "",
 
                     weight,
 
                     entryDate:
                         $("lotEntry")
-                            ?.value ||
-                        "",
+                            ?.value || "",
 
                     programDate:
                         $("lotProgram")
-                            ?.value ||
-                        "",
+                            ?.value || "",
 
                     assignedTo:
                         chosen.id,
@@ -2114,13 +2083,7 @@ if ($("lotForm")) {
 
                     $("lotFormMessage")
                         .textContent =
-                        `Lote distribuído para ${chosen.name}. ` +
-                        `Carga pendente atual: ` +
-                        `${kg(
-                            loads[
-                                chosen.id
-                            ] || 0
-                        )}.`;
+                        `Lote distribuído para ${chosen.name}. Carga pendente atual: ${kg(loads[chosen.id] || 0)}.`;
                 }
 
                 e.target.reset();
@@ -2146,7 +2109,6 @@ if ($("lotForm")) {
     );
 }
 
-
 // ===============================
 // REDISTRIBUIR LOTE
 // ===============================
@@ -2162,8 +2124,7 @@ window.redistributeLot =
             allUsers.filter(
                 u =>
                     u.active !== false &&
-                    u.role ===
-                    "colaborador"
+                    u.role === "colaborador"
             );
 
         const l =
@@ -2195,24 +2156,20 @@ window.redistributeLot =
 
                 loads[x.assignedTo] =
                     (
-                        loads[
-                            x.assignedTo
-                        ] || 0
+                        loads[x.assignedTo] ||
+                        0
                     ) +
                     lotRemaining(x);
             }
-
         });
 
         active.sort(
             (a, b) =>
                 (
-                    loads[a.id] ||
-                    0
+                    loads[a.id] || 0
                 ) -
                 (
-                    loads[b.id] ||
-                    0
+                    loads[b.id] || 0
                 )
         );
 
@@ -2238,7 +2195,6 @@ window.redistributeLot =
         await loadData();
     };
 
-
 // ===============================
 // RELATÓRIO
 // ===============================
@@ -2256,16 +2212,14 @@ function renderReport() {
         );
 
     const uid =
-        $("reportUser")
-            ?.value;
+        $("reportUser")?.value;
 
     if (uid) {
 
         lots =
             lots.filter(
                 l =>
-                    l.assignedTo ===
-                    uid
+                    l.assignedTo === uid
             );
     }
 
@@ -2283,9 +2237,7 @@ function renderReport() {
         lots.reduce(
             (a, l) =>
                 a +
-                Number(
-                    l.weight || 0
-                ),
+                Number(l.weight || 0),
             0
         );
 
@@ -2324,10 +2276,7 @@ function renderReport() {
 
             [
                 "Saldo",
-                kg(
-                    planned -
-                    produced
-                )
+                kg(planned - produced)
             ],
 
             [
@@ -2348,13 +2297,13 @@ function renderReport() {
             ]
 
         ]
-        .map(x =>
-            `<div class="card">
-                <small>${x[0]}</small>
-                <strong>${x[1]}</strong>
-            </div>`
-        )
-        .join("");
+            .map(x =>
+                `<div class="card">
+                    <small>${x[0]}</small>
+                    <strong>${x[1]}</strong>
+                </div>`
+            )
+            .join("");
     }
 
     const by = {};
@@ -2379,8 +2328,7 @@ function renderReport() {
                     l.programDate,
 
                 user:
-                    u?.name ||
-                    "—",
+                    u?.name || "—",
 
                 produced:
                     0,
@@ -2397,9 +2345,7 @@ function renderReport() {
         }
 
         by[key].planned +=
-            Number(
-                l.weight || 0
-            );
+            Number(l.weight || 0);
 
         by[key].produced +=
             lotProduced(l);
@@ -2416,18 +2362,13 @@ function renderReport() {
     const rows =
         Object.values(by).sort(
             (a, b) =>
-                a.date.localeCompare(
-                    b.date
-                ) ||
-                a.user.localeCompare(
-                    b.user
-                )
+                a.date.localeCompare(b.date) ||
+                a.user.localeCompare(b.user)
         );
 
     if ($("reportByCollaborator")) {
 
-        $("reportByCollaborator")
-            .innerHTML = `
+        $("reportByCollaborator").innerHTML = `
 
             <h3>
                 Produção por colaborador e por dia
@@ -2440,14 +2381,12 @@ function renderReport() {
                     <thead>
 
                         <tr>
-
                             <th>Data</th>
                             <th>Colaborador</th>
                             <th>Peso do dia</th>
                             <th>Programado</th>
                             <th>Clientes</th>
                             <th>Lotes</th>
-
                         </tr>
 
                     </thead>
@@ -2457,61 +2396,47 @@ function renderReport() {
                         ${
                             rows.length
 
-                            ? rows.map(r => `
+                                ? rows.map(r => `
 
-                                <tr>
+                                    <tr>
 
-                                    <td>
-                                        ${dateBR(
-                                            r.date
-                                        )}
-                                    </td>
+                                        <td>
+                                            ${dateBR(r.date)}
+                                        </td>
 
-                                    <td>
-                                        ${escapeHtml(
-                                            r.user
-                                        )}
-                                    </td>
+                                        <td>
+                                            ${escapeHtml(r.user)}
+                                        </td>
 
-                                    <td>
-                                        ${kg(
-                                            r.produced
-                                        )}
-                                    </td>
+                                        <td>
+                                            ${kg(r.produced)}
+                                        </td>
 
-                                    <td>
-                                        ${kg(
-                                            r.planned
-                                        )}
-                                    </td>
+                                        <td>
+                                            ${kg(r.planned)}
+                                        </td>
 
-                                    <td>
-                                        ${escapeHtml(
-                                            [
-                                                ...r.clients
-                                            ].join(", ")
-                                        )}
-                                    </td>
+                                        <td>
+                                            ${escapeHtml(
+                                                [...r.clients].join(", ")
+                                            )}
+                                        </td>
 
-                                    <td>
-                                        ${r.lots}
-                                    </td>
+                                        <td>
+                                            ${r.lots}
+                                        </td>
 
-                                </tr>
+                                    </tr>
 
-                            `).join("")
+                                `).join("")
 
-                            : `
-
-                                <tr>
-
-                                    <td colspan="6">
-                                        Sem dados.
-                                    </td>
-
-                                </tr>
-
-                            `
+                                : `
+                                    <tr>
+                                        <td colspan="6">
+                                            Sem dados.
+                                        </td>
+                                    </tr>
+                                `
                         }
 
                     </tbody>
@@ -2524,8 +2449,7 @@ function renderReport() {
 
     if ($("reportDetails")) {
 
-        $("reportDetails")
-            .innerHTML = `
+        $("reportDetails").innerHTML = `
 
             <h3>
                 Detalhamento dos lotes
@@ -2538,7 +2462,6 @@ function renderReport() {
                     <thead>
 
                         <tr>
-
                             <th>Programação</th>
                             <th>OS</th>
                             <th>Lote</th>
@@ -2547,7 +2470,6 @@ function renderReport() {
                             <th>Produzido</th>
                             <th>Saldo</th>
                             <th>Status</th>
-
                         </tr>
 
                     </thead>
@@ -2557,98 +2479,86 @@ function renderReport() {
                         ${
                             lots.length
 
-                            ? [...lots]
-                                .sort(
-                                    (a, b) =>
-                                        (
-                                            a.programDate ||
-                                            ""
-                                        ).localeCompare(
-                                            b.programDate ||
-                                            ""
-                                        )
-                                )
-                                .map(l => {
+                                ? [...lots]
+                                    .sort(
+                                        (a, b) =>
+                                            (
+                                                a.programDate || ""
+                                            ).localeCompare(
+                                                b.programDate || ""
+                                            )
+                                    )
+                                    .map(l => {
 
-                                    const u =
-                                        allUsers.find(
-                                            x =>
-                                                x.id ===
-                                                l.assignedTo
-                                        );
+                                        const u =
+                                            allUsers.find(
+                                                x =>
+                                                    x.id ===
+                                                    l.assignedTo
+                                            );
 
-                                    return `
+                                        return `
 
-                                        <tr>
+                                            <tr>
 
-                                            <td>
-                                                ${dateBR(
-                                                    l.programDate
-                                                )}
-                                            </td>
+                                                <td>
+                                                    ${dateBR(
+                                                        l.programDate
+                                                    )}
+                                                </td>
 
-                                            <td>
-                                                ${escapeHtml(
-                                                    l.os ||
-                                                    "—"
-                                                )}
-                                            </td>
+                                                <td>
+                                                    ${escapeHtml(
+                                                        l.os || "—"
+                                                    )}
+                                                </td>
 
-                                            <td>
-                                                ${escapeHtml(
-                                                    l.name ||
-                                                    "—"
-                                                )}
-                                            </td>
+                                                <td>
+                                                    ${escapeHtml(
+                                                        l.name || "—"
+                                                    )}
+                                                </td>
 
-                                            <td>
-                                                ${escapeHtml(
-                                                    u?.name ||
-                                                    "—"
-                                                )}
-                                            </td>
+                                                <td>
+                                                    ${escapeHtml(
+                                                        u?.name || "—"
+                                                    )}
+                                                </td>
 
-                                            <td>
-                                                ${kg(
-                                                    l.weight
-                                                )}
-                                            </td>
+                                                <td>
+                                                    ${kg(l.weight)}
+                                                </td>
 
-                                            <td>
-                                                ${kg(
-                                                    lotProduced(l)
-                                                )}
-                                            </td>
+                                                <td>
+                                                    ${kg(
+                                                        lotProduced(l)
+                                                    )}
+                                                </td>
 
-                                            <td>
-                                                ${kg(
-                                                    lotRemaining(l)
-                                                )}
-                                            </td>
+                                                <td>
+                                                    ${kg(
+                                                        lotRemaining(l)
+                                                    )}
+                                                </td>
 
-                                            <td>
-                                                ${statusLabel(
-                                                    lotStatus(l)
-                                                )}
-                                            </td>
+                                                <td>
+                                                    ${statusLabel(
+                                                        lotStatus(l)
+                                                    )}
+                                                </td>
 
-                                        </tr>
+                                            </tr>
+                                        `;
+                                    })
+                                    .join("")
 
-                                    `;
-                                })
-                                .join("")
-
-                            : `
-
-                                <tr>
-
-                                    <td colspan="8">
-                                        Sem dados.
-                                    </td>
-
-                                </tr>
-
-                            `
+                                : `
+                                    <tr>
+                                        <td colspan="8">
+                                            Sem dados.
+                                        </td>
+                                    </tr>
+                                `
                         }
 
                     </tbody>
@@ -2665,7 +2575,6 @@ if ($("reportFilterBtn")) {
     $("reportFilterBtn").onclick =
         renderReport;
 }
-
 
 // ===============================
 // PDF
@@ -2698,16 +2607,13 @@ function pdfBase(
     doc.setFontSize(9);
 
     doc.text(
-        `Programação: ${dateBR(
-            from
-        )} a ${dateBR(to)}`,
+        `Programação: ${dateBR(from)} a ${dateBR(to)}`,
         14,
         23
     );
 
     doc.text(
-        `Gerado em: ${new Date()
-            .toLocaleString("pt-BR")}`,
+        `Gerado em: ${new Date().toLocaleString("pt-BR")}`,
         200,
         23
     );
@@ -2728,9 +2634,7 @@ function pdfRows(lots) {
 
         return [
 
-            dateBR(
-                l.programDate
-            ),
+            dateBR(l.programDate),
 
             l.os || "—",
 
@@ -2740,18 +2644,13 @@ function pdfRows(lots) {
 
             kg(l.weight),
 
-            kg(
-                lotProduced(l)
-            ),
+            kg(lotProduced(l)),
 
-            kg(
-                lotRemaining(l)
-            ),
+            kg(lotRemaining(l)),
 
             statusLabel(
                 lotStatus(l)
             )
-
         ];
     });
 }
@@ -2769,7 +2668,6 @@ function savePdf(
         ".pdf"
     );
 }
-
 
 // ===============================
 // PDF GERAL
@@ -2807,9 +2705,7 @@ if ($("pdfGeneralBtn")) {
                 lots.reduce(
                     (a, l) =>
                         a +
-                        Number(
-                            l.weight || 0
-                        ),
+                        Number(l.weight || 0),
                     0
                 );
 
@@ -2826,10 +2722,7 @@ if ($("pdfGeneralBtn")) {
             doc.text(
                 `Programado: ${kg(planned)}   ` +
                 `Produzido: ${kg(produced)}   ` +
-                `Saldo: ${kg(
-                    planned -
-                    produced
-                )}   ` +
+                `Saldo: ${kg(planned - produced)}   ` +
                 `Realização: ${pct(
                     planned
                         ? (
@@ -2864,8 +2757,7 @@ if ($("pdfGeneralBtn")) {
                             l.programDate,
 
                         n:
-                            u?.name ||
-                            "—",
+                            u?.name || "—",
 
                         p:
                             0,
@@ -2892,26 +2784,21 @@ if ($("pdfGeneralBtn")) {
 
             doc.autoTable({
 
-                startY:
-                    38,
+                startY: 38,
 
                 head: [[
-
                     "Data",
                     "Colaborador",
                     "Peso do dia",
                     "Clientes",
                     "Lotes"
-
                 ]],
 
                 body:
                     Object.values(by)
                         .sort(
                             (a, b) =>
-                                a.d.localeCompare(
-                                    b.d
-                                )
+                                a.d.localeCompare(b.d)
                         )
                         .map(
                             r => [
@@ -2922,12 +2809,9 @@ if ($("pdfGeneralBtn")) {
 
                                 kg(r.p),
 
-                                [
-                                    ...r.c
-                                ].join(", "),
+                                [...r.c].join(", "),
 
                                 r.q
-
                             ]
                         )
             });
@@ -2944,11 +2828,9 @@ if ($("pdfGeneralBtn")) {
 
             doc.autoTable({
 
-                startY:
-                    22,
+                startY: 22,
 
                 head: [[
-
                     "Programação",
                     "OS",
                     "Lote",
@@ -2957,7 +2839,6 @@ if ($("pdfGeneralBtn")) {
                     "Produzido",
                     "Saldo",
                     "Status"
-
                 ]],
 
                 body:
@@ -2970,7 +2851,6 @@ if ($("pdfGeneralBtn")) {
             );
         };
 }
-
 
 // ===============================
 // PDF INDIVIDUAL
@@ -3010,18 +2890,14 @@ if ($("pdfIndividualBtn")) {
                     from,
                     to
                 )
-                .filter(
-                    l =>
-                        l.assignedTo ===
-                        uid
-                );
+                    .filter(
+                        l =>
+                            l.assignedTo === uid
+                    );
 
             const doc =
                 pdfBase(
-                    `RELATÓRIO INDIVIDUAL - ${
-                        user?.name ||
-                        "Colaborador"
-                    }`,
+                    `RELATÓRIO INDIVIDUAL - ${user?.name || "Colaborador"}`,
                     from,
                     to
                 );
@@ -3030,9 +2906,7 @@ if ($("pdfIndividualBtn")) {
                 lots.reduce(
                     (a, l) =>
                         a +
-                        Number(
-                            l.weight || 0
-                        ),
+                        Number(l.weight || 0),
                     0
                 );
 
@@ -3060,10 +2934,7 @@ if ($("pdfIndividualBtn")) {
             doc.text(
                 `Programado: ${kg(planned)}   ` +
                 `Produzido: ${kg(produced)}   ` +
-                `Saldo: ${kg(
-                    planned -
-                    produced
-                )}   ` +
+                `Saldo: ${kg(planned - produced)}   ` +
                 `Realização: ${pct(
                     planned
                         ? (
@@ -3088,14 +2959,12 @@ if ($("pdfIndividualBtn")) {
 
                     by[k] = {
 
-                        p:
-                            0,
+                        p: 0,
 
                         c:
                             new Set(),
 
-                        q:
-                            0
+                        q: 0
                     };
                 }
 
@@ -3113,25 +2982,20 @@ if ($("pdfIndividualBtn")) {
 
             doc.autoTable({
 
-                startY:
-                    38,
+                startY: 38,
 
                 head: [[
-
                     "Data",
                     "Peso do dia",
                     "Clientes",
                     "Lotes"
-
                 ]],
 
                 body:
                     Object.entries(by)
                         .sort(
                             (a, b) =>
-                                a[0].localeCompare(
-                                    b[0]
-                                )
+                                a[0].localeCompare(b[0])
                         )
                         .map(
                             ([d, r]) => [
@@ -3140,12 +3004,9 @@ if ($("pdfIndividualBtn")) {
 
                                 kg(r.p),
 
-                                [
-                                    ...r.c
-                                ].join(", "),
+                                [...r.c].join(", "),
 
                                 r.q
-
                             ]
                         )
             });
@@ -3162,11 +3023,9 @@ if ($("pdfIndividualBtn")) {
 
             doc.autoTable({
 
-                startY:
-                    22,
+                startY: 22,
 
                 head: [[
-
                     "Programação",
                     "OS",
                     "Lote",
@@ -3174,7 +3033,6 @@ if ($("pdfIndividualBtn")) {
                     "Produzido",
                     "Saldo",
                     "Status"
-
                 ]],
 
                 body:
@@ -3185,15 +3043,11 @@ if ($("pdfIndividualBtn")) {
                                 l.programDate
                             ),
 
-                            l.os ||
-                                "—",
+                            l.os || "—",
 
-                            l.name ||
-                                "—",
+                            l.name || "—",
 
-                            kg(
-                                l.weight
-                            ),
+                            kg(l.weight),
 
                             kg(
                                 lotProduced(l)
@@ -3206,21 +3060,16 @@ if ($("pdfIndividualBtn")) {
                             statusLabel(
                                 lotStatus(l)
                             )
-
                         ]
                     )
             });
 
             savePdf(
                 doc,
-                `Relatorio_${
-                    user?.name ||
-                    "Colaborador"
-                }_${from}_${to}`
+                `Relatorio_${user?.name || "Colaborador"}_${from}_${to}`
             );
         };
 }
-
 
 // ===============================
 // COLABORADORES
@@ -3245,13 +3094,11 @@ function renderUsers() {
                 <thead>
 
                     <tr>
-
                         <th>Nome</th>
                         <th>E-mail</th>
                         <th>Perfil</th>
                         <th>Ativo</th>
                         <th>Carga pendente</th>
-
                     </tr>
 
                 </thead>
@@ -3261,82 +3108,74 @@ function renderUsers() {
                     ${
                         allUsers.length
 
-                        ? allUsers.map(u => {
+                            ? allUsers.map(u => {
 
-                            const load =
-                                allLots
-                                    .filter(
-                                        l =>
-                                            l.assignedTo ===
-                                            u.id &&
-                                            [
-                                                "pendente",
-                                                "producao"
-                                            ].includes(
-                                                lotStatus(l)
-                                            )
-                                    )
-                                    .reduce(
-                                        (a, l) =>
-                                            a +
-                                            lotRemaining(l),
-                                        0
-                                    );
+                                const load =
+                                    allLots
+                                        .filter(
+                                            l =>
+                                                l.assignedTo ===
+                                                u.id &&
+                                                [
+                                                    "pendente",
+                                                    "producao"
+                                                ].includes(
+                                                    lotStatus(l)
+                                                )
+                                        )
+                                        .reduce(
+                                            (a, l) =>
+                                                a +
+                                                lotRemaining(l),
+                                            0
+                                        );
 
-                            return `
+                                return `
 
+                                    <tr>
+
+                                        <td>
+                                            ${escapeHtml(
+                                                u.name || "—"
+                                            )}
+                                        </td>
+
+                                        <td>
+                                            ${escapeHtml(
+                                                u.email || "—"
+                                            )}
+                                        </td>
+
+                                        <td>
+                                            ${escapeHtml(
+                                                u.role || "—"
+                                            )}
+                                        </td>
+
+                                        <td>
+                                            ${
+                                                u.active !== false
+                                                    ? "Sim"
+                                                    : "Não"
+                                            }
+                                        </td>
+
+                                        <td>
+                                            ${kg(load)}
+                                        </td>
+
+                                    </tr>
+                                `;
+
+                            }).join("")
+
+                            : `
                                 <tr>
-
-                                    <td>
-                                        ${escapeHtml(
-                                            u.name ||
-                                            "—"
-                                        )}
+                                    <td colspan="5">
+                                        Nenhum usuário cadastrado.
                                     </td>
-
-                                    <td>
-                                        ${escapeHtml(
-                                            u.email ||
-                                            "—"
-                                        )}
-                                    </td>
-
-                                    <td>
-                                        ${escapeHtml(
-                                            u.role ||
-                                            "—"
-                                        )}
-                                    </td>
-
-                                    <td>
-                                        ${
-                                            u.active !== false
-                                                ? "Sim"
-                                                : "Não"
-                                        }
-                                    </td>
-
-                                    <td>
-                                        ${kg(load)}
-                                    </td>
-
                                 </tr>
-
-                            `;
-
-                        }).join("")
-
-                        : `
-
-                            <tr>
-
-                                <td colspan="5">
-                                    Nenhum usuário cadastrado.
-                                </td>
-
-                            </tr>
-
-                        `
+                            `
                     }
 
                 </tbody>
@@ -3346,7 +3185,6 @@ function renderUsers() {
         </div>
     `;
 }
-
 
 // ===============================
 // CRIAR COLABORADOR
@@ -3413,12 +3251,6 @@ if ($("userForm")) {
             let secondary = null;
 
             try {
-
-                /*
-                 * Cria um segundo app Firebase
-                 * para cadastrar o colaborador
-                 * sem deslogar o administrador.
-                 */
 
                 const secondaryName =
                     "secondary-" +
@@ -3538,7 +3370,6 @@ if ($("userForm")) {
         }
     );
 }
-
 
 // ===============================
 // FINALIZAÇÃO
