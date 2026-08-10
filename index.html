@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Reluz • Acompanhamento de Produção</title>
+  <link rel="stylesheet" href="styles.css">
+  <script src="https://www.gstatic.com/firebasejs/11.10.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/11.10.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/11.10.0/firebase-firestore-compat.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.2/dist/jspdf.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.4/dist/jspdf.plugin.autotable.min.js"></script>
+</head>
+<body>
+  <div id="loginScreen" class="login-screen">
+    <div class="login-card">
+      <div class="brand-mark">R</div>
+      <h1>Reluz Produção</h1>
+      <p>Acompanhamento de produção e distribuição de lotes</p>
+      <form id="loginForm">
+        <label>E-mail<input id="loginEmail" type="email" required autocomplete="username"></label>
+        <label>Senha<input id="loginPassword" type="password" required autocomplete="current-password"></label>
+        <button class="primary" type="submit">Entrar</button>
+        <div id="loginError" class="error"></div>
+      </form>
+    </div>
+  </div>
+
+  <div id="app" class="hidden">
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="brand-mark small">R</div>
+        <div><strong>Reluz</strong><span>Produção</span></div>
+      </div>
+      <nav id="nav">
+        <button data-view="dashboard" class="nav-btn active">Dashboard</button>
+        <button data-view="kanban" class="nav-btn">Kanban</button>
+        <button data-view="relatorio" class="nav-btn">Relatórios</button>
+        <button data-view="meus-lotes" class="nav-btn collaborator-only">Meus lotes</button>
+        <button data-view="lotes" class="nav-btn admin-only">Cadastrar lote</button>
+        <button data-view="colaboradores" class="nav-btn admin-only">Colaboradores</button>
+      </nav>
+      <div class="user-box">
+        <div id="userName">Usuário</div>
+        <small id="userRole">—</small>
+        <button id="logoutBtn" class="ghost">Sair</button>
+      </div>
+    </aside>
+
+    <main class="main">
+      <header class="topbar">
+        <div>
+          <h2 id="pageTitle">Dashboard</h2>
+          <span id="todayLabel"></span>
+        </div>
+        <div class="top-actions">
+          <button id="refreshBtn" class="secondary">Atualizar</button>
+        </div>
+      </header>
+
+      <section id="view-dashboard" class="view">
+        <div class="filters">
+          <label>De <input id="dashFrom" type="date"></label>
+          <label>Até <input id="dashTo" type="date"></label>
+          <button id="dashFilterBtn" class="primary">Aplicar</button>
+        </div>
+        <div id="dashboardCards" class="cards"></div>
+        <div class="grid-2">
+          <div class="panel">
+            <div class="panel-title"><h3>Produção por colaborador</h3></div>
+            <div id="dailyCollaboratorTable"></div>
+          </div>
+          <div class="panel">
+            <div class="panel-title"><h3>Status dos lotes</h3></div>
+            <div id="statusSummary"></div>
+          </div>
+        </div>
+      </section>
+
+      <section id="view-kanban" class="view hidden">
+        <div class="filters">
+          <label>Programação de <input id="kanbanFrom" type="date"></label>
+          <label>até <input id="kanbanTo" type="date"></label>
+          <select id="kanbanCollaborator"><option value="">Todos</option></select>
+          <button id="kanbanFilterBtn" class="primary">Filtrar</button>
+        </div>
+        <div class="kanban" id="kanban"></div>
+      </section>
+
+      <section id="view-meus-lotes" class="view hidden">
+        <div class="filters">
+          <label>Programação de <input id="mineFrom" type="date"></label>
+          <label>até <input id="mineTo" type="date"></label>
+          <button id="mineFilterBtn" class="primary">Filtrar</button>
+        </div>
+        <div id="mineKanban" class="kanban"></div>
+      </section>
+
+      <section id="view-lotes" class="view hidden admin-only">
+        <div class="panel">
+          <div class="panel-title"><h3>Cadastrar lote</h3><span>Distribuição automática por menor carga de peso</span></div>
+          <form id="lotForm" class="form-grid">
+            <label>Nome do lote<input id="lotName" required></label>
+            <label>OS<input id="lotOs" required></label>
+            <label>Peso (kg)<input id="lotWeight" type="number" step="0.001" min="0.001" required></label>
+            <label>Data de entrada<input id="lotEntry" type="date" required></label>
+            <label>Data de programação<input id="lotProgram" type="date" required></label>
+            <div class="full"><button class="primary" type="submit">Cadastrar e distribuir automaticamente</button></div>
+          </form>
+          <div id="lotFormMessage"></div>
+        </div>
+      </section>
+
+      <section id="view-colaboradores" class="view hidden admin-only">
+        <div class="panel">
+          <div class="panel-title"><h3>Cadastrar colaborador</h3><span>Cria login e perfil operacional</span></div>
+          <form id="userForm" class="form-grid">
+            <label>Nome<input id="newUserName" required></label>
+            <label>E-mail<input id="newUserEmail" type="email" required></label>
+            <label>Senha inicial<input id="newUserPassword" type="password" minlength="6" required></label>
+            <div class="full"><button class="primary" type="submit">Criar colaborador</button></div>
+          </form>
+          <div id="userFormMessage"></div>
+        </div>
+        <div class="panel">
+          <div class="panel-title"><h3>Colaboradores</h3></div>
+          <div id="usersTable"></div>
+        </div>
+      </section>
+
+      <section id="view-relatorio" class="view hidden">
+        <div class="panel">
+          <div class="panel-title"><h3>Relatório geral</h3><span>Filtro pela data de programação da produção</span></div>
+          <div class="filters">
+            <label>De <input id="reportFrom" type="date"></label>
+            <label>Até <input id="reportTo" type="date"></label>
+            <select id="reportUser"><option value="">Todos os colaboradores</option></select>
+            <button id="reportFilterBtn" class="primary">Gerar visão</button>
+            <button id="pdfGeneralBtn" class="secondary">PDF geral</button>
+            <button id="pdfIndividualBtn" class="secondary">PDF individual</button>
+          </div>
+          <div id="reportSummary" class="cards compact"></div>
+          <div id="reportByCollaborator"></div>
+          <div id="reportDetails"></div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <div id="lotModal" class="modal hidden">
+    <div class="modal-card">
+      <button class="modal-close" onclick="closeLotModal()">×</button>
+      <div id="lotModalContent"></div>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
