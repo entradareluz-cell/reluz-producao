@@ -4,168 +4,162 @@ service cloud.firestore {
 
   match /databases/{database}/documents {
 
-    // =========================================================
+    // ============================================================
     // ADMINISTRADOR PRINCIPAL
-    // =========================================================
-    //
-    // SOMENTE ESTE UID possui acesso administrativo completo.
-    //
-    // UID:
-    // 3QlkmlndAXaGxErEpCL17Mun35E3
-    //
-    // =========================================================
+    // ============================================================
+
+    function isMasterAdmin() {
+      return request.auth != null
+        && request.auth.uid == "3QlkmlndAXaGxErEpCL17Mun35E3";
+    }
+
+
+    // ============================================================
+    // USUÁRIO LOGADO
+    // ============================================================
 
     function isSignedIn() {
       return request.auth != null;
     }
 
-    function isMasterAdmin() {
-      return isSignedIn()
-        && request.auth.uid == "3QlkmlndAXaGxErEpCL17Mun35E3";
+
+    // ============================================================
+    // DADOS DO USUÁRIO
+    // ============================================================
+
+    function userData() {
+      return get(
+        /databases/$(database)/documents/users/$(request.auth.uid)
+      ).data;
     }
 
-    // =========================================================
+
+    // ============================================================
     // COLABORADOR ATIVO
-    // =========================================================
+    // ============================================================
 
     function isCollaborator() {
       return isSignedIn()
-        && exists(
-          /databases/$(database)/documents/users/$(request.auth.uid)
-        )
-        && get(
-          /databases/$(database)/documents/users/$(request.auth.uid)
-        ).data.role == "colaborador"
-        && get(
-          /databases/$(database)/documents/users/$(request.auth.uid)
-        ).data.active == true;
+        && userData().role == "colaborador"
+        && userData().active == true;
     }
 
-    // =========================================================
+
+    // ============================================================
     // USUÁRIOS
-    // =========================================================
+    // ============================================================
 
     match /users/{userId} {
 
-      // ADMIN:
-      // Pode ler todos os usuários.
-      //
-      // COLABORADOR:
-      // Pode ler somente o próprio perfil.
-      //
-      allow read: if
-        isMasterAdmin()
-        ||
-        (
+      // Seu login pode ver todos.
+      // Colaborador pode ver somente o próprio perfil.
+      allow read: if isMasterAdmin()
+        || (
           isSignedIn()
           && request.auth.uid == userId
         );
 
-      // Somente o administrador principal pode criar usuários.
+
+      // Somente seu login pode criar usuários.
       allow create: if isMasterAdmin();
 
-      // Somente o administrador principal pode alterar usuários.
+
+      // Somente seu login pode alterar usuários.
       allow update: if isMasterAdmin();
 
-      // Somente o administrador principal pode excluir usuários.
+
+      // Somente seu login pode excluir usuários.
       allow delete: if isMasterAdmin();
     }
 
-    // =========================================================
+
+    // ============================================================
     // LOTES
-    // =========================================================
+    // ============================================================
 
     match /lots/{lotId} {
 
-      // =======================================================
+      // ----------------------------------------------------------
       // LEITURA
-      // =======================================================
+      // ----------------------------------------------------------
       //
-      // ADMIN:
-      // vê todos os lotes.
+      // ADMIN PRINCIPAL:
+      // acesso a TODOS os lotes.
       //
       // COLABORADOR:
-      // vê somente lotes atribuídos a ele.
-      //
-      allow read: if
-        isMasterAdmin()
-        ||
-        (
+      // somente os lotes atribuídos a ele.
+      // ----------------------------------------------------------
+
+      allow read: if isMasterAdmin()
+        || (
           isCollaborator()
-          &&
-          resource.data.assignedTo == request.auth.uid
+          && resource.data.assignedTo == request.auth.uid
         );
 
-      // =======================================================
-      // CRIAR LOTE
-      // =======================================================
+
+      // ----------------------------------------------------------
+      // CRIAR
+      // ----------------------------------------------------------
       //
       // Somente administrador principal.
-      //
+      // ----------------------------------------------------------
+
       allow create: if isMasterAdmin();
 
-      // =======================================================
-      // ALTERAR LOTE
-      // =======================================================
+
+      // ----------------------------------------------------------
+      // ALTERAR
+      // ----------------------------------------------------------
       //
-      // ADMIN:
-      // pode alterar QUALQUER campo de QUALQUER lote.
+      // ADMIN PRINCIPAL:
+      // pode alterar QUALQUER CAMPO de QUALQUER LOTE.
       //
       // COLABORADOR:
       // pode registrar produção somente no lote atribuído.
-      //
-      allow update: if
-        isMasterAdmin()
-        ||
-        (
+      // ----------------------------------------------------------
+
+      allow update: if isMasterAdmin()
+        || (
           isCollaborator()
+          && resource.data.assignedTo == request.auth.uid
 
-          &&
+          // Não pode trocar o responsável
+          && request.resource.data.assignedTo ==
+             resource.data.assignedTo
 
-          resource.data.assignedTo == request.auth.uid
+          // Não pode alterar dados cadastrais
+          && request.resource.data.name ==
+             resource.data.name
 
-          &&
+          && request.resource.data.os ==
+             resource.data.os
 
-          request.resource.data.assignedTo == request.auth.uid
+          && request.resource.data.clientName ==
+             resource.data.clientName
 
-          &&
+          && request.resource.data.weight ==
+             resource.data.weight
 
-          request.resource.data.diff(resource.data)
-            .affectedKeys()
-            .hasOnly([
-              "producedWeight",
-              "status",
-              "updatedAt",
-              "lastObservation",
-              "productionLogs"
-            ])
+          && request.resource.data.entryDate ==
+             resource.data.entryDate
 
-          &&
+          && request.resource.data.programDate ==
+             resource.data.programDate
 
-          request.resource.data.producedWeight >=
-            resource.data.producedWeight
+          && request.resource.data.createdBy ==
+             resource.data.createdBy
 
-          &&
-
-          request.resource.data.producedWeight <=
-            request.resource.data.weight + 0.0001
+          && request.resource.data.createdAt ==
+             resource.data.createdAt
         );
 
-      // =======================================================
+
+      // ----------------------------------------------------------
       // EXCLUIR
-      // =======================================================
-      //
-      // Somente administrador principal.
-      //
+      // ----------------------------------------------------------
+
       allow delete: if isMasterAdmin();
     }
 
-    // =========================================================
-    // NEGAR TODO O RESTANTE
-    // =========================================================
-    //
-    // Tudo que não estiver explicitamente permitido acima
-    // continua bloqueado pelo Firestore.
-    //
   }
 }
