@@ -1434,33 +1434,6 @@ function lotCard(lot) {
             </div>
 
 
-            ${
-                roleIsAdmin()
-
-                    ? `
-
-                        <button
-                            type="button"
-                            onclick="
-                                event.stopPropagation();
-                                window.editLot('${lot.id}');
-                            "
-                            style="
-                                display:block !important;
-                                width:100% !important;
-                                margin-top:15px !important;
-                                padding:10px !important;
-                                cursor:pointer !important;
-                                opacity:1 !important;
-                                visibility:visible !important;
-                            "
-                        >
-                            ✏️ EDITAR LOTE
-                        </button>
-
-                    `
-
-                    : ""
             }
 
         </div>
@@ -1715,179 +1688,320 @@ async function(id) {
 
     $("lotModalContent").innerHTML = `
 
-        <h2>
-            ${escapeHtml(
-                lot.name ||
-                "Lote"
-            )}
-        </h2>
-
-
-        <div class="modal-grid">
-
-            <div>
-
-                <small>OS</small>
-
-                <strong>
-                    ${escapeHtml(
-                        lot.os ||
-                        "—"
-                    )}
-                </strong>
-
-            </div>
-
-
-            <div>
-
-                <small>Cliente</small>
-
-                <strong>
-                    ${escapeHtml(
-                        lot.clientName ||
-                        lot.name ||
-                        "—"
-                    )}
-                </strong>
-
-            </div>
-
-
-            <div>
-
-                <small>Peso do lote</small>
-
-                <strong>
-                    ${kg(lot.weight)}
-                </strong>
-
-            </div>
-
-
-            <div>
-
-                <small>Produzido</small>
-
-                <strong>
-                    ${kg(
-                        lotProduced(lot)
-                    )}
-                </strong>
-
-            </div>
-
-
-            <div>
-
-                <small>Saldo</small>
-
-                <strong>
-                    ${kg(
-                        lotRemaining(lot)
-                    )}
-                </strong>
-
-            </div>
-
-
-            <div>
-
-                <small>Data entrada</small>
-
-                <strong>
-                    ${dateBR(
-                        lot.entryDate
-                    )}
-                </strong>
-
-            </div>
-
-
-            <div>
-
-                <small>Programação</small>
-
-                <strong>
-                    ${dateBR(
-                        lot.programDate
-                    )}
-                </strong>
-
-            </div>
-
-
-            <div>
-
-                <small>Responsável</small>
-
-                <strong>
-                    ${escapeHtml(
-                        user?.name ||
-                        "—"
-                    )}
-                </strong>
-
-            </div>
-
-
-            <div>
-
-                <small>Status</small>
-
-                <strong>
-                    ${statusLabel(
-                        lotStatus(lot)
-                    )}
-                </strong>
-
-            </div>
-
-
-            <div>
-
-                <small>Percentual</small>
-
-                <strong>
-                    ${pct(
-                        lotPercent(lot)
-                    )}
-                </strong>
-
-            </div>
-
-        </div>
-
-
         ${
             roleIsAdmin()
 
                 ? `
 
-                    <div
-                        class="modal-actions"
-                        style="
-                            margin-top:20px;
-                        "
+                    <form
+                        id="inlineAdminLotForm"
+                        class="form-grid"
                     >
 
-                        <button
-                            type="button"
-                            class="primary"
-                            onclick="
-                                window.editLot('${lot.id}')
-                            "
-                        >
-                            ✏️ EDITAR LOTE
-                        </button>
+                        <h2 class="full">
+                            ${escapeHtml(
+                                lot.name ||
+                                "Editar lote"
+                            )}
+                        </h2>
+
+                        <label>
+                            Nome do lote
+                            <input
+                                id="inlineLotName"
+                                value="${escapeHtml(lot.name || "")}"
+                                required
+                            >
+                        </label>
+
+                        <label>
+                            Número da OS
+                            <input
+                                id="inlineLotOs"
+                                value="${escapeHtml(lot.os || "")}"
+                                required
+                            >
+                        </label>
+
+                        <label>
+                            Cliente
+                            <input
+                                id="inlineLotClient"
+                                value="${escapeHtml(
+                                    lot.clientName ||
+                                    lot.name ||
+                                    ""
+                                )}"
+                                required
+                            >
+                        </label>
+
+                        <label>
+                            Peso do lote (kg)
+                            <input
+                                id="inlineLotWeight"
+                                type="number"
+                                step="0.001"
+                                min="0.001"
+                                value="${Number(lot.weight || 0)}"
+                                required
+                            >
+                        </label>
+
+                        <label>
+                            Data de entrada
+                            <input
+                                id="inlineLotEntry"
+                                type="date"
+                                value="${escapeHtml(lot.entryDate || "")}"
+                                required
+                            >
+                        </label>
+
+                        <label>
+                            Data de programação
+                            <input
+                                id="inlineLotProgram"
+                                type="date"
+                                value="${escapeHtml(lot.programDate || "")}"
+                                required
+                            >
+                        </label>
+
+                        <label>
+                            Colaborador responsável
+                            <select
+                                id="inlineLotAssigned"
+                                required
+                            >
+                                <option value="">
+                                    Selecione
+                                </option>
+
+                                ${
+                                    allUsers
+                                        .filter(
+                                            user =>
+                                                user.role ===
+                                                "colaborador"
+                                        )
+                                        .map(
+                                            user => `
+
+                                                <option
+                                                    value="${escapeHtml(user.id)}"
+                                                    ${
+                                                        user.id ===
+                                                        lot.assignedTo
+                                                            ? "selected"
+                                                            : ""
+                                                    }
+                                                >
+                                                    ${escapeHtml(
+                                                        user.name ||
+                                                        user.email ||
+                                                        "Sem nome"
+                                                    )}
+                                                </option>
+
+                                            `
+                                        )
+                                        .join("")
+                                }
+
+                            </select>
+                        </label>
+
+                        <label>
+                            Status
+                            <select id="inlineLotStatus">
+                                <option
+                                    value="pendente"
+                                    ${
+                                        lotStatus(lot) === "pendente"
+                                            ? "selected"
+                                            : ""
+                                    }
+                                >
+                                    Pendente
+                                </option>
+
+                                <option
+                                    value="producao"
+                                    ${
+                                        lotStatus(lot) === "producao"
+                                            ? "selected"
+                                            : ""
+                                    }
+                                >
+                                    Em produção
+                                </option>
+
+                                <option
+                                    value="finalizado"
+                                    ${
+                                        lotStatus(lot) === "finalizado"
+                                            ? "selected"
+                                            : ""
+                                    }
+                                >
+                                    Finalizado
+                                </option>
+
+                                <option
+                                    value="cancelado"
+                                    ${
+                                        lotStatus(lot) === "cancelado"
+                                            ? "selected"
+                                            : ""
+                                    }
+                                >
+                                    Cancelado
+                                </option>
+                            </select>
+                        </label>
+
+                        <div class="full">
+                            <div
+                                style="
+                                    padding:12px;
+                                    border-radius:8px;
+                                    background:#f3f4f6;
+                                    margin-bottom:12px;
+                                "
+                            >
+                                <strong>Produzido:</strong>
+                                ${kg(lotProduced(lot))}
+                                <br>
+                                <strong>Saldo:</strong>
+                                ${kg(lotRemaining(lot))}
+                                <br>
+                                <strong>Percentual:</strong>
+                                ${pct(lotPercent(lot))}
+                            </div>
+
+                            <button
+                                type="submit"
+                                class="primary"
+                                id="inlineAdminSave"
+                            >
+                                💾 SALVAR ALTERAÇÕES
+                            </button>
+
+                            <div
+                                id="inlineAdminMessage"
+                                style="margin-top:10px;"
+                            ></div>
+                        </div>
+
+                    </form>
+
+                `
+
+                : `
+
+                    <h2>
+                        ${escapeHtml(
+                            lot.name ||
+                            "Lote"
+                        )}
+                    </h2>
+
+                    <div class="modal-grid">
+
+                        <div>
+                            <small>OS</small>
+                            <strong>
+                                ${escapeHtml(
+                                    lot.os ||
+                                    "—"
+                                )}
+                            </strong>
+                        </div>
+
+                        <div>
+                            <small>Cliente</small>
+                            <strong>
+                                ${escapeHtml(
+                                    lot.clientName ||
+                                    lot.name ||
+                                    "—"
+                                )}
+                            </strong>
+                        </div>
+
+                        <div>
+                            <small>Peso do lote</small>
+                            <strong>
+                                ${kg(lot.weight)}
+                            </strong>
+                        </div>
+
+                        <div>
+                            <small>Produzido</small>
+                            <strong>
+                                ${kg(
+                                    lotProduced(lot)
+                                )}
+                            </strong>
+                        </div>
+
+                        <div>
+                            <small>Saldo</small>
+                            <strong>
+                                ${kg(
+                                    lotRemaining(lot)
+                                )}
+                            </strong>
+                        </div>
+
+                        <div>
+                            <small>Data entrada</small>
+                            <strong>
+                                ${dateBR(lot.entryDate)}
+                            </strong>
+                        </div>
+
+                        <div>
+                            <small>Programação</small>
+                            <strong>
+                                ${dateBR(lot.programDate)}
+                            </strong>
+                        </div>
+
+                        <div>
+                            <small>Responsável</small>
+                            <strong>
+                                ${escapeHtml(
+                                    user?.name ||
+                                    "—"
+                                )}
+                            </strong>
+                        </div>
+
+                        <div>
+                            <small>Status</small>
+                            <strong>
+                                ${statusLabel(
+                                    lotStatus(lot)
+                                )}
+                            </strong>
+                        </div>
+
+                        <div>
+                            <small>Percentual</small>
+                            <strong>
+                                ${pct(
+                                    lotPercent(lot)
+                                )}
+                            </strong>
+                        </div>
 
                     </div>
 
                 `
 
-                : ""
         }
-
 
         ${
             canEditProduction
@@ -1993,6 +2107,181 @@ async function(id) {
         ?.classList
         .remove("hidden");
 
+
+    // ============================================================
+    // EDIÇÃO DIRETA PELO ADMINISTRADOR
+    // Os campos já aparecem editáveis ao abrir o lote.
+    // Não existe botão "Editar" para entrar no modo de edição.
+    // ============================================================
+
+    if (
+        roleIsAdmin() &&
+        $("inlineAdminLotForm")
+    ) {
+
+        $("inlineAdminLotForm").onsubmit =
+            async event => {
+
+                event.preventDefault();
+
+                const message =
+                    $("inlineAdminMessage");
+
+                const save =
+                    $("inlineAdminSave");
+
+                message.textContent = "";
+
+                save.disabled = true;
+                save.textContent = "Salvando...";
+
+                try {
+
+                    const updates = {
+
+                        name:
+                            $("inlineLotName")
+                                .value
+                                .trim(),
+
+                        os:
+                            $("inlineLotOs")
+                                .value
+                                .trim(),
+
+                        clientName:
+                            $("inlineLotClient")
+                                .value
+                                .trim(),
+
+                        weight:
+                            Number(
+                                $("inlineLotWeight")
+                                    .value
+                            ),
+
+                        entryDate:
+                            $("inlineLotEntry")
+                                .value,
+
+                        programDate:
+                            $("inlineLotProgram")
+                                .value,
+
+                        assignedTo:
+                            $("inlineLotAssigned")
+                                .value,
+
+                        status:
+                            $("inlineLotStatus")
+                                .value
+
+                    };
+
+                    if (!updates.name) {
+                        throw new Error(
+                            "Informe o nome do lote."
+                        );
+                    }
+
+                    if (!updates.os) {
+                        throw new Error(
+                            "Informe o número da OS."
+                        );
+                    }
+
+                    if (!updates.clientName) {
+                        throw new Error(
+                            "Informe o cliente."
+                        );
+                    }
+
+                    if (
+                        !Number.isFinite(
+                            updates.weight
+                        ) ||
+                        updates.weight <= 0
+                    ) {
+                        throw new Error(
+                            "Informe um peso válido."
+                        );
+                    }
+
+                    if (!updates.entryDate) {
+                        throw new Error(
+                            "Informe a data de entrada."
+                        );
+                    }
+
+                    if (!updates.programDate) {
+                        throw new Error(
+                            "Informe a data de programação."
+                        );
+                    }
+
+                    if (!updates.assignedTo) {
+                        throw new Error(
+                            "Selecione o colaborador."
+                        );
+                    }
+
+                    await db
+                        .collection("lots")
+                        .doc(lot.id)
+                        .update({
+
+                            ...updates,
+
+                            updatedAt:
+                                firebase.firestore
+                                    .FieldValue
+                                    .serverTimestamp()
+
+                        });
+
+                    // Mantém a tela sincronizada sem fechar o lote.
+                    Object.assign(
+                        lot,
+                        updates
+                    );
+
+                    message.textContent =
+                        "✓ Alterações salvas com sucesso.";
+
+                    save.textContent =
+                        "✓ SALVO";
+
+                    setTimeout(
+                        () => {
+
+                            openLot(
+                                lot.id
+                            );
+
+                        },
+                        700
+                    );
+
+                } catch (error) {
+
+                    console.error(
+                        "Erro ao editar lote:",
+                        error
+                    );
+
+                    message.textContent =
+                        error?.message ||
+                        "Erro ao salvar alterações.";
+
+                    save.disabled = false;
+                    save.textContent =
+                        "💾 SALVAR ALTERAÇÕES";
+
+                }
+
+            };
+
+    }
 
     if (canEditProduction) {
 
@@ -3999,322 +4288,202 @@ function savePdf(
 
 if ($("pdfGeneralBtn")) {
 
-    $("pdfGeneralBtn").onclick =
-        () => {
+    $("pdfGeneralBtn").onclick = () => {
 
-            if (!roleIsAdmin()) {
+        if (!roleIsAdmin()) {
+            alert("Somente administradores podem gerar o PDF geral.");
+            return;
+        }
 
-                alert(
-                    "Somente administradores podem gerar o PDF geral."
-                );
+        const from = $("reportFrom").value;
+        const to = $("reportTo").value;
 
-                return;
+        if (!from || !to) {
+            alert("Informe a data inicial e a data final.");
+            return;
+        }
 
+        const lots = dateRange(from, to);
+        const performance = buildPerformance(lots, from, to);
+
+        const planned = lots.reduce(
+            (total, lot) => total + Number(lot.weight || 0),
+            0
+        );
+
+        const produced = lots.reduce(
+            (total, lot) => total + lotProduced(lot),
+            0
+        );
+
+        const realization = planned ? (produced / planned) * 100 : 0;
+
+        const doc = pdfBase(
+            "RELATÓRIO GERAL DE PRODUÇÃO",
+            from,
+            to
+        );
+
+        // RESUMO DO PERÍODO
+        doc.setFontSize(11);
+        doc.text(
+            `Programado: ${kg(planned)}   |   ` +
+            `Produzido: ${kg(produced)}   |   ` +
+            `Saldo: ${kg(planned - produced)}   |   ` +
+            `Realização: ${pct(realization)}`,
+            14,
+            31
+        );
+
+        doc.setFontSize(10);
+        doc.text(
+            `Dias no período: ${performance.periodDays}   |   ` +
+            `Média geral por dia: ${kg(performance.periodAverage)}   |   ` +
+            `Colaboradores: ${performance.collaborators.length}`,
+            14,
+            38
+        );
+
+        // PRODUÇÃO POR DIA E COLABORADOR
+        const byDay = {};
+
+        lots.forEach(lot => {
+
+            const user = allUsers.find(
+                item => item.id === lot.assignedTo
+            );
+
+            const key =
+                `${lot.programDate || ""}|${lot.assignedTo || ""}`;
+
+            if (!byDay[key]) {
+                byDay[key] = {
+                    date: lot.programDate,
+                    name: user?.name || "Sem colaborador",
+                    produced: 0,
+                    planned: 0,
+                    lots: 0
+                };
             }
 
+            byDay[key].produced += lotProduced(lot);
+            byDay[key].planned += Number(lot.weight || 0);
+            byDay[key].lots++;
+        });
 
-            const from =
-                $("reportFrom")
-                    .value;
-
-
-            const to =
-                $("reportTo")
-                    .value;
-
-
-            const lots =
-                dateRange(
-                    from,
-                    to
-                );
-
-
-            const doc =
-                pdfBase(
-                    "RELATÓRIO GERAL DE PRODUÇÃO",
-                    from,
-                    to
-                );
-
-
-            const planned =
-                lots.reduce(
-                    (total, lot) =>
-                        total +
-                        Number(
-                            lot.weight || 0
-                        ),
-                    0
-                );
-
-
-            const produced =
-                lots.reduce(
-                    (total, lot) =>
-                        total +
-                        lotProduced(lot),
-                    0
-                );
-
-            const performance =
-                buildPerformance(
-                    lots,
-                    from,
-                    to
-                );
-
-
-            doc.setFontSize(
-                11
-            );
-
-
-            doc.text(
-
-                `Programado: ${kg(planned)}   ` +
-
-                `Produzido: ${kg(produced)}   ` +
-
-                `Saldo: ${kg(planned - produced)}   ` +
-
-                `Realização: ${
-                    pct(
-                        planned
-                            ? (
-                                produced /
-                                planned
-                            ) * 100
-                            : 0
+        doc.autoTable({
+            startY: 44,
+            head: [[
+                "Data",
+                "Colaborador",
+                "Produzido no dia",
+                "Programado",
+                "Realização",
+                "Lotes"
+            ]],
+            body: Object.values(byDay)
+                .sort((a, b) =>
+                    String(a.date || "").localeCompare(
+                        String(b.date || "")
+                    ) ||
+                    String(a.name || "").localeCompare(
+                        String(b.name || "")
                     )
-                }   ` +
-
-                `Média/dia período: ${kg(
-                    performance.periodAverage
-                )}`,
-
-                14,
-                31
-
-            );
-
-
-            const by = {};
-
-
-            lots.forEach(
-                lot => {
-
-                    const user =
-                        allUsers.find(
-                            item =>
-                                item.id ===
-                                lot.assignedTo
-                        );
-
-
-                    const key =
-                        `${lot.programDate}|${lot.assignedTo}`;
-
-
-                    if (!by[key]) {
-
-                        by[key] = {
-
-                            date:
-                                lot.programDate,
-
-                            name:
-                                user?.name ||
-                                "—",
-
-                            produced:
-                                0,
-
-                            clients:
-                                new Set(),
-
-                            lots:
-                                0
-
-                        };
-
-                    }
-
-
-                    by[key].produced +=
-                        lotProduced(lot);
-
-
-                    by[key].clients.add(
-                        lot.clientName ||
-                        lot.name ||
-                        "Sem cliente"
-                    );
-
-
-                    by[key].lots++;
-
-                }
-            );
-
-
-            doc.autoTable({
-
-                startY:
-                    38,
-
-                head: [[
-
-                    "Data",
-                    "Colaborador",
-                    "Peso do dia",
-                    "Clientes",
-                    "Lotes"
-
-                ]],
-
-                body:
-                    Object
-                        .values(by)
-                        .sort(
-                            (a, b) =>
-                                String(
-                                    a.date ||
-                                    ""
-                                ).localeCompare(
-                                    String(
-                                        b.date ||
-                                        ""
-                                    )
-                                )
-                        )
-                        .map(
-                            row => [
-
-                                dateBR(
-                                    row.date
-                                ),
-
-                                row.name,
-
-                                kg(
-                                    row.produced
-                                ),
-
-                                [
-                                    ...row.clients
-                                ].join(", "),
-
-                                row.lots
-
-                            ]
-                        )
-
-            });
-
-
-            doc.addPage();
-
-            doc.setFontSize(14);
-
-            doc.text(
-                "ANÁLISE DE DESEMPENHO",
-                14,
-                16
-            );
-
-            doc.setFontSize(9);
-
-            doc.text(
-                `Dias no período: ${performance.periodDays}   ` +
-                `Média/dia do período: ${kg(performance.periodAverage)}`,
-                14,
-                23
-            );
-
-            doc.autoTable({
-
-                startY: 28,
-
-                head: [[
-                    "Colaborador",
-                    "Produzido",
-                    "Dias trabalhados",
-                    "Média/dia trabalhado",
-                    "Média/dia período",
-                    "Programado",
-                    "Realização",
-                    "Lotes"
-                ]],
-
-                body:
-                    performance.collaborators.map(
-                        row => [
-                            row.name,
-                            kg(row.produced),
-                            row.daysWorked,
-                            kg(row.averagePerWorkedDay),
-                            kg(row.averagePerPeriodDay),
-                            kg(row.planned),
-                            pct(row.realization),
-                            row.lots
-                        ]
-                    )
-
-            });
-
-
-            doc.addPage();
-
-
-            doc.setFontSize(
-                14
-            );
-
-
-            doc.text(
-                "DETALHAMENTO DOS LOTES",
-                14,
-                16
-            );
-
-
-            doc.autoTable({
-
-                startY:
-                    22,
-
-                head: [[
-
-                    "Programação",
-                    "OS",
-                    "Lote",
-                    "Colaborador",
-                    "Peso",
-                    "Produzido",
-                    "Saldo",
-                    "Status"
-
-                ]],
-
-                body:
-                    pdfRows(
-                        lots
-                    )
-
-            });
-
-
-            savePdf(
-                doc,
-                `Relatorio_Geral_${from}_${to}`
-            );
-
-        };
-
+                )
+                .map(row => [
+                    dateBR(row.date),
+                    row.name,
+                    kg(row.produced),
+                    kg(row.planned),
+                    pct(row.planned
+                        ? (row.produced / row.planned) * 100
+                        : 0),
+                    row.lots
+                ])
+        });
+
+        // ANÁLISE DE DESEMPENHO
+        doc.addPage();
+
+        doc.setFontSize(16);
+        doc.text("ANÁLISE DE DESEMPENHO", 14, 16);
+
+        doc.setFontSize(10);
+        doc.text(
+            `Período: ${dateBR(from)} a ${dateBR(to)}   |   ` +
+            `Dias no período: ${performance.periodDays}`,
+            14,
+            23
+        );
+
+        doc.text(
+            `Produção total: ${kg(performance.totalProduced)}   |   ` +
+            `Média por dia do período: ${kg(performance.periodAverage)}`,
+            14,
+            29
+        );
+
+        doc.autoTable({
+            startY: 35,
+            head: [[
+                "Colaborador",
+                "Produzido",
+                "Dias trabalhados",
+                "Média/dia trabalhado",
+                "Média/dia período",
+                "Programado",
+                "Realização",
+                "Lotes"
+            ]],
+            body: performance.collaborators.map(row => [
+                row.name,
+                kg(row.produced),
+                row.daysWorked,
+                kg(row.averagePerWorkedDay),
+                kg(row.averagePerPeriodDay),
+                kg(row.planned),
+                pct(row.realization),
+                row.lots
+            ]),
+            styles: {
+                fontSize: 8,
+                cellPadding: 2
+            },
+            headStyles: {
+                fontSize: 8
+            }
+        });
+
+        // DETALHAMENTO
+        doc.addPage();
+
+        doc.setFontSize(14);
+        doc.text("DETALHAMENTO DOS LOTES", 14, 16);
+
+        doc.autoTable({
+            startY: 22,
+            head: [[
+                "Programação",
+                "OS",
+                "Lote",
+                "Colaborador",
+                "Peso",
+                "Produzido",
+                "Saldo",
+                "Status"
+            ]],
+            body: pdfRows(lots),
+            styles: {
+                fontSize: 8
+            }
+        });
+
+        savePdf(
+            doc,
+            `Relatorio_Geral_${from}_${to}`
+        );
+    };
 }
-
 
 // ============================================================
 // PDF INDIVIDUAL
@@ -4322,372 +4491,221 @@ if ($("pdfGeneralBtn")) {
 
 if ($("pdfIndividualBtn")) {
 
-    $("pdfIndividualBtn").onclick =
-        () => {
+    $("pdfIndividualBtn").onclick = () => {
 
-            const uid =
-                $("reportUser")
-                    .value;
+        const uid = $("reportUser").value;
 
+        if (!uid) {
+            alert("Selecione um colaborador para o PDF individual.");
+            return;
+        }
 
-            if (!uid) {
+        const from = $("reportFrom").value;
+        const to = $("reportTo").value;
 
-                alert(
-                    "Selecione um colaborador para o PDF individual."
-                );
+        if (!from || !to) {
+            alert("Informe a data inicial e a data final.");
+            return;
+        }
 
-                return;
+        const user = allUsers.find(item => item.id === uid);
 
+        const lots = dateRange(from, to)
+            .filter(lot => lot.assignedTo === uid);
+
+        const performance = buildPerformance(lots, from, to);
+        const row = performance.collaborators[0];
+
+        const planned = lots.reduce(
+            (total, lot) => total + Number(lot.weight || 0),
+            0
+        );
+
+        const produced = lots.reduce(
+            (total, lot) => total + lotProduced(lot),
+            0
+        );
+
+        const realization = planned ? (produced / planned) * 100 : 0;
+
+        const clients = new Set(
+            lots.map(lot => lot.clientName || lot.name).filter(Boolean)
+        );
+
+        const doc = pdfBase(
+            `RELATÓRIO INDIVIDUAL - ${user?.name || "Colaborador"}`,
+            from,
+            to
+        );
+
+        // RESUMO
+        doc.setFontSize(11);
+        doc.text(
+            `Programado: ${kg(planned)}   |   ` +
+            `Produzido: ${kg(produced)}   |   ` +
+            `Saldo: ${kg(planned - produced)}   |   ` +
+            `Realização: ${pct(realization)}`,
+            14,
+            31
+        );
+
+        doc.setFontSize(10);
+        doc.text(
+            `Dias no período: ${performance.periodDays}   |   ` +
+            `Dias trabalhados: ${row?.daysWorked || 0}   |   ` +
+            `Média/dia trabalhado: ${kg(row?.averagePerWorkedDay || 0)}   |   ` +
+            `Média/dia período: ${kg(row?.averagePerPeriodDay || 0)}`,
+            14,
+            38
+        );
+
+        doc.text(
+            `Clientes: ${clients.size}   |   Lotes: ${lots.length}`,
+            14,
+            44
+        );
+
+        // PRODUÇÃO POR DIA
+        const byDate = {};
+
+        lots.forEach(lot => {
+
+            const date = lot.programDate || "";
+
+            if (!byDate[date]) {
+                byDate[date] = {
+                    produced: 0,
+                    planned: 0,
+                    lots: 0
+                };
             }
 
+            byDate[date].produced += lotProduced(lot);
+            byDate[date].planned += Number(lot.weight || 0);
+            byDate[date].lots++;
+        });
 
-            const from =
-                $("reportFrom")
-                    .value;
-
-
-            const to =
-                $("reportTo")
-                    .value;
-
-
-            const user =
-                allUsers.find(
-                    item =>
-                        item.id === uid
-                );
-
-
-            const lots =
-                dateRange(
-                    from,
-                    to
+        doc.autoTable({
+            startY: 50,
+            head: [[
+                "Data",
+                "Produzido no dia",
+                "Programado",
+                "Realização",
+                "Lotes"
+            ]],
+            body: Object.entries(byDate)
+                .sort((a, b) =>
+                    String(a[0]).localeCompare(String(b[0]))
                 )
-                .filter(
-                    lot =>
-                        lot.assignedTo ===
-                        uid
-                );
-
-
-            const doc =
-                pdfBase(
-                    `RELATÓRIO INDIVIDUAL - ${
-                        user?.name ||
-                        "Colaborador"
-                    }`,
-                    from,
-                    to
-                );
-
-
-            const planned =
-                lots.reduce(
-                    (total, lot) =>
-                        total +
-                        Number(
-                            lot.weight || 0
-                        ),
-                    0
-                );
-
-
-            const produced =
-                lots.reduce(
-                    (total, lot) =>
-                        total +
-                        lotProduced(lot),
-                    0
-                );
-
-
-            const clients =
-                new Set(
-                    lots.map(
-                        lot =>
-                            lot.clientName ||
-                            lot.name
-                    )
-                );
-
-            const performance =
-                buildPerformance(
-                    lots,
-                    from,
-                    to
-                );
-
-
-            doc.setFontSize(
-                11
-            );
-
-
-            doc.text(
-
-                `Programado: ${kg(planned)}   ` +
-
-                `Produzido: ${kg(produced)}   ` +
-
-                `Saldo: ${kg(planned - produced)}   ` +
-
-                `Realização: ${
-                    pct(
-                        planned
-                            ? (
-                                produced /
-                                planned
-                            ) * 100
-                            : 0
-                    )
-                }   ` +
-
-                `Clientes: ${clients.size}   ` +
-
-                `Média/dia período: ${kg(
-                    performance.periodAverage
-                )}   ` +
-
-                `Média/dia trabalhado: ${kg(
-                    performance.collaborators[0]?.averagePerWorkedDay || 0
-                )}`,
-
-                14,
-                31
-
-            );
-
-
-            const by = {};
-
-
-            lots.forEach(
-                lot => {
-
-                    const date =
-                        lot.programDate;
-
-
-                    if (!by[date]) {
-
-                        by[date] = {
-
-                            produced:
-                                0,
-
-                            clients:
-                                new Set(),
-
-                            lots:
-                                0
-
-                        };
-
-                    }
-
-
-                    by[date].produced +=
-                        lotProduced(lot);
-
-
-                    by[date].clients.add(
-                        lot.clientName ||
-                        lot.name ||
-                        "Sem cliente"
-                    );
-
-
-                    by[date].lots++;
-
-                }
-            );
-
-
-            doc.autoTable({
-
-                startY:
-                    38,
-
-                head: [[
-
-                    "Data",
-                    "Peso do dia",
-                    "Clientes",
-                    "Lotes"
-
-                ]],
-
-                body:
-                    Object
-                        .entries(by)
-                        .sort(
-                            (a, b) =>
-                                String(
-                                    a[0] ||
-                                    ""
-                                ).localeCompare(
-                                    String(
-                                        b[0] ||
-                                        ""
-                                    )
-                                )
-                        )
-                        .map(
-                            ([date, row]) => [
-
-                                dateBR(
-                                    date
-                                ),
-
-                                kg(
-                                    row.produced
-                                ),
-
-                                [
-                                    ...row.clients
-                                ].join(", "),
-
-                                row.lots
-
-                            ]
-                        )
-
-            });
-
-
-            doc.addPage();
-
-            doc.setFontSize(14);
-
-            doc.text(
-                "ANÁLISE DE DESEMPENHO",
-                14,
-                16
-            );
-
-            doc.setFontSize(9);
-
-            doc.text(
-                `Dias no período: ${performance.periodDays}   ` +
-                `Média/dia do período: ${kg(performance.periodAverage)}   ` +
-                `Média/dia trabalhado: ${kg(performance.collaborators[0]?.averagePerWorkedDay || 0)}`,
-                14,
-                23
-            );
-
-            doc.autoTable({
-
-                startY: 28,
-
-                head: [[
-                    "Colaborador",
-                    "Produzido",
-                    "Dias trabalhados",
-                    "Média/dia trabalhado",
-                    "Média/dia período",
-                    "Programado",
-                    "Realização",
-                    "Lotes"
-                ]],
-
-                body:
-                    performance.collaborators.map(
-                        row => [
-                            row.name,
-                            kg(row.produced),
-                            row.daysWorked,
-                            kg(row.averagePerWorkedDay),
-                            kg(row.averagePerPeriodDay),
-                            kg(row.planned),
-                            pct(row.realization),
-                            row.lots
-                        ]
-                    )
-
-            });
-
-            doc.addPage();
-
-            doc.setFontSize(14);
-
-            doc.text(
-                "DETALHAMENTO DOS LOTES",
-                14,
-                16
-            );
-
-
-            doc.autoTable({
-
-                startY:
-                    22,
-
-                head: [[
-
-                    "Programação",
-                    "OS",
-                    "Lote",
-                    "Peso",
-                    "Produzido",
-                    "Saldo",
-                    "Status"
-
-                ]],
-
-                body:
-                    lots.map(
-                        lot => [
-
-                            dateBR(
-                                lot.programDate
-                            ),
-
-                            lot.os ||
-                                "—",
-
-                            lot.name ||
-                                "—",
-
-                            kg(
-                                lot.weight
-                            ),
-
-                            kg(
-                                lotProduced(
-                                    lot
-                                )
-                            ),
-
-                            kg(
-                                lotRemaining(
-                                    lot
-                                )
-                            ),
-
-                            statusLabel(
-                                lotStatus(
-                                    lot
-                                )
-                            )
-
-                        ]
-                    )
-
-            });
-
-
-            savePdf(
-                doc,
-                `Relatorio_${
-                    user?.name ||
-                    "Colaborador"
-                }_${from}_${to}`
-            );
-
-        };
-
+                .map(([date, data]) => [
+                    dateBR(date),
+                    kg(data.produced),
+                    kg(data.planned),
+                    pct(data.planned
+                        ? (data.produced / data.planned) * 100
+                        : 0),
+                    data.lots
+                ])
+        });
+
+        // DESEMPENHO INDIVIDUAL
+        doc.addPage();
+
+        doc.setFontSize(16);
+        doc.text("ANÁLISE DE DESEMPENHO", 14, 16);
+
+        doc.setFontSize(10);
+        doc.text(
+            `Colaborador: ${user?.name || "Colaborador"}`,
+            14,
+            23
+        );
+
+        doc.text(
+            `Dias no período: ${performance.periodDays}   |   ` +
+            `Dias trabalhados: ${row?.daysWorked || 0}   |   ` +
+            `Média/dia trabalhado: ${kg(row?.averagePerWorkedDay || 0)}`,
+            14,
+            29
+        );
+
+        doc.text(
+            `Média/dia do período: ${kg(row?.averagePerPeriodDay || 0)}   |   ` +
+            `Produção total: ${kg(row?.produced || 0)}   |   ` +
+            `Realização: ${pct(row?.realization || 0)}`,
+            14,
+            35
+        );
+
+        doc.autoTable({
+            startY: 41,
+            head: [[
+                "Colaborador",
+                "Produzido",
+                "Dias trabalhados",
+                "Média/dia trabalhado",
+                "Média/dia período",
+                "Programado",
+                "Realização",
+                "Lotes"
+            ]],
+            body: performance.collaborators.map(item => [
+                item.name,
+                kg(item.produced),
+                item.daysWorked,
+                kg(item.averagePerWorkedDay),
+                kg(item.averagePerPeriodDay),
+                kg(item.planned),
+                pct(item.realization),
+                item.lots
+            ]),
+            styles: {
+                fontSize: 8,
+                cellPadding: 2
+            },
+            headStyles: {
+                fontSize: 8
+            }
+        });
+
+        // DETALHAMENTO
+        doc.addPage();
+
+        doc.setFontSize(14);
+        doc.text("DETALHAMENTO DOS LOTES", 14, 16);
+
+        doc.autoTable({
+            startY: 22,
+            head: [[
+                "Programação",
+                "OS",
+                "Lote",
+                "Peso",
+                "Produzido",
+                "Saldo",
+                "Status"
+            ]],
+            body: lots.map(lot => [
+                dateBR(lot.programDate),
+                lot.os || "—",
+                lot.name || "—",
+                kg(lot.weight),
+                kg(lotProduced(lot)),
+                kg(lotRemaining(lot)),
+                statusLabel(lotStatus(lot))
+            ]),
+            styles: {
+                fontSize: 8
+            }
+        });
+
+        savePdf(
+            doc,
+            `Relatorio_${user?.name || "Colaborador"}_${from}_${to}`
+        );
+    };
 }
-
 
 // ============================================================
 // COLABORADORES

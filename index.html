@@ -4457,48 +4457,5 @@ document.addEventListener(
 </script>
 
 
-<button id="admin-edit-lot-floating" type="button"
-style="display:none;position:fixed;right:20px;bottom:20px;z-index:9999;
-padding:12px 18px;border:0;border-radius:8px;font-weight:700;cursor:pointer;">
-Editar lote
-</button>
-<script>
-(function(){
-  const b=document.getElementById("admin-edit-lot-floating");
-
-  function modalLotId(){
-    const modal=document.getElementById("lotModal");
-    return modal ? modal.dataset.lotId : "";
-  }
-
-  function refresh(){
-    try {
-      const admin =
-        typeof roleIsAdmin === "function" && roleIsAdmin();
-      const id = modalLotId();
-      b.style.display = (admin && id) ? "block" : "none";
-    } catch(e) {
-      b.style.display = "none";
-    }
-  }
-
-  b.onclick=function(){
-    const id=modalLotId();
-
-    if(!id){
-      alert("Abra o lote que deseja editar.");
-      return;
-    }
-
-    if (typeof window.editLot === "function") {
-      window.editLot(id);
-    } else {
-      alert("Editor de lote não encontrado.");
-    }
-  };
-
-  setInterval(refresh,300);
-})();
-</script>
 </body>
 </html>
