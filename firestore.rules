@@ -4,85 +4,68 @@ service cloud.firestore {
 
   match /databases/{database}/documents {
 
-    // ============================================================
-    // AUTENTICAÇÃO E PERFIL
-    // ============================================================
-
-    function isSignedIn() {
+    function signedIn() {
       return request.auth != null;
     }
 
-    function currentUserPath() {
+    function userDoc() {
       return /databases/$(database)/documents/users/$(request.auth.uid);
     }
 
-    function hasUserProfile() {
-      return isSignedIn() && exists(currentUserPath());
+    function hasProfile() {
+      return signedIn() && exists(userDoc());
     }
 
     function isAdmin() {
-      return hasUserProfile()
-        && get(currentUserPath()).data.role == "admin"
-        && get(currentUserPath()).data.active != false;
+      return hasProfile()
+        && get(userDoc()).data.role == "admin"
+        && get(userDoc()).data.active == true;
     }
 
     function isCollaborator() {
-      return hasUserProfile()
-        && get(currentUserPath()).data.role == "colaborador"
-        && get(currentUserPath()).data.active == true;
+      return hasProfile()
+        && get(userDoc()).data.role == "colaborador"
+        && get(userDoc()).data.active == true;
     }
-
-    // ============================================================
-    // USUÁRIOS
-    // ============================================================
 
     match /users/{userId} {
 
-      // Admin vê todos; usuário comum vê somente o próprio perfil.
       allow read: if isAdmin()
-        || (isSignedIn() && request.auth.uid == userId);
+        || (
+          signedIn()
+          && request.auth.uid == userId
+        );
 
-      // Somente administradores podem criar/alterar/excluir perfis.
       allow create, update, delete: if isAdmin();
     }
 
-    // ============================================================
-    // LOTES
-    // ============================================================
-
     match /lots/{lotId} {
 
-      // Admin vê todos.
-      // Colaborador só pode consultar lotes atribuídos ao próprio UID.
-      allow read: if isAdmin()
-        || (
-          isCollaborator()
-          && resource.data.assignedTo == request.auth.uid
-        );
+      // ADMINISTRADOR:
+      // acesso completo e edição de TODOS os campos do lote:
+      // nome, OS, peso, datas, cliente, colaborador, status,
+      // observações e demais campos.
+      allow read, create, update, delete: if isAdmin();
 
-      // Somente administrador cadastra lotes.
-      allow create: if isAdmin();
+      // COLABORADOR:
+      // somente lotes atribuídos ao próprio UID.
+      allow read: if isCollaborator()
+        && resource.data.assignedTo == request.auth.uid;
 
-      // Admin pode alterar qualquer campo.
-      //
-      // Colaborador pode alterar somente os campos usados
-      // pelo registro de produção.
-      allow update: if isAdmin()
-        || (
-          isCollaborator()
-          && resource.data.assignedTo == request.auth.uid
-          && request.resource.data.diff(resource.data).affectedKeys()
-               .hasOnly([
-                 "producedWeight",
-                 "status",
-                 "updatedAt",
-                 "lastObservation",
-                 "productionLogs"
-               ])
-        );
-
-      // Exclusão somente pelo administrador.
-      allow delete: if isAdmin();
+      // COLABORADOR:
+      // somente campos operacionais de produção.
+      // Não pode alterar o responsável nem dados administrativos.
+      allow update: if isCollaborator()
+        && resource.data.assignedTo == request.auth.uid
+        && request.resource.data.assignedTo == resource.data.assignedTo
+        && request.resource.data.diff(resource.data).affectedKeys()
+          .hasOnly([
+            "producedWeight",
+            "status",
+            "updatedAt",
+            "lastObservation",
+            "productionLogs"
+          ]);
     }
   }
 }

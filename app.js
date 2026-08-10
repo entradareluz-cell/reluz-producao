@@ -1009,6 +1009,13 @@ function renderDashboard() {
     }
 
 
+    renderPerformance(
+        lots,
+        $("reportFrom").value,
+        $("reportTo").value
+    );
+
+
     const planned =
         lots.reduce(
             (total, lot) =>
@@ -3171,6 +3178,185 @@ async function(id) {
 
 
 // ============================================================
+// ANÁLISE DE DESEMPENHO
+// ============================================================
+
+function inclusiveDays(from, to) {
+
+    if (!from || !to) {
+        return 0;
+    }
+
+    const start = new Date(`${from}T00:00:00`);
+    const end = new Date(`${to}T00:00:00`);
+
+    if (
+        Number.isNaN(start.getTime()) ||
+        Number.isNaN(end.getTime()) ||
+        end < start
+    ) {
+        return 0;
+    }
+
+    return Math.floor(
+        (end - start) / 86400000
+    ) + 1;
+}
+
+
+function buildPerformance(lots, from, to) {
+
+    const periodDays = inclusiveDays(from, to);
+
+    const totalProduced = lots.reduce(
+        (sum, lot) => sum + lotProduced(lot),
+        0
+    );
+
+    const by = {};
+
+    lots.forEach(lot => {
+
+        const uid = lot.assignedTo || "sem-colaborador";
+
+        const user = allUsers.find(
+            item => item.id === uid
+        );
+
+        if (!by[uid]) {
+            by[uid] = {
+                uid,
+                name: user?.name || "Sem colaborador",
+                produced: 0,
+                planned: 0,
+                lots: 0,
+                days: new Set()
+            };
+        }
+
+        by[uid].produced += lotProduced(lot);
+        by[uid].planned += Number(lot.weight || 0);
+        by[uid].lots++;
+
+        if (lot.programDate) {
+            by[uid].days.add(lot.programDate);
+        }
+    });
+
+    const collaborators = Object.values(by)
+        .map(item => {
+
+            const daysWorked = item.days.size;
+
+            return {
+                ...item,
+                daysWorked,
+                averagePerWorkedDay:
+                    daysWorked
+                        ? item.produced / daysWorked
+                        : 0,
+                averagePerPeriodDay:
+                    periodDays
+                        ? item.produced / periodDays
+                        : 0,
+                realization:
+                    item.planned
+                        ? (item.produced / item.planned) * 100
+                        : 0
+            };
+        })
+        .sort((a, b) => b.produced - a.produced);
+
+    return {
+        periodDays,
+        totalProduced,
+        periodAverage:
+            periodDays
+                ? totalProduced / periodDays
+                : 0,
+        collaborators
+    };
+}
+
+
+function renderPerformance(lots, from, to) {
+
+    const performance =
+        buildPerformance(lots, from, to);
+
+    if ($("performanceSummary")) {
+
+        $("performanceSummary").innerHTML = [
+            ["Dias no período", performance.periodDays],
+            ["Produção total", kg(performance.totalProduced)],
+            ["Média por dia do período", kg(performance.periodAverage)],
+            ["Colaboradores", performance.collaborators.length]
+        ]
+        .map(item => `
+            <div class="card">
+                <small>${item[0]}</small>
+                <strong>${item[1]}</strong>
+            </div>
+        `)
+        .join("");
+    }
+
+    if ($("performanceByCollaborator")) {
+
+        $("performanceByCollaborator").innerHTML = `
+
+            <p class="performance-note">
+                Média/dia trabalhado = produção dividida pelos dias em que
+                o colaborador teve lote. Média/dia do período = produção
+                dividida por todos os dias entre as datas selecionadas.
+            </p>
+
+            <div class="table-wrap">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Colaborador</th>
+                            <th>Produzido</th>
+                            <th>Dias trabalhados</th>
+                            <th>Média/dia trabalhado</th>
+                            <th>Média/dia do período</th>
+                            <th>Programado</th>
+                            <th>Realização</th>
+                            <th>Lotes</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${
+                            performance.collaborators.length
+                                ? performance.collaborators.map(row => `
+                                    <tr>
+                                        <td>${escapeHtml(row.name)}</td>
+                                        <td>${kg(row.produced)}</td>
+                                        <td>${row.daysWorked}</td>
+                                        <td>${kg(row.averagePerWorkedDay)}</td>
+                                        <td>${kg(row.averagePerPeriodDay)}</td>
+                                        <td>${kg(row.planned)}</td>
+                                        <td>${pct(row.realization)}</td>
+                                        <td>${row.lots}</td>
+                                    </tr>
+                                `).join("")
+                                : `
+                                    <tr>
+                                        <td colspan="8">
+                                            Sem dados de desempenho no período.
+                                        </td>
+                                    </tr>
+                                `
+                        }
+                    </tbody>
+                </table>
+            </div>
+        `;
+    }
+}
+
+
+// ============================================================
 // RELATÓRIO
 // ============================================================
 
@@ -3852,6 +4038,13 @@ if ($("pdfGeneralBtn")) {
                     0
                 );
 
+            const performance =
+                buildPerformance(
+                    lots,
+                    from,
+                    to
+                );
+
 
             doc.setFontSize(
                 11
@@ -3875,7 +4068,11 @@ if ($("pdfGeneralBtn")) {
                             ) * 100
                             : 0
                     )
-                }`,
+                }   ` +
+
+                `Média/dia período: ${kg(
+                    performance.periodAverage
+                )}`,
 
                 14,
                 31
@@ -3994,6 +4191,57 @@ if ($("pdfGeneralBtn")) {
 
                             ]
                         )
+
+            });
+
+
+            doc.addPage();
+
+            doc.setFontSize(14);
+
+            doc.text(
+                "ANÁLISE DE DESEMPENHO",
+                14,
+                16
+            );
+
+            doc.setFontSize(9);
+
+            doc.text(
+                `Dias no período: ${performance.periodDays}   ` +
+                `Média/dia do período: ${kg(performance.periodAverage)}`,
+                14,
+                23
+            );
+
+            doc.autoTable({
+
+                startY: 28,
+
+                head: [[
+                    "Colaborador",
+                    "Produzido",
+                    "Dias trabalhados",
+                    "Média/dia trabalhado",
+                    "Média/dia período",
+                    "Programado",
+                    "Realização",
+                    "Lotes"
+                ]],
+
+                body:
+                    performance.collaborators.map(
+                        row => [
+                            row.name,
+                            kg(row.produced),
+                            row.daysWorked,
+                            kg(row.averagePerWorkedDay),
+                            kg(row.averagePerPeriodDay),
+                            kg(row.planned),
+                            pct(row.realization),
+                            row.lots
+                        ]
+                    )
 
             });
 
@@ -4143,6 +4391,13 @@ if ($("pdfIndividualBtn")) {
                     )
                 );
 
+            const performance =
+                buildPerformance(
+                    lots,
+                    from,
+                    to
+                );
+
 
             doc.setFontSize(
                 11
@@ -4168,7 +4423,15 @@ if ($("pdfIndividualBtn")) {
                     )
                 }   ` +
 
-                `Clientes: ${clients.size}`,
+                `Clientes: ${clients.size}   ` +
+
+                `Média/dia período: ${kg(
+                    performance.periodAverage
+                )}   ` +
+
+                `Média/dia trabalhado: ${kg(
+                    performance.collaborators[0]?.averagePerWorkedDay || 0
+                )}`,
 
                 14,
                 31
@@ -4275,11 +4538,58 @@ if ($("pdfIndividualBtn")) {
 
             doc.addPage();
 
+            doc.setFontSize(14);
 
-            doc.setFontSize(
-                14
+            doc.text(
+                "ANÁLISE DE DESEMPENHO",
+                14,
+                16
             );
 
+            doc.setFontSize(9);
+
+            doc.text(
+                `Dias no período: ${performance.periodDays}   ` +
+                `Média/dia do período: ${kg(performance.periodAverage)}   ` +
+                `Média/dia trabalhado: ${kg(performance.collaborators[0]?.averagePerWorkedDay || 0)}`,
+                14,
+                23
+            );
+
+            doc.autoTable({
+
+                startY: 28,
+
+                head: [[
+                    "Colaborador",
+                    "Produzido",
+                    "Dias trabalhados",
+                    "Média/dia trabalhado",
+                    "Média/dia período",
+                    "Programado",
+                    "Realização",
+                    "Lotes"
+                ]],
+
+                body:
+                    performance.collaborators.map(
+                        row => [
+                            row.name,
+                            kg(row.produced),
+                            row.daysWorked,
+                            kg(row.averagePerWorkedDay),
+                            kg(row.averagePerPeriodDay),
+                            kg(row.planned),
+                            pct(row.realization),
+                            row.lots
+                        ]
+                    )
+
+            });
+
+            doc.addPage();
+
+            doc.setFontSize(14);
 
             doc.text(
                 "DETALHAMENTO DOS LOTES",
@@ -4679,3 +4989,52 @@ document.addEventListener(
 
     }
 );
+
+
+/*
+ * ============================================================
+ * EDIÇÃO COMPLETA DO LOTE PELO ADMINISTRADOR
+ * ============================================================
+ *
+ * A tela de edição pode chamar:
+ *
+ * await adminUpdateLot(lotId, {
+ *   name: "Novo nome",
+ *   osNumber: "12345",
+ *   originalWeight: 1000,
+ *   assignedTo: "UID_DO_COLABORADOR",
+ *   startDate: "2026-08-10",
+ *   endDate: "2026-08-11"
+ * });
+ *
+ * A Firestore Rule garante que somente o administrador
+ * consiga alterar todos esses campos.
+ */
+window.adminUpdateLot = async function adminUpdateLot(lotId, updates) {
+
+    if (!currentUser || !roleIsAdmin()) {
+        throw new Error(
+            "Apenas o administrador pode editar todos os campos do lote."
+        );
+    }
+
+    if (!lotId || !updates || typeof updates !== "object") {
+        throw new Error("Dados inválidos para atualização do lote.");
+    }
+
+    const cleanUpdates = Object.fromEntries(
+        Object.entries(updates).filter(
+            ([, value]) => value !== undefined
+        )
+    );
+
+    cleanUpdates.updatedAt =
+        firebase.firestore.FieldValue.serverTimestamp();
+
+    await db
+        .collection("lots")
+        .doc(lotId)
+        .update(cleanUpdates);
+
+    return true;
+};

@@ -160,3 +160,48 @@ Antes de usar oficialmente, recomendo evoluir o cadastro de lote para incluir:
 - observação da programação.
 
 Também recomendo mover a distribuição automática para uma Cloud Function/servidor para que duas pessoas cadastrando lotes simultaneamente não possam selecionar o mesmo colaborador por uma condição de corrida.
+
+
+## Edição completa de lotes pelo administrador
+
+O administrador pode editar manualmente todos os campos existentes no documento do lote,
+incluindo nome, número da OS, peso, datas, cliente, colaborador responsável, status e observações.
+
+O colaborador continua limitado pelas Rules aos campos de produção do próprio lote.
+
+### Perfil do administrador
+
+Documento:
+
+`users/{UID_DO_ADMIN}`
+
+Campos:
+
+`role: "admin"`
+`active: true`
+
+### Publicação
+
+Copie o conteúdo de `firestore.rules` para o Firebase Console em:
+
+Firestore Database → Rules
+
+e clique em **Publicar**.
+
+Depois faça logout/login no sistema.
+
+
+## Análise de desempenho
+
+O relatório agora possui uma seção de desempenho com:
+- produção total no período;
+- média por dia do período selecionado;
+- média por colaborador;
+- dias trabalhados por colaborador;
+- média por dia trabalhado;
+- média por dia considerando todo o período;
+- produção programada;
+- percentual de realização;
+- quantidade de lotes.
+
+Os PDFs geral e individual também incluem essas médias.

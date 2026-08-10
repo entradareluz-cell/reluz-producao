@@ -652,6 +652,20 @@
 
     /* RESPONSIVE */
 
+    /* =========================
+       PERFORMANCE
+    ========================= */
+
+    .performance-panel {
+      margin-top: 20px;
+    }
+
+    .performance-note {
+      color: #6b7280;
+      font-size: 12px;
+      margin: 0 0 14px;
+    }
+
     @media (max-width: 1100px) {
       .cards,
       .cards.compact {
@@ -1188,6 +1202,15 @@
           <div
             id="reportSummary"
             class="cards compact">
+          </div>
+
+          <div class="panel performance-panel">
+            <div class="panel-title">
+              <h3>Análise de desempenho</h3>
+              <span>Médias calculadas no período selecionado</span>
+            </div>
+            <div id="performanceSummary" class="cards compact"></div>
+            <div id="performanceByCollaborator"></div>
           </div>
 
           <div id="reportByCollaborator"></div>
