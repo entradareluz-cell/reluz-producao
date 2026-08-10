@@ -5038,3 +5038,86 @@ window.adminUpdateLot = async function adminUpdateLot(lotId, updates) {
 
     return true;
 };
+
+/* ADMIN - editor visual */
+window.openAdminLotEditor = function(lotId, lot) {
+    if (!roleIsAdmin()) {
+        alert("Apenas o administrador pode editar.");
+        return;
+    }
+
+    const modal = document.createElement("div");
+    modal.id = "adminLotEditModal";
+    modal.style.cssText =
+        "position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:99999;" +
+        "display:flex;align-items:center;justify-content:center;padding:20px;";
+
+    const box = document.createElement("div");
+    box.style.cssText =
+        "background:white;padding:24px;border-radius:12px;width:min(720px,95vw);" +
+        "max-height:90vh;overflow:auto;";
+
+    const fields = [
+        ["name","Nome","text"],
+        ["osNumber","Número da OS","text"],
+        ["originalWeight","Peso","number"],
+        ["client","Cliente","text"],
+        ["assignedTo","Colaborador (UID)","text"],
+        ["startDate","Data inicial","date"],
+        ["endDate","Data final","date"],
+        ["status","Status","text"],
+        ["lastObservation","Observação","text"]
+    ];
+
+    box.innerHTML = "<h2>Editar lote</h2>";
+    const form = document.createElement("div");
+    form.style.cssText = "display:grid;grid-template-columns:1fr 1fr;gap:12px;";
+
+    const inputs = {};
+    fields.forEach(([key,label,type]) => {
+        const wrap = document.createElement("label");
+        wrap.style.cssText = "display:flex;flex-direction:column;gap:5px;";
+        const title = document.createElement("span");
+        title.textContent = label;
+        const input = document.createElement("input");
+        input.type = type;
+        input.value = lot && lot[key] != null ? String(lot[key]) : "";
+        input.style.cssText = "padding:9px;border:1px solid #ccc;border-radius:6px;";
+        inputs[key] = input;
+        wrap.append(title,input);
+        form.appendChild(wrap);
+    });
+    box.appendChild(form);
+
+    const actions = document.createElement("div");
+    actions.style.cssText = "display:flex;justify-content:flex-end;gap:10px;margin-top:18px;";
+    const cancel = document.createElement("button");
+    cancel.textContent = "Cancelar";
+    cancel.onclick = () => modal.remove();
+
+    const save = document.createElement("button");
+    save.textContent = "Salvar alterações";
+    save.onclick = async () => {
+        save.disabled = true;
+        try {
+            const updates = {};
+            for (const [key,input] of Object.entries(inputs)) {
+                if (input.value !== "") {
+                    updates[key] = input.type === "number" ? Number(input.value) : input.value;
+                }
+            }
+            await adminUpdateLot(lotId, updates);
+            modal.remove();
+            alert("Lote atualizado com sucesso.");
+            location.reload();
+        } catch (e) {
+            alert("Erro ao salvar: " + (e.message || e));
+            save.disabled = false;
+        }
+    };
+
+    actions.append(cancel,save);
+    box.appendChild(actions);
+    modal.appendChild(box);
+    document.body.appendChild(modal);
+};
