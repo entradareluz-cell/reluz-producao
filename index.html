@@ -4466,34 +4466,38 @@ Editar lote
 (function(){
   const b=document.getElementById("admin-edit-lot-floating");
 
+  function modalLotId(){
+    const modal=document.getElementById("lotModal");
+    return modal ? modal.dataset.lotId : "";
+  }
+
   function refresh(){
     try {
-      b.style.display =
-        (typeof roleIsAdmin === "function" && roleIsAdmin() && window.currentLot)
-          ? "block"
-          : "none";
+      const admin =
+        typeof roleIsAdmin === "function" && roleIsAdmin();
+      const id = modalLotId();
+      b.style.display = (admin && id) ? "block" : "none";
     } catch(e) {
       b.style.display = "none";
     }
   }
 
   b.onclick=function(){
-    const lot = window.currentLot || window.currentSelectedLot;
+    const id=modalLotId();
 
-    if (!lot || !lot.id) {
+    if(!id){
       alert("Abra o lote que deseja editar.");
       return;
     }
 
-    // Usa o editor oficial já existente no sistema.
     if (typeof window.editLot === "function") {
-      window.editLot(lot.id);
+      window.editLot(id);
     } else {
       alert("Editor de lote não encontrado.");
     }
   };
 
-  setInterval(refresh, 500);
+  setInterval(refresh,300);
 })();
 </script>
 </body>

@@ -1683,6 +1683,12 @@ async function(id) {
     window.currentLot = lot;
     window.currentSelectedLot = lot;
 
+    // Fonte oficial para o botão de edição: o próprio modal aberto.
+    const openedLotModal = $("lotModal");
+    if (openedLotModal) {
+        openedLotModal.dataset.lotId = id;
+    }
+
 
     const user =
         allUsers.find(
@@ -2019,6 +2025,11 @@ function() {
 
     window.currentLot = null;
     window.currentSelectedLot = null;
+
+    const openedLotModal = $("lotModal");
+    if (openedLotModal) {
+        delete openedLotModal.dataset.lotId;
+    }
 
 };
 
