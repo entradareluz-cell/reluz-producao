@@ -1,10 +1,10 @@
-// ===============================
-// RELUZ PRODUÇÃO - APP
-// ===============================
+// ============================================================
+// RELUZ PRODUÇÃO - APP.JS
+// ============================================================
 
-// ===============================
+// ============================================================
 // FIREBASE
-// ===============================
+// ============================================================
 
 const firebaseConfig = {
     apiKey: "AIzaSyCOVy3L_TD3JSWBsM7BuqGooaBE74-HG7Y",
@@ -21,18 +21,19 @@ firebase.initializeApp(firebaseConfig);
 const auth = firebase.auth();
 const db = firebase.firestore();
 
-// ===============================
+// ============================================================
 // VARIÁVEIS GLOBAIS
-// ===============================
+// ============================================================
 
 let currentUser = null;
 let currentProfile = null;
+
 let allLots = [];
 let allUsers = [];
 
-// ===============================
+// ============================================================
 // HELPERS
-// ===============================
+// ============================================================
 
 const $ = id => document.getElementById(id);
 
@@ -50,7 +51,7 @@ const today = () =>
     new Date().toISOString().slice(0, 10);
 
 const dateBR = d =>
-    d ? d.split("-").reverse().join("/") : "—";
+    d ? String(d).split("-").reverse().join("/") : "—";
 
 function escapeHtml(s = "") {
     return String(s).replace(/[&<>"']/g, m => ({
@@ -63,15 +64,16 @@ function escapeHtml(s = "") {
 }
 
 function dateRange(from, to) {
+
     return allLots.filter(l =>
         (!from || l.programDate >= from) &&
         (!to || l.programDate <= to)
     );
 }
 
-// ===============================
+// ============================================================
 // VERIFICAÇÃO DE ADMINISTRADOR
-// ===============================
+// ============================================================
 
 function roleIsAdmin() {
 
@@ -95,16 +97,19 @@ function roleIsAdmin() {
     ].includes(role);
 }
 
-// ===============================
+// ============================================================
 // AUTENTICAÇÃO
-// ===============================
+// ============================================================
 
 auth.onAuthStateChanged(async user => {
 
     if (!user) {
+
         currentUser = null;
         currentProfile = null;
+
         showLogin();
+
         return;
     }
 
@@ -150,6 +155,7 @@ auth.onAuthStateChanged(async user => {
         console.error(e);
 
         if ($("loginError")) {
+
             $("loginError").textContent =
                 e.message;
         }
@@ -158,9 +164,9 @@ auth.onAuthStateChanged(async user => {
     }
 });
 
-// ===============================
+// ============================================================
 // LOGIN / APP
-// ===============================
+// ============================================================
 
 function showLogin() {
 
@@ -246,9 +252,9 @@ function showApp() {
     });
 }
 
-// ===============================
+// ============================================================
 // LOGIN
-// ===============================
+// ============================================================
 
 if ($("loginForm")) {
 
@@ -274,6 +280,7 @@ if ($("loginForm")) {
                 console.error(err);
 
                 if ($("loginError")) {
+
                     $("loginError").textContent =
                         "E-mail ou senha inválidos.";
                 }
@@ -282,9 +289,9 @@ if ($("loginForm")) {
     );
 }
 
-// ===============================
+// ============================================================
 // LOGOUT
-// ===============================
+// ============================================================
 
 if ($("logoutBtn")) {
 
@@ -292,9 +299,9 @@ if ($("logoutBtn")) {
         () => auth.signOut();
 }
 
-// ===============================
+// ============================================================
 // ATUALIZAR
-// ===============================
+// ============================================================
 
 if ($("refreshBtn")) {
 
@@ -302,9 +309,9 @@ if ($("refreshBtn")) {
         () => loadData();
 }
 
-// ===============================
+// ============================================================
 // NAVEGAÇÃO
-// ===============================
+// ============================================================
 
 document
     .querySelectorAll(".nav-btn")
@@ -376,9 +383,9 @@ document
         };
     });
 
-// ===============================
+// ============================================================
 // CARREGAR DADOS
-// ===============================
+// ============================================================
 
 async function loadData() {
 
@@ -427,9 +434,9 @@ async function loadData() {
     }
 }
 
-// ===============================
+// ============================================================
 // SELECTS DE USUÁRIOS
-// ===============================
+// ============================================================
 
 function fillUserSelects() {
 
@@ -467,9 +474,9 @@ function fillUserSelects() {
     }
 }
 
-// ===============================
+// ============================================================
 // FUNÇÕES DOS LOTES
-// ===============================
+// ============================================================
 
 function lotProduced(l) {
 
@@ -534,9 +541,9 @@ function statusLabel(s) {
     })[s] || s;
 }
 
-// ===============================
+// ============================================================
 // DASHBOARD
-// ===============================
+// ============================================================
 
 function renderDashboard() {
 
@@ -794,9 +801,9 @@ if ($("dashFilterBtn")) {
         renderDashboard;
 }
 
-// ===============================
+// ============================================================
 // CARD DO KANBAN
-// ===============================
+// ============================================================
 
 function lotCard(l) {
 
@@ -874,9 +881,9 @@ function lotCard(l) {
     `;
 }
 
-// ===============================
+// ============================================================
 // KANBAN
-// ===============================
+// ============================================================
 
 function renderKanban() {
 
@@ -1020,9 +1027,9 @@ if ($("mineFilterBtn")) {
         renderMine;
 }
 
-// ===============================
+// ============================================================
 // MODAL DO LOTE
-// ===============================
+// ============================================================
 
 window.openLot = async function(id) {
 
@@ -1261,26 +1268,11 @@ window.openLot = async function(id) {
     }
 };
 
-// ===============================
+// ============================================================
 // EDITAR LOTE
-// ===============================
+// ============================================================
 
 window.editLot = function(id) {
-
-    console.log(
-        "Tentando editar lote:",
-        id
-    );
-
-    console.log(
-        "Perfil:",
-        currentProfile
-    );
-
-    console.log(
-        "Administrador:",
-        roleIsAdmin()
-    );
 
     if (!roleIsAdmin()) {
 
@@ -1310,13 +1302,24 @@ window.editLot = function(id) {
         return;
     }
 
+    // ========================================================
+    // COLABORADORES DISPONÍVEIS PARA ATRIBUIÇÃO
+    // ========================================================
+
     const activeUsers =
         allUsers.filter(
             u =>
                 u.active !== false &&
                 (
-                    u.role === "colaborador" ||
-                    u.role === "admin"
+                    String(u.role || "")
+                        .trim()
+                        .toLowerCase() ===
+                    "colaborador"
+                    ||
+                    String(u.role || "")
+                        .trim()
+                        .toLowerCase() ===
+                    "admin"
                 )
         );
 
@@ -1424,7 +1427,7 @@ window.editLot = function(id) {
 
             <label>
 
-                Colaborador responsável
+                👤 Colaborador responsável
 
                 <select
                     id="editLotCollaborator"
@@ -1448,7 +1451,9 @@ window.editLot = function(id) {
                                     }
                                 >
                                     ${escapeHtml(
-                                        u.name
+                                        u.name ||
+                                        u.email ||
+                                        "Sem nome"
                                     )}
                                 </option>
 
@@ -1474,6 +1479,14 @@ window.editLot = function(id) {
                 </strong>
 
                 ${kg(lotProduced(l))}
+
+                <br>
+
+                <strong>
+                    Saldo atual:
+                </strong>
+
+                ${kg(lotRemaining(l))}
 
             </div>
 
@@ -1518,9 +1531,9 @@ window.editLot = function(id) {
     }
 };
 
-// ===============================
-// SALVAR EDIÇÃO
-// ===============================
+// ============================================================
+// SALVAR EDIÇÃO DO LOTE
+// ============================================================
 
 async function saveLotEdit(
     e,
@@ -1580,6 +1593,10 @@ async function saveLotEdit(
         $("editLotCollaborator")
             ?.value || "";
 
+    // ========================================================
+    // VALIDAÇÕES
+    // ========================================================
+
     if (!name) {
 
         if (message) {
@@ -1610,6 +1627,9 @@ async function saveLotEdit(
 
     const produced =
         lotProduced(originalLot);
+
+    // Não permite reduzir o lote para abaixo
+    // do que já foi produzido.
 
     if (
         weight <
@@ -1676,25 +1696,33 @@ async function saveLotEdit(
         return;
     }
 
+    // ========================================================
+    // DEFINIR NOVO STATUS
+    // ========================================================
+
+    const newStatus =
+        originalLot.status ===
+        "cancelado"
+
+            ? "cancelado"
+
+            : (
+                weight - produced <= 0.0001
+
+                    ? "finalizado"
+
+                    : produced > 0
+
+                        ? "producao"
+
+                        : "pendente"
+            );
+
+    // ========================================================
+    // SALVAR NO FIRESTORE
+    // ========================================================
+
     try {
-
-        const newStatus =
-            originalLot.status ===
-            "cancelado"
-
-                ? "cancelado"
-
-                : (
-                    weight - produced <= 0.0001
-
-                        ? "finalizado"
-
-                        : produced > 0
-
-                            ? "producao"
-
-                            : "pendente"
-                );
 
         await db
             .collection("lots")
@@ -1738,8 +1766,12 @@ async function saveLotEdit(
                 "success";
 
             message.textContent =
-                "Lote atualizado com sucesso.";
+                `Lote atualizado com sucesso. Responsável: ${collaborator.name || collaborator.email}.`;
         }
+
+        // ====================================================
+        // RECARREGAR TODAS AS INFORMAÇÕES
+        // ====================================================
 
         await loadData();
 
@@ -1751,7 +1783,7 @@ async function saveLotEdit(
                 );
 
             },
-            300
+            500
         );
 
     } catch (err) {
@@ -1773,9 +1805,9 @@ async function saveLotEdit(
     }
 }
 
-// ===============================
+// ============================================================
 // FECHAR MODAL
-// ===============================
+// ============================================================
 
 window.closeLotModal =
     function() {
@@ -1788,9 +1820,9 @@ window.closeLotModal =
         }
     };
 
-// ===============================
+// ============================================================
 // REGISTRAR PRODUÇÃO
-// ===============================
+// ============================================================
 
 async function registerProduction(
     e,
@@ -1807,8 +1839,11 @@ async function registerProduction(
 
     if (amount <= 0) {
 
-        $("modalMessage").textContent =
-            "Informe um peso maior que zero.";
+        if ($("modalMessage")) {
+
+            $("modalMessage").textContent =
+                "Informe um peso maior que zero.";
+        }
 
         return;
     }
@@ -1820,8 +1855,11 @@ async function registerProduction(
         0.0001
     ) {
 
-        $("modalMessage").textContent =
-            "O peso produzido ultrapassa o peso do lote.";
+        if ($("modalMessage")) {
+
+            $("modalMessage").textContent =
+                "O peso produzido ultrapassa o peso do lote.";
+        }
 
         return;
     }
@@ -1926,9 +1964,9 @@ async function registerProduction(
     }
 }
 
-// ===============================
+// ============================================================
 // CADASTRAR NOVO LOTE
-// ===============================
+// ============================================================
 
 if ($("lotForm")) {
 
@@ -1972,7 +2010,10 @@ if ($("lotForm")) {
                     allUsers.filter(
                         u =>
                             u.active !== false &&
-                            u.role === "colaborador"
+                            String(u.role || "")
+                                .trim()
+                                .toLowerCase() ===
+                            "colaborador"
                     );
 
                 if (!active.length) {
@@ -2109,9 +2150,9 @@ if ($("lotForm")) {
     );
 }
 
-// ===============================
+// ============================================================
 // REDISTRIBUIR LOTE
-// ===============================
+// ============================================================
 
 window.redistributeLot =
     async function(id) {
@@ -2124,7 +2165,10 @@ window.redistributeLot =
             allUsers.filter(
                 u =>
                     u.active !== false &&
-                    u.role === "colaborador"
+                    String(u.role || "")
+                        .trim()
+                        .toLowerCase() ===
+                    "colaborador"
             );
 
         const l =
@@ -2187,6 +2231,14 @@ window.redistributeLot =
                 updatedAt:
                     firebase.firestore
                         .FieldValue
+                        .serverTimestamp(),
+
+                lastEditedBy:
+                    currentUser.uid,
+
+                lastEditedAt:
+                    firebase.firestore
+                        .FieldValue
                         .serverTimestamp()
             });
 
@@ -2195,9 +2247,9 @@ window.redistributeLot =
         await loadData();
     };
 
-// ===============================
+// ============================================================
 // RELATÓRIO
-// ===============================
+// ============================================================
 
 function renderReport() {
 
@@ -2576,9 +2628,9 @@ if ($("reportFilterBtn")) {
         renderReport;
 }
 
-// ===============================
+// ============================================================
 // PDF
-// ===============================
+// ============================================================
 
 function pdfBase(
     title,
@@ -2669,9 +2721,9 @@ function savePdf(
     );
 }
 
-// ===============================
+// ============================================================
 // PDF GERAL
-// ===============================
+// ============================================================
 
 if ($("pdfGeneralBtn")) {
 
@@ -2852,9 +2904,9 @@ if ($("pdfGeneralBtn")) {
         };
 }
 
-// ===============================
+// ============================================================
 // PDF INDIVIDUAL
-// ===============================
+// ============================================================
 
 if ($("pdfIndividualBtn")) {
 
@@ -2959,12 +3011,14 @@ if ($("pdfIndividualBtn")) {
 
                     by[k] = {
 
-                        p: 0,
+                        p:
+                            0,
 
                         c:
                             new Set(),
 
-                        q: 0
+                        q:
+                            0
                     };
                 }
 
@@ -3071,9 +3125,9 @@ if ($("pdfIndividualBtn")) {
         };
 }
 
-// ===============================
+// ============================================================
 // COLABORADORES
-// ===============================
+// ============================================================
 
 function renderUsers() {
 
@@ -3186,9 +3240,9 @@ function renderUsers() {
     `;
 }
 
-// ===============================
+// ============================================================
 // CRIAR COLABORADOR
-// ===============================
+// ============================================================
 
 if ($("userForm")) {
 
@@ -3371,9 +3425,9 @@ if ($("userForm")) {
     );
 }
 
-// ===============================
+// ============================================================
 // FINALIZAÇÃO
-// ===============================
+// ============================================================
 
 console.log(
     "RELÚZ PRODUÇÃO iniciado."
