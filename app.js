@@ -158,10 +158,26 @@ function dateRange(from, to) {
 
 function roleIsAdmin() {
 
-    return !!(
-        currentUser
-        &&
+    if (!currentUser) {
+        return false;
+    }
+
+    // O perfil "admin" passa a ser a fonte principal de autorização
+    // no aplicativo. O UID antigo continua como fallback.
+    const role =
+        String(
+            currentProfile?.role ||
+            currentProfile?.perfil ||
+            currentProfile?.type ||
+            ""
+        )
+        .trim()
+        .toLowerCase();
+
+    return (
         currentUser.uid === MASTER_ADMIN_UID
+        || role === "admin"
+        || role === "administrador"
     );
 
 }
@@ -778,7 +794,11 @@ async function loadData() {
             error?.code ===
             "permission-denied"
 
-                ? "Permissão negada pelo Firestore. Publique o arquivo rules novamente."
+                ? (
+                    "Permissão negada pelo Firestore. " +
+                    "Confirme se existe users/{UID} com role admin ou " +
+                    "colaborador e active=true, e publique o firestore.rules atualizado."
+                )
 
                 : (
                     error.message ||
@@ -4585,9 +4605,6 @@ if ($("userForm")) {
                     });
 
 
-                await secondary.delete();
-
-
                 $("userFormMessage")
                     .className =
                     "success";
@@ -4621,6 +4638,18 @@ if ($("userForm")) {
                     .textContent =
                     error.message ||
                     "Erro ao criar colaborador.";
+
+            } finally {
+
+                // Encerra o app secundário mesmo se uma etapa falhar.
+                try {
+                    await secondary.delete();
+                } catch (cleanupError) {
+                    console.warn(
+                        "Não foi possível encerrar o app secundário:",
+                        cleanupError
+                    );
+                }
 
             }
 

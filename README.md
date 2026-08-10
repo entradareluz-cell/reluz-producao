@@ -89,15 +89,33 @@ Como o relatório também precisa mostrar "clientes", nesta versão o campo `cli
 
 ## 6. Segurança
 
+O documento `users/{UID}` define o perfil de autorização:
+- `role: "admin"` + `active` diferente de `false` = administrador;
+- `role: "colaborador"` + `active: true` = colaborador.
+
 O Firestore Rules impede que um colaborador:
 - leia lotes de outros colaboradores;
 - redistribua lotes;
 - altere peso original;
 - altere OS;
 - altere datas;
-- altere o responsável.
+- altere o responsável;
+- altere dados administrativos do lote.
 
 O administrador possui acesso global.
+
+### Importante após esta atualização
+
+Publique novamente o conteúdo de `firestore.rules` no Firebase Console.
+
+Para o administrador, confirme que existe:
+`users/{UID_DO_ADMIN}`
+
+com pelo menos:
+- `role: "admin"`
+- `active: true`
+
+A versão atual não depende exclusivamente do UID fixo que estava no código. Isso evita o erro de `Missing or insufficient permissions` quando o UID configurado no JavaScript não corresponde ao usuário administrador real.
 
 ## 7. Produção parcial
 

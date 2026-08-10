@@ -5,54 +5,32 @@ service cloud.firestore {
   match /databases/{database}/documents {
 
     // ============================================================
-    // ADMINISTRADOR PRINCIPAL
-    // ============================================================
-
-    function isMasterAdmin() {
-
-      return request.auth != null
-        && request.auth.uid ==
-           "3QlkmlndAXaGxErEpCL17Mun35E3";
-
-    }
-
-
-    // ============================================================
-    // USUÁRIO LOGADO
+    // AUTENTICAÇÃO E PERFIL
     // ============================================================
 
     function isSignedIn() {
-
       return request.auth != null;
-
     }
 
-
-    // ============================================================
-    // PERFIL DO USUÁRIO
-    // ============================================================
-
-    function userData() {
-
-      return get(
-        /databases/$(database)/documents/users/$(request.auth.uid)
-      ).data;
-
+    function currentUserPath() {
+      return /databases/$(database)/documents/users/$(request.auth.uid);
     }
 
+    function hasUserProfile() {
+      return isSignedIn() && exists(currentUserPath());
+    }
 
-    // ============================================================
-    // COLABORADOR ATIVO
-    // ============================================================
+    function isAdmin() {
+      return hasUserProfile()
+        && get(currentUserPath()).data.role == "admin"
+        && get(currentUserPath()).data.active != false;
+    }
 
     function isCollaborator() {
-
-      return isSignedIn()
-        && userData().role == "colaborador"
-        && userData().active == true;
-
+      return hasUserProfile()
+        && get(currentUserPath()).data.role == "colaborador"
+        && get(currentUserPath()).data.active == true;
     }
-
 
     // ============================================================
     // USUÁRIOS
@@ -60,56 +38,13 @@ service cloud.firestore {
 
     match /users/{userId} {
 
-      // ----------------------------------------------------------
-      // LEITURA
-      // ----------------------------------------------------------
+      // Admin vê todos; usuário comum vê somente o próprio perfil.
+      allow read: if isAdmin()
+        || (isSignedIn() && request.auth.uid == userId);
 
-      // ADMIN PRINCIPAL:
-      // pode visualizar todos os usuários.
-      //
-      // COLABORADOR:
-      // pode visualizar somente o próprio perfil.
-      // ----------------------------------------------------------
-
-      allow read: if isMasterAdmin()
-        ||
-        (
-          isSignedIn()
-          && request.auth.uid == userId
-        );
-
-
-      // ----------------------------------------------------------
-      // CRIAÇÃO
-      // ----------------------------------------------------------
-
-      // Somente o administrador principal.
-      // ----------------------------------------------------------
-
-      allow create: if isMasterAdmin();
-
-
-      // ----------------------------------------------------------
-      // ALTERAÇÃO
-      // ----------------------------------------------------------
-
-      // Somente o administrador principal.
-      // ----------------------------------------------------------
-
-      allow update: if isMasterAdmin();
-
-
-      // ----------------------------------------------------------
-      // EXCLUSÃO
-      // ----------------------------------------------------------
-
-      // Somente o administrador principal.
-      // ----------------------------------------------------------
-
-      allow delete: if isMasterAdmin();
-
+      // Somente administradores podem criar/alterar/excluir perfis.
+      allow create, update, delete: if isAdmin();
     }
-
 
     // ============================================================
     // LOTES
@@ -117,115 +52,37 @@ service cloud.firestore {
 
     match /lots/{lotId} {
 
-      // ----------------------------------------------------------
-      // LEITURA
-      // ----------------------------------------------------------
-
-      // ADMIN PRINCIPAL:
-      // vê todos os lotes.
-      //
-      // COLABORADOR:
-      // vê somente os lotes atribuídos a ele.
-      // ----------------------------------------------------------
-
-      allow read: if isMasterAdmin()
-        ||
-        (
+      // Admin vê todos.
+      // Colaborador só pode consultar lotes atribuídos ao próprio UID.
+      allow read: if isAdmin()
+        || (
           isCollaborator()
-          &&
-          resource.data.assignedTo ==
-          request.auth.uid
+          && resource.data.assignedTo == request.auth.uid
         );
 
+      // Somente administrador cadastra lotes.
+      allow create: if isAdmin();
 
-      // ----------------------------------------------------------
-      // CRIAR LOTE
-      // ----------------------------------------------------------
-
-      // Somente o administrador principal.
-      // ----------------------------------------------------------
-
-      allow create: if isMasterAdmin();
-
-
-      // ----------------------------------------------------------
-      // ALTERAR LOTE
-      // ----------------------------------------------------------
-
-      // ADMIN PRINCIPAL:
-      // pode alterar absolutamente qualquer campo.
+      // Admin pode alterar qualquer campo.
       //
-      // COLABORADOR:
-      // pode alterar somente dados de produção
-      // do lote que está atribuído a ele.
-      // ----------------------------------------------------------
-
-      allow update: if isMasterAdmin()
-        ||
-        (
+      // Colaborador pode alterar somente os campos usados
+      // pelo registro de produção.
+      allow update: if isAdmin()
+        || (
           isCollaborator()
-          &&
-          resource.data.assignedTo ==
-          request.auth.uid
-
-          &&
-
-          request.resource.data.name ==
-          resource.data.name
-
-          &&
-
-          request.resource.data.os ==
-          resource.data.os
-
-          &&
-
-          request.resource.data.clientName ==
-          resource.data.clientName
-
-          &&
-
-          request.resource.data.weight ==
-          resource.data.weight
-
-          &&
-
-          request.resource.data.entryDate ==
-          resource.data.entryDate
-
-          &&
-
-          request.resource.data.programDate ==
-          resource.data.programDate
-
-          &&
-
-          request.resource.data.assignedTo ==
-          resource.data.assignedTo
-
-          &&
-
-          request.resource.data.createdBy ==
-          resource.data.createdBy
-
-          &&
-
-          request.resource.data.createdAt ==
-          resource.data.createdAt
+          && resource.data.assignedTo == request.auth.uid
+          && request.resource.data.diff(resource.data).affectedKeys()
+               .hasOnly([
+                 "producedWeight",
+                 "status",
+                 "updatedAt",
+                 "lastObservation",
+                 "productionLogs"
+               ])
         );
 
-
-      // ----------------------------------------------------------
-      // EXCLUSÃO
-      // ----------------------------------------------------------
-
-      // Somente o administrador principal.
-      // ----------------------------------------------------------
-
-      allow delete: if isMasterAdmin();
-
+      // Exclusão somente pelo administrador.
+      allow delete: if isAdmin();
     }
-
   }
-
 }
