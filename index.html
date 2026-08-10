@@ -3,157 +3,4435 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Reluz • Acompanhamento de Produção</title>
-  <link rel="stylesheet" href="styles.css">
-  <script src="https://www.gstatic.com/firebasejs/11.10.0/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/11.10.0/firebase-auth-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/11.10.0/firebase-firestore-compat.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.2/dist/jspdf.umd.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.4/dist/jspdf.plugin.autotable.min.js"></script>
+
+  <title>Reluz Produção</title>
+
+  <!-- Firebase Compat -->
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+
+  <!-- jsPDF -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
+  <!-- AutoTable -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      font-family: Arial, Helvetica, sans-serif;
+      background: #f4f6f8;
+      color: #1f2937;
+    }
+
+    button,
+    input,
+    select {
+      font-family: inherit;
+    }
+
+    button {
+      cursor: pointer;
+    }
+
+    .hidden {
+      display: none !important;
+    }
+
+    /* =========================
+       LOGIN
+    ========================= */
+
+    #loginScreen {
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background:
+        linear-gradient(135deg, #111827, #1f2937);
+      padding: 20px;
+    }
+
+    .login-card {
+      width: 100%;
+      max-width: 420px;
+      background: white;
+      border-radius: 18px;
+      padding: 35px;
+      box-shadow: 0 20px 50px rgba(0,0,0,.20);
+    }
+
+    .login-logo {
+      text-align: center;
+      margin-bottom: 30px;
+    }
+
+    .login-logo h1 {
+      margin: 0;
+      font-size: 30px;
+      color: #111827;
+    }
+
+    .login-logo p {
+      margin: 8px 0 0;
+      color: #6b7280;
+    }
+
+    .login-form {
+      display: flex;
+      flex-direction: column;
+      gap: 15px;
+    }
+
+    .login-form label {
+      display: flex;
+      flex-direction: column;
+      gap: 7px;
+      font-size: 14px;
+      font-weight: 600;
+    }
+
+    .login-form input {
+      width: 100%;
+      padding: 13px;
+      border: 1px solid #d1d5db;
+      border-radius: 8px;
+      font-size: 15px;
+    }
+
+    .login-error {
+      color: #dc2626;
+      font-size: 14px;
+      min-height: 20px;
+    }
+
+    /* =========================
+       APP
+    ========================= */
+
+    #app {
+      min-height: 100vh;
+    }
+
+    .layout {
+      display: flex;
+      min-height: 100vh;
+    }
+
+    /* SIDEBAR */
+
+    .sidebar {
+      width: 250px;
+      background: #111827;
+      color: white;
+      padding: 22px 15px;
+      position: fixed;
+      top: 0;
+      left: 0;
+      bottom: 0;
+      overflow-y: auto;
+    }
+
+    .brand {
+      padding: 5px 10px 25px;
+      border-bottom: 1px solid rgba(255,255,255,.10);
+      margin-bottom: 18px;
+    }
+
+    .brand h1 {
+      margin: 0;
+      font-size: 23px;
+    }
+
+    .brand span {
+      display: block;
+      margin-top: 5px;
+      color: #9ca3af;
+      font-size: 12px;
+    }
+
+    .user-box {
+      background: rgba(255,255,255,.06);
+      border-radius: 10px;
+      padding: 12px;
+      margin-bottom: 20px;
+    }
+
+    .user-box strong {
+      display: block;
+      font-size: 14px;
+    }
+
+    .user-box span {
+      display: block;
+      margin-top: 4px;
+      color: #9ca3af;
+      font-size: 12px;
+    }
+
+    .nav {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .nav-btn {
+      width: 100%;
+      border: 0;
+      background: transparent;
+      color: #d1d5db;
+      padding: 12px 14px;
+      border-radius: 8px;
+      text-align: left;
+      font-size: 14px;
+    }
+
+    .nav-btn:hover {
+      background: rgba(255,255,255,.08);
+      color: white;
+    }
+
+    .nav-btn.active {
+      background: #374151;
+      color: white;
+    }
+
+    .logout {
+      margin-top: 20px;
+      width: 100%;
+      border: 1px solid #4b5563;
+      background: transparent;
+      color: #d1d5db;
+      padding: 11px;
+      border-radius: 8px;
+    }
+
+    .logout:hover {
+      background: #374151;
+    }
+
+    /* MAIN */
+
+    .main {
+      margin-left: 250px;
+      width: calc(100% - 250px);
+      min-height: 100vh;
+    }
+
+    .topbar {
+      background: white;
+      border-bottom: 1px solid #e5e7eb;
+      padding: 20px 28px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 20px;
+    }
+
+    .topbar h2 {
+      margin: 0;
+      font-size: 22px;
+    }
+
+    .topbar span {
+      display: block;
+      color: #6b7280;
+      font-size: 13px;
+      margin-top: 5px;
+    }
+
+    .top-actions {
+      display: flex;
+      gap: 10px;
+    }
+
+    .view {
+      padding: 25px;
+    }
+
+    /* BUTTONS */
+
+    .primary,
+    .secondary {
+      border: 0;
+      border-radius: 8px;
+      padding: 11px 16px;
+      font-weight: 600;
+      font-size: 14px;
+    }
+
+    .primary {
+      background: #111827;
+      color: white;
+    }
+
+    .primary:hover {
+      background: #000;
+    }
+
+    .secondary {
+      background: #e5e7eb;
+      color: #111827;
+    }
+
+    .secondary:hover {
+      background: #d1d5db;
+    }
+
+    /* FILTERS */
+
+    .filters {
+      display: flex;
+      align-items: end;
+      gap: 12px;
+      flex-wrap: wrap;
+      margin-bottom: 20px;
+    }
+
+    .filters label {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      font-size: 13px;
+      font-weight: 600;
+    }
+
+    .filters input,
+    .filters select {
+      min-width: 150px;
+      padding: 10px 11px;
+      border: 1px solid #d1d5db;
+      border-radius: 8px;
+      background: white;
+    }
+
+    /* CARDS */
+
+    .cards {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 15px;
+      margin-bottom: 20px;
+    }
+
+    .cards.compact {
+      grid-template-columns: repeat(5, 1fr);
+      margin-top: 20px;
+    }
+
+    .card {
+      background: white;
+      border: 1px solid #e5e7eb;
+      border-radius: 12px;
+      padding: 20px;
+      box-shadow: 0 2px 8px rgba(0,0,0,.03);
+    }
+
+    .card small {
+      display: block;
+      color: #6b7280;
+      font-size: 12px;
+      margin-bottom: 9px;
+    }
+
+    .card strong {
+      display: block;
+      font-size: 23px;
+      color: #111827;
+    }
+
+    /* PANELS */
+
+    .grid-2 {
+      display: grid;
+      grid-template-columns: 2fr 1fr;
+      gap: 20px;
+    }
+
+    .panel {
+      background: white;
+      border: 1px solid #e5e7eb;
+      border-radius: 12px;
+      padding: 20px;
+      margin-bottom: 20px;
+      box-shadow: 0 2px 8px rgba(0,0,0,.03);
+    }
+
+    .panel-title {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      margin-bottom: 18px;
+    }
+
+    .panel-title h3 {
+      margin: 0;
+      font-size: 17px;
+    }
+
+    .panel-title span {
+      color: #6b7280;
+      font-size: 12px;
+    }
+
+    /* TABLES */
+
+    .table-wrap {
+      width: 100%;
+      overflow-x: auto;
+    }
+
+    .data-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+    }
+
+    .data-table th {
+      background: #f9fafb;
+      color: #374151;
+      text-align: left;
+      padding: 12px;
+      border-bottom: 1px solid #e5e7eb;
+      white-space: nowrap;
+    }
+
+    .data-table td {
+      padding: 12px;
+      border-bottom: 1px solid #f0f0f0;
+      vertical-align: middle;
+    }
+
+    .data-table tbody tr:hover {
+      background: #fafafa;
+    }
+
+    /* STATUS */
+
+    .status-table {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .status-item {
+      display: flex;
+      justify-content: space-between;
+      padding: 13px;
+      background: #f9fafb;
+      border-radius: 8px;
+      border: 1px solid #e5e7eb;
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 25px;
+      padding: 3px 7px;
+      border-radius: 20px;
+      background: #e5e7eb;
+      font-size: 11px;
+    }
+
+    /* KANBAN */
+
+    .kanban {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 15px;
+      align-items: start;
+    }
+
+    .kanban-column {
+      background: #e9edf2;
+      border-radius: 12px;
+      padding: 13px;
+      min-height: 300px;
+    }
+
+    .kanban-column h3 {
+      margin: 0 0 13px;
+      font-size: 13px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .lot-card {
+      background: white;
+      border-radius: 10px;
+      padding: 15px;
+      margin-bottom: 10px;
+      border: 1px solid #e5e7eb;
+      cursor: pointer;
+      transition: .15s;
+    }
+
+    .lot-card:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 5px 15px rgba(0,0,0,.08);
+    }
+
+    .lot-status {
+      display: inline-block;
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+      padding: 4px 7px;
+      border-radius: 20px;
+      background: #f3f4f6;
+      margin-bottom: 10px;
+    }
+
+    .lot-card h4 {
+      margin: 0 0 8px;
+      font-size: 15px;
+    }
+
+    .lot-info {
+      font-size: 12px;
+      color: #6b7280;
+      line-height: 1.6;
+    }
+
+    .progress {
+      height: 7px;
+      background: #e5e7eb;
+      border-radius: 20px;
+      overflow: hidden;
+      margin: 10px 0 5px;
+    }
+
+    .progress-bar {
+      height: 100%;
+      background: #111827;
+      border-radius: 20px;
+    }
+
+    /* FORMS */
+
+    .form-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 15px;
+    }
+
+    .form-grid label {
+      display: flex;
+      flex-direction: column;
+      gap: 7px;
+      font-size: 13px;
+      font-weight: 600;
+    }
+
+    .form-grid input,
+    .form-grid select {
+      padding: 11px;
+      border: 1px solid #d1d5db;
+      border-radius: 8px;
+      font-size: 14px;
+    }
+
+    .full {
+      grid-column: 1 / -1;
+    }
+
+    #lotFormMessage,
+    #userFormMessage {
+      margin-top: 15px;
+      font-size: 13px;
+    }
+
+    .success {
+      color: #15803d;
+      background: #f0fdf4;
+      padding: 10px;
+      border-radius: 8px;
+    }
+
+    .error {
+      color: #b91c1c;
+      background: #fef2f2;
+      padding: 10px;
+      border-radius: 8px;
+    }
+
+    /* MODAL */
+
+    .modal {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,.55);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      z-index: 999;
+    }
+
+    .modal-box {
+      background: white;
+      width: 100%;
+      max-width: 650px;
+      max-height: 90vh;
+      overflow-y: auto;
+      border-radius: 15px;
+      padding: 25px;
+    }
+
+    .modal-box h2 {
+      margin-top: 0;
+    }
+
+    .modal-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 12px;
+      margin: 20px 0;
+    }
+
+    .modal-grid > div {
+      background: #f9fafb;
+      border: 1px solid #e5e7eb;
+      padding: 12px;
+      border-radius: 8px;
+    }
+
+    .modal-grid small {
+      display: block;
+      color: #6b7280;
+      margin-bottom: 5px;
+    }
+
+    .modal-grid strong {
+      display: block;
+    }
+
+    .production-form {
+      display: grid;
+      gap: 12px;
+      margin-top: 20px;
+      padding: 15px;
+      background: #f9fafb;
+      border-radius: 10px;
+    }
+
+    .production-form label {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      font-size: 13px;
+      font-weight: 600;
+    }
+
+    .production-form input,
+    .production-form textarea {
+      padding: 10px;
+      border: 1px solid #d1d5db;
+      border-radius: 8px;
+    }
+
+    .modal-actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: 10px;
+      margin-top: 20px;
+    }
+
+    #modalMessage {
+      margin-top: 10px;
+      color: #b91c1c;
+    }
+
+    /* RESPONSIVE */
+
+    @media (max-width: 1100px) {
+      .cards,
+      .cards.compact {
+        grid-template-columns: repeat(2, 1fr);
+      }
+
+      .kanban {
+        grid-template-columns: repeat(2, 1fr);
+      }
+
+      .grid-2 {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    @media (max-width: 800px) {
+      .sidebar {
+        position: relative;
+        width: 100%;
+      }
+
+      .layout {
+        display: block;
+      }
+
+      .main {
+        margin-left: 0;
+        width: 100%;
+      }
+
+      .form-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .full {
+        grid-column: auto;
+      }
+    }
+
+    @media (max-width: 600px) {
+      .cards,
+      .cards.compact,
+      .kanban {
+        grid-template-columns: 1fr;
+      }
+
+      .topbar {
+        flex-direction: column;
+        align-items: flex-start;
+      }
+
+      .view {
+        padding: 15px;
+      }
+
+      .filters {
+        align-items: stretch;
+      }
+
+      .filters label,
+      .filters input,
+      .filters select,
+      .filters button {
+        width: 100%;
+      }
+
+      .modal-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
 </head>
+
 <body>
-  <div id="loginScreen" class="login-screen">
-    <div class="login-card">
-      <div class="brand-mark">R</div>
-      <h1>Reluz Produção</h1>
-      <p>Acompanhamento de produção e distribuição de lotes</p>
-      <form id="loginForm">
-        <label>E-mail<input id="loginEmail" type="email" required autocomplete="username"></label>
-        <label>Senha<input id="loginPassword" type="password" required autocomplete="current-password"></label>
-        <button class="primary" type="submit">Entrar</button>
-        <div id="loginError" class="error"></div>
-      </form>
+
+<!-- =========================
+     LOGIN
+========================= -->
+
+<section id="loginScreen">
+
+  <div class="login-card">
+
+    <div class="login-logo">
+      <h1>RELUZ PRODUÇÃO</h1>
+      <p>Controle de produção e acompanhamento de lotes</p>
     </div>
+
+    <form id="loginForm" class="login-form">
+
+      <label>
+        E-mail
+        <input
+          id="loginEmail"
+          type="email"
+          autocomplete="username"
+          required
+        >
+      </label>
+
+      <label>
+        Senha
+        <input
+          id="loginPassword"
+          type="password"
+          autocomplete="current-password"
+          required
+        >
+      </label>
+
+      <div id="loginError" class="login-error"></div>
+
+      <button type="submit" class="primary">
+        Entrar
+      </button>
+
+    </form>
+
   </div>
 
-  <div id="app" class="hidden">
+</section>
+
+
+<!-- =========================
+     APP
+========================= -->
+
+<div id="app" class="hidden">
+
+  <div class="layout">
+
+    <!-- SIDEBAR -->
+
     <aside class="sidebar">
+
       <div class="brand">
-        <div class="brand-mark small">R</div>
-        <div><strong>Reluz</strong><span>Produção</span></div>
+        <h1>RELUZ</h1>
+        <span>Produção</span>
       </div>
-      <nav id="nav">
-        <button data-view="dashboard" class="nav-btn active">Dashboard</button>
-        <button data-view="kanban" class="nav-btn">Kanban</button>
-        <button data-view="relatorio" class="nav-btn">Relatórios</button>
-        <button data-view="meus-lotes" class="nav-btn collaborator-only">Meus lotes</button>
-        <button data-view="lotes" class="nav-btn admin-only">Cadastrar lote</button>
-        <button data-view="colaboradores" class="nav-btn admin-only">Colaboradores</button>
-      </nav>
+
       <div class="user-box">
-        <div id="userName">Usuário</div>
-        <small id="userRole">—</small>
-        <button id="logoutBtn" class="ghost">Sair</button>
+        <strong id="userName">Usuário</strong>
+        <span id="userRole">Colaborador</span>
       </div>
+
+      <nav class="nav">
+
+        <button
+          class="nav-btn active"
+          data-view="dashboard">
+          Dashboard
+        </button>
+
+        <button
+          class="nav-btn"
+          data-view="kanban">
+          Kanban
+        </button>
+
+        <button
+          class="nav-btn"
+          data-view="meus-lotes">
+          Meus Lotes
+        </button>
+
+        <button
+          class="nav-btn admin-only"
+          data-view="lotes">
+          Cadastrar Lote
+        </button>
+
+        <button
+          class="nav-btn admin-only"
+          data-view="colaboradores">
+          Colaboradores
+        </button>
+
+        <button
+          class="nav-btn"
+          data-view="relatorio">
+          Relatórios
+        </button>
+
+      </nav>
+
+      <button id="logoutBtn" class="logout">
+        Sair
+      </button>
+
     </aside>
 
+
+    <!-- MAIN -->
+
     <main class="main">
+
       <header class="topbar">
+
         <div>
           <h2 id="pageTitle">Dashboard</h2>
           <span id="todayLabel"></span>
         </div>
+
         <div class="top-actions">
-          <button id="refreshBtn" class="secondary">Atualizar</button>
+          <button id="refreshBtn" class="secondary">
+            Atualizar
+          </button>
         </div>
+
       </header>
 
+
+      <!-- =========================
+           DASHBOARD
+      ========================= -->
+
       <section id="view-dashboard" class="view">
+
         <div class="filters">
-          <label>De <input id="dashFrom" type="date"></label>
-          <label>Até <input id="dashTo" type="date"></label>
-          <button id="dashFilterBtn" class="primary">Aplicar</button>
+
+          <label>
+            De
+            <input id="dashFrom" type="date">
+          </label>
+
+          <label>
+            Até
+            <input id="dashTo" type="date">
+          </label>
+
+          <button id="dashFilterBtn" class="primary">
+            Aplicar
+          </button>
+
         </div>
+
         <div id="dashboardCards" class="cards"></div>
+
         <div class="grid-2">
+
           <div class="panel">
-            <div class="panel-title"><h3>Produção por colaborador</h3></div>
+
+            <div class="panel-title">
+              <h3>Produção por colaborador</h3>
+            </div>
+
             <div id="dailyCollaboratorTable"></div>
+
           </div>
+
           <div class="panel">
-            <div class="panel-title"><h3>Status dos lotes</h3></div>
+
+            <div class="panel-title">
+              <h3>Status dos lotes</h3>
+            </div>
+
             <div id="statusSummary"></div>
+
           </div>
+
         </div>
+
       </section>
+
+
+      <!-- =========================
+           KANBAN
+      ========================= -->
 
       <section id="view-kanban" class="view hidden">
+
         <div class="filters">
-          <label>Programação de <input id="kanbanFrom" type="date"></label>
-          <label>até <input id="kanbanTo" type="date"></label>
-          <select id="kanbanCollaborator"><option value="">Todos</option></select>
-          <button id="kanbanFilterBtn" class="primary">Filtrar</button>
+
+          <label>
+            Programação de
+            <input id="kanbanFrom" type="date">
+          </label>
+
+          <label>
+            até
+            <input id="kanbanTo" type="date">
+          </label>
+
+          <label>
+            Colaborador
+            <select id="kanbanCollaborator">
+              <option value="">Todos</option>
+            </select>
+          </label>
+
+          <button id="kanbanFilterBtn" class="primary">
+            Filtrar
+          </button>
+
         </div>
+
         <div class="kanban" id="kanban"></div>
+
       </section>
+
+
+      <!-- =========================
+           MEUS LOTES
+      ========================= -->
 
       <section id="view-meus-lotes" class="view hidden">
+
         <div class="filters">
-          <label>Programação de <input id="mineFrom" type="date"></label>
-          <label>até <input id="mineTo" type="date"></label>
-          <button id="mineFilterBtn" class="primary">Filtrar</button>
+
+          <label>
+            Programação de
+            <input id="mineFrom" type="date">
+          </label>
+
+          <label>
+            até
+            <input id="mineTo" type="date">
+          </label>
+
+          <button id="mineFilterBtn" class="primary">
+            Filtrar
+          </button>
+
         </div>
+
         <div id="mineKanban" class="kanban"></div>
+
       </section>
+
+
+      <!-- =========================
+           CADASTRAR LOTE
+      ========================= -->
 
       <section id="view-lotes" class="view hidden admin-only">
+
         <div class="panel">
-          <div class="panel-title"><h3>Cadastrar lote</h3><span>Distribuição automática por menor carga de peso</span></div>
+
+          <div class="panel-title">
+
+            <h3>Cadastrar lote</h3>
+
+            <span>
+              Distribuição automática por menor carga de peso
+            </span>
+
+          </div>
+
           <form id="lotForm" class="form-grid">
-            <label>Nome do lote<input id="lotName" required></label>
-            <label>OS<input id="lotOs" required></label>
-            <label>Peso (kg)<input id="lotWeight" type="number" step="0.001" min="0.001" required></label>
-            <label>Data de entrada<input id="lotEntry" type="date" required></label>
-            <label>Data de programação<input id="lotProgram" type="date" required></label>
-            <div class="full"><button class="primary" type="submit">Cadastrar e distribuir automaticamente</button></div>
+
+            <label>
+              Nome do lote
+              <input id="lotName" required>
+            </label>
+
+            <label>
+              OS
+              <input id="lotOs" required>
+            </label>
+
+            <label>
+              Peso (kg)
+              <input
+                id="lotWeight"
+                type="number"
+                step="0.001"
+                min="0.001"
+                required
+              >
+            </label>
+
+            <label>
+              Data de entrada
+              <input id="lotEntry" type="date" required>
+            </label>
+
+            <label>
+              Data de programação
+              <input id="lotProgram" type="date" required>
+            </label>
+
+            <div class="full">
+
+              <button
+                class="primary"
+                type="submit">
+                Cadastrar e distribuir automaticamente
+              </button>
+
+            </div>
+
           </form>
+
           <div id="lotFormMessage"></div>
+
         </div>
+
       </section>
 
-      <section id="view-colaboradores" class="view hidden admin-only">
+
+      <!-- =========================
+           COLABORADORES
+      ========================= -->
+
+      <section
+        id="view-colaboradores"
+        class="view hidden admin-only">
+
         <div class="panel">
-          <div class="panel-title"><h3>Cadastrar colaborador</h3><span>Cria login e perfil operacional</span></div>
+
+          <div class="panel-title">
+
+            <h3>Cadastrar colaborador</h3>
+
+            <span>
+              Cria login e perfil operacional
+            </span>
+
+          </div>
+
           <form id="userForm" class="form-grid">
-            <label>Nome<input id="newUserName" required></label>
-            <label>E-mail<input id="newUserEmail" type="email" required></label>
-            <label>Senha inicial<input id="newUserPassword" type="password" minlength="6" required></label>
-            <div class="full"><button class="primary" type="submit">Criar colaborador</button></div>
+
+            <label>
+              Nome
+              <input id="newUserName" required>
+            </label>
+
+            <label>
+              E-mail
+              <input
+                id="newUserEmail"
+                type="email"
+                required>
+            </label>
+
+            <label>
+              Senha inicial
+              <input
+                id="newUserPassword"
+                type="password"
+                minlength="6"
+                required>
+            </label>
+
+            <div class="full">
+
+              <button
+                class="primary"
+                type="submit">
+                Criar colaborador
+              </button>
+
+            </div>
+
           </form>
+
           <div id="userFormMessage"></div>
+
         </div>
+
+
         <div class="panel">
-          <div class="panel-title"><h3>Colaboradores</h3></div>
+
+          <div class="panel-title">
+            <h3>Colaboradores</h3>
+          </div>
+
           <div id="usersTable"></div>
+
         </div>
+
       </section>
+
+
+      <!-- =========================
+           RELATÓRIO
+      ========================= -->
 
       <section id="view-relatorio" class="view hidden">
+
         <div class="panel">
-          <div class="panel-title"><h3>Relatório geral</h3><span>Filtro pela data de programação da produção</span></div>
-          <div class="filters">
-            <label>De <input id="reportFrom" type="date"></label>
-            <label>Até <input id="reportTo" type="date"></label>
-            <select id="reportUser"><option value="">Todos os colaboradores</option></select>
-            <button id="reportFilterBtn" class="primary">Gerar visão</button>
-            <button id="pdfGeneralBtn" class="secondary">PDF geral</button>
-            <button id="pdfIndividualBtn" class="secondary">PDF individual</button>
+
+          <div class="panel-title">
+
+            <h3>Relatório geral</h3>
+
+            <span>
+              Filtro pela data de programação da produção
+            </span>
+
           </div>
-          <div id="reportSummary" class="cards compact"></div>
+
+          <div class="filters">
+
+            <label>
+              De
+              <input id="reportFrom" type="date">
+            </label>
+
+            <label>
+              Até
+              <input id="reportTo" type="date">
+            </label>
+
+            <label>
+              Colaborador
+              <select id="reportUser">
+                <option value="">
+                  Todos os colaboradores
+                </option>
+              </select>
+            </label>
+
+            <button
+              id="reportFilterBtn"
+              class="primary">
+              Gerar visão
+            </button>
+
+            <button
+              id="pdfGeneralBtn"
+              class="secondary">
+              PDF geral
+            </button>
+
+            <button
+              id="pdfIndividualBtn"
+              class="secondary">
+              PDF individual
+            </button>
+
+          </div>
+
+          <div
+            id="reportSummary"
+            class="cards compact">
+          </div>
+
           <div id="reportByCollaborator"></div>
+
           <div id="reportDetails"></div>
+
         </div>
+
       </section>
+
     </main>
+
   </div>
 
-  <div id="lotModal" class="modal hidden">
-    <div class="modal-card">
-      <button class="modal-close" onclick="closeLotModal()">×</button>
-      <div id="lotModalContent"></div>
+</div>
+
+
+<!-- =========================
+     MODAL DO LOTE
+========================= -->
+
+<div id="lotModal" class="modal hidden">
+
+  <div class="modal-box">
+
+    <div id="lotModalContent"></div>
+
+  </div>
+
+</div>
+
+
+<script>
+
+/* =========================================================
+   FIREBASE
+========================================================= */
+
+const firebaseConfig = {
+
+  apiKey: "AIzaSyCOVy3L_TD3JSWBsM7BuqGooaBE74-HG7Y",
+
+  authDomain:
+    "reluz-producao.firebaseapp.com",
+
+  databaseURL:
+    "https://reluz-producao-default-rtdb.firebaseio.com",
+
+  projectId:
+    "reluz-producao",
+
+  storageBucket:
+    "reluz-producao.firebasestorage.app",
+
+  messagingSenderId:
+    "910724669287",
+
+  appId:
+    "1:910724669287:web:e2ff572555c8cabafd59c2"
+
+};
+
+
+/* Inicializa Firebase */
+
+if (!firebase.apps.length) {
+  firebase.initializeApp(firebaseConfig);
+}
+
+const auth = firebase.auth();
+const db = firebase.firestore();
+
+
+/* =========================================================
+   VARIÁVEIS
+========================================================= */
+
+let currentUser = null;
+let currentProfile = null;
+
+let allLots = [];
+let allUsers = [];
+
+
+/* =========================================================
+   HELPERS
+========================================================= */
+
+const $ = id => document.getElementById(id);
+
+
+function kg(n) {
+
+  return `${Number(n || 0).toLocaleString(
+    "pt-BR",
+    {
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 3
+    }
+  )} kg`;
+
+}
+
+
+function pct(n) {
+
+  return `${Number(n || 0).toLocaleString(
+    "pt-BR",
+    {
+      maximumFractionDigits: 1
+    }
+  )}%`;
+
+}
+
+
+function today() {
+
+  return new Date().toISOString().slice(0, 10);
+
+}
+
+
+function dateBR(d) {
+
+  if (!d) return "—";
+
+  if (typeof d !== "string") return "—";
+
+  return d.split("-").reverse().join("/");
+
+}
+
+
+function escapeHtml(value = "") {
+
+  return String(value)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+
+}
+
+
+function dateRange(from, to) {
+
+  return allLots.filter(l => {
+
+    return (
+      (!from || l.programDate >= from) &&
+      (!to || l.programDate <= to)
+    );
+
+  });
+
+}
+
+
+function roleIsAdmin() {
+
+  return currentProfile?.role === "admin";
+
+}
+
+
+/* =========================================================
+   LOTES
+========================================================= */
+
+function lotProduced(l) {
+
+  return Number(l.producedWeight || 0);
+
+}
+
+
+function lotRemaining(l) {
+
+  return Math.max(
+    0,
+    Number(l.weight || 0) - lotProduced(l)
+  );
+
+}
+
+
+function lotPercent(l) {
+
+  const weight = Number(l.weight || 0);
+
+  if (weight <= 0) return 0;
+
+  return Math.min(
+    100,
+    (lotProduced(l) / weight) * 100
+  );
+
+}
+
+
+function lotStatus(l) {
+
+  if (l.status === "cancelado") {
+    return "cancelado";
+  }
+
+  if (lotRemaining(l) <= 0.0001) {
+    return "finalizado";
+  }
+
+  if (lotProduced(l) > 0) {
+    return "producao";
+  }
+
+  return "pendente";
+
+}
+
+
+function statusLabel(status) {
+
+  const labels = {
+
+    pendente: "Pendente",
+
+    producao: "Em produção",
+
+    finalizado: "Finalizado",
+
+    cancelado: "Cancelado"
+
+  };
+
+  return labels[status] || status;
+
+}
+
+
+/* =========================================================
+   AUTH
+========================================================= */
+
+auth.onAuthStateChanged(async user => {
+
+  if (!user) {
+
+    showLogin();
+
+    return;
+
+  }
+
+  currentUser = user;
+
+  try {
+
+    const snap =
+      await db.collection("users")
+        .doc(user.uid)
+        .get();
+
+    if (!snap.exists) {
+
+      await auth.signOut();
+
+      throw new Error(
+        "Usuário sem perfil cadastrado no Firestore."
+      );
+
+    }
+
+    currentProfile = {
+      uid: user.uid,
+      ...snap.data()
+    };
+
+    showApp();
+
+    await loadData();
+
+  } catch (error) {
+
+    console.error(error);
+
+    $("loginError").textContent =
+      error.message || "Erro ao carregar usuário.";
+
+    await auth.signOut();
+
+  }
+
+});
+
+
+/* =========================================================
+   LOGIN / APP
+========================================================= */
+
+function showLogin() {
+
+  $("loginScreen").classList.remove("hidden");
+
+  $("app").classList.add("hidden");
+
+}
+
+
+function showApp() {
+
+  $("loginScreen").classList.add("hidden");
+
+  $("app").classList.remove("hidden");
+
+  $("userName").textContent =
+    currentProfile.name ||
+    currentUser.email;
+
+  $("userRole").textContent =
+    roleIsAdmin()
+      ? "Administrador"
+      : "Colaborador";
+
+  document
+    .querySelectorAll(".admin-only")
+    .forEach(element => {
+
+      element.classList.toggle(
+        "hidden",
+        !roleIsAdmin()
+      );
+
+    });
+
+  $("todayLabel").textContent =
+    new Date().toLocaleDateString(
+      "pt-BR",
+      {
+        dateStyle: "full"
+      }
+    );
+
+  const t = today();
+
+  [
+    "dashFrom",
+    "kanbanFrom",
+    "mineFrom",
+    "reportFrom"
+  ].forEach(id => {
+
+    if ($(id)) {
+      $(id).value = t;
+    }
+
+  });
+
+  [
+    "dashTo",
+    "kanbanTo",
+    "mineTo",
+    "reportTo"
+  ].forEach(id => {
+
+    if ($(id)) {
+      $(id).value = t;
+    }
+
+  });
+
+}
+
+
+/* LOGIN */
+
+$("loginForm").addEventListener(
+  "submit",
+  async event => {
+
+    event.preventDefault();
+
+    $("loginError").textContent = "";
+
+    const email =
+      $("loginEmail").value.trim();
+
+    const password =
+      $("loginPassword").value;
+
+    try {
+
+      await auth.signInWithEmailAndPassword(
+        email,
+        password
+      );
+
+    } catch (error) {
+
+      console.error(error);
+
+      $("loginError").textContent =
+        "E-mail ou senha inválidos.";
+
+    }
+
+  }
+);
+
+
+/* LOGOUT */
+
+$("logoutBtn").onclick = () => {
+
+  auth.signOut();
+
+};
+
+
+/* ATUALIZAR */
+
+$("refreshBtn").onclick = () => {
+
+  loadData();
+
+};
+
+
+/* =========================================================
+   NAVEGAÇÃO
+========================================================= */
+
+document
+  .querySelectorAll(".nav-btn")
+  .forEach(button => {
+
+    button.onclick = () => {
+
+      document
+        .querySelectorAll(".nav-btn")
+        .forEach(btn =>
+          btn.classList.remove("active")
+        );
+
+      button.classList.add("active");
+
+      document
+        .querySelectorAll(".view")
+        .forEach(view =>
+          view.classList.add("hidden")
+        );
+
+      const view =
+        $("view-" + button.dataset.view);
+
+      if (view) {
+        view.classList.remove("hidden");
+      }
+
+      $("pageTitle").textContent =
+        button.textContent.trim();
+
+      switch (button.dataset.view) {
+
+        case "dashboard":
+          renderDashboard();
+          break;
+
+        case "kanban":
+          renderKanban();
+          break;
+
+        case "meus-lotes":
+          renderMine();
+          break;
+
+        case "colaboradores":
+          renderUsers();
+          break;
+
+        case "relatorio":
+          renderReport();
+          break;
+
+      }
+
+    };
+
+  });
+
+
+/* =========================================================
+   CARREGAR DADOS
+========================================================= */
+
+async function loadData() {
+
+  try {
+
+    const [
+      lotsSnap,
+      usersSnap
+    ] = await Promise.all([
+
+      db.collection("lots").get(),
+
+      db.collection("users").get()
+
+    ]);
+
+    allLots =
+      lotsSnap.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      }));
+
+    allUsers =
+      usersSnap.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      }));
+
+    fillUserSelects();
+
+    renderDashboard();
+
+    renderKanban();
+
+    renderMine();
+
+    renderReport();
+
+    renderUsers();
+
+  } catch (error) {
+
+    console.error(
+      "Erro ao carregar dados:",
+      error
+    );
+
+    alert(
+      "Erro ao carregar dados do Firebase: " +
+      error.message
+    );
+
+  }
+
+}
+
+
+/* =========================================================
+   SELECTS
+========================================================= */
+
+function fillUserSelects() {
+
+  const activeUsers =
+    allUsers.filter(
+      user => user.active !== false
+    );
+
+  $("kanbanCollaborator").innerHTML =
+    `<option value="">Todos</option>` +
+    activeUsers
+      .map(user =>
+        `<option value="${escapeHtml(user.id)}">
+          ${escapeHtml(user.name || "Sem nome")}
+        </option>`
+      )
+      .join("");
+
+  $("reportUser").innerHTML =
+    `<option value="">
+      Todos os colaboradores
+    </option>` +
+    activeUsers
+      .map(user =>
+        `<option value="${escapeHtml(user.id)}">
+          ${escapeHtml(user.name || "Sem nome")}
+        </option>`
+      )
+      .join("");
+
+}
+
+
+/* =========================================================
+   DASHBOARD
+========================================================= */
+
+function renderDashboard() {
+
+  const lots =
+    dateRange(
+      $("dashFrom").value,
+      $("dashTo").value
+    );
+
+  const visible =
+    roleIsAdmin()
+      ? lots
+      : lots.filter(
+          lot =>
+            lot.assignedTo === currentUser.uid
+        );
+
+  const planned =
+    visible.reduce(
+      (total, lot) =>
+        total + Number(lot.weight || 0),
+      0
+    );
+
+  const produced =
+    visible.reduce(
+      (total, lot) =>
+        total + lotProduced(lot),
+      0
+    );
+
+  const remaining =
+    visible.reduce(
+      (total, lot) =>
+        total + lotRemaining(lot),
+      0
+    );
+
+  const done =
+    visible.filter(
+      lot =>
+        lotStatus(lot) === "finalizado"
+    ).length;
+
+
+  $("dashboardCards").innerHTML = [
+
+    [
+      "Peso programado",
+      kg(planned)
+    ],
+
+    [
+      "Peso produzido",
+      kg(produced)
+    ],
+
+    [
+      "Saldo",
+      kg(remaining)
+    ],
+
+    [
+      "Lotes finalizados",
+      done
+    ]
+
+  ].map(item => `
+
+    <div class="card">
+
+      <small>${item[0]}</small>
+
+      <strong>${item[1]}</strong>
+
     </div>
-  </div>
 
-  <script src="app.js"></script>
+  `).join("");
+
+
+  const by = {};
+
+
+  visible.forEach(lot => {
+
+    const user =
+      allUsers.find(
+        x => x.id === lot.assignedTo
+      );
+
+    const name =
+      user?.name ||
+      "Não atribuído";
+
+    const key =
+      `${lot.programDate}|${name}`;
+
+    if (!by[key]) {
+
+      by[key] = {
+
+        date: lot.programDate,
+
+        name,
+
+        weight: 0,
+
+        clients: new Set(),
+
+        lots: 0
+
+      };
+
+    }
+
+    by[key].weight +=
+      lotProduced(lot);
+
+    by[key].clients.add(
+      lot.clientName ||
+      lot.name ||
+      "Sem cliente"
+    );
+
+    by[key].lots++;
+
+  });
+
+
+  const rows =
+    Object.values(by)
+      .sort((a, b) => {
+
+        return (
+          a.date.localeCompare(b.date) ||
+          a.name.localeCompare(b.name)
+        );
+
+      });
+
+
+  $("dailyCollaboratorTable").innerHTML = `
+
+    <div class="table-wrap">
+
+      <table class="data-table">
+
+        <thead>
+
+          <tr>
+
+            <th>Data</th>
+            <th>Colaborador</th>
+            <th>Peso do dia</th>
+            <th>Clientes</th>
+            <th>Lotes</th>
+
+          </tr>
+
+        </thead>
+
+        <tbody>
+
+          ${
+            rows.length
+
+              ? rows.map(row => `
+
+                  <tr>
+
+                    <td>
+                      ${dateBR(row.date)}
+                    </td>
+
+                    <td>
+                      ${escapeHtml(row.name)}
+                    </td>
+
+                    <td>
+                      ${kg(row.weight)}
+                    </td>
+
+                    <td>
+                      ${escapeHtml(
+                        [...row.clients].join(", ")
+                      )}
+                    </td>
+
+                    <td>
+                      ${row.lots}
+                    </td>
+
+                  </tr>
+
+                `).join("")
+
+              : `
+                <tr>
+                  <td colspan="5">
+                    Sem dados.
+                  </td>
+                </tr>
+              `
+          }
+
+        </tbody>
+
+      </table>
+
+    </div>
+
+  `;
+
+
+  const statuses = [
+    "pendente",
+    "producao",
+    "finalizado"
+  ];
+
+
+  $("statusSummary").innerHTML = `
+
+    <div class="status-table">
+
+      ${
+        statuses.map(status => `
+
+          <div class="status-item">
+
+            <span>
+              ${statusLabel(status)}
+            </span>
+
+            <strong>
+              ${
+                visible.filter(
+                  lot =>
+                    lotStatus(lot) === status
+                ).length
+              }
+            </strong>
+
+          </div>
+
+        `).join("")
+      }
+
+    </div>
+
+  `;
+
+}
+
+
+$("dashFilterBtn").onclick =
+  renderDashboard;
+
+
+/* =========================================================
+   KANBAN
+========================================================= */
+
+function lotCard(lot) {
+
+  const user =
+    allUsers.find(
+      x => x.id === lot.assignedTo
+    );
+
+  const status =
+    lotStatus(lot);
+
+  const percent =
+    lotPercent(lot);
+
+  return `
+
+    <div
+      class="lot-card"
+      onclick="openLot('${lot.id}')">
+
+      <span class="lot-status">
+        ${statusLabel(status)}
+      </span>
+
+      <h4>
+        ${escapeHtml(lot.name || "Sem nome")}
+      </h4>
+
+      <div class="lot-info">
+
+        <strong>
+          OS:
+        </strong>
+
+        ${escapeHtml(lot.os || "—")}
+
+        <br>
+
+        <strong>
+          Peso:
+        </strong>
+
+        ${kg(lot.weight)}
+
+        <br>
+
+        <strong>
+          Programação:
+        </strong>
+
+        ${dateBR(lot.programDate)}
+
+        <br>
+
+        <strong>
+          Responsável:
+        </strong>
+
+        ${escapeHtml(
+          user?.name || "—"
+        )}
+
+      </div>
+
+      <div class="progress">
+
+        <div
+          class="progress-bar"
+          style="width:${percent}%">
+        </div>
+
+      </div>
+
+      <div class="lot-info">
+
+        ${kg(lotProduced(lot))}
+        produzido
+
+        • ${pct(percent)}
+
+      </div>
+
+    </div>
+
+  `;
+
+}
+
+
+function renderKanban() {
+
+  let lots =
+    dateRange(
+      $("kanbanFrom").value,
+      $("kanbanTo").value
+    );
+
+  const uid =
+    $("kanbanCollaborator").value;
+
+  if (uid) {
+
+    lots =
+      lots.filter(
+        lot =>
+          lot.assignedTo === uid
+      );
+
+  }
+
+  if (!roleIsAdmin()) {
+
+    lots =
+      lots.filter(
+        lot =>
+          lot.assignedTo ===
+          currentUser.uid
+      );
+
+  }
+
+  renderKanbanInto(
+    "kanban",
+    lots
+  );
+
+}
+
+
+function renderMine() {
+
+  const lots =
+    dateRange(
+      $("mineFrom").value,
+      $("mineTo").value
+    ).filter(
+      lot =>
+        lot.assignedTo ===
+        currentUser.uid
+    );
+
+  renderKanbanInto(
+    "mineKanban",
+    lots
+  );
+
+}
+
+
+function renderKanbanInto(
+  elementId,
+  lots
+) {
+
+  const columns = [
+
+    [
+      "pendente",
+      "A FAZER"
+    ],
+
+    [
+      "producao",
+      "EM PRODUÇÃO"
+    ],
+
+    [
+      "finalizado",
+      "FINALIZADO"
+    ],
+
+    [
+      "cancelado",
+      "CANCELADOS"
+    ]
+
+  ];
+
+
+  $(elementId).innerHTML =
+    columns.map(
+      ([status, title]) => {
+
+        const list =
+          lots.filter(
+            lot =>
+              lotStatus(lot) ===
+              status
+          );
+
+        return `
+
+          <div class="kanban-column">
+
+            <h3>
+
+              <span>
+                ${title}
+              </span>
+
+              <span class="badge">
+                ${list.length}
+              </span>
+
+            </h3>
+
+            ${
+              list.length
+                ? list.map(lotCard).join("")
+                : `
+                  <div
+                    style="
+                      text-align:center;
+                      color:#9ca3af;
+                      font-size:12px;
+                      padding:30px 10px;
+                    ">
+                    Nenhum lote
+                  </div>
+                `
+            }
+
+          </div>
+
+        `;
+
+      }
+    ).join("");
+
+}
+
+
+$("kanbanFilterBtn").onclick =
+  renderKanban;
+
+$("mineFilterBtn").onclick =
+  renderMine;
+
+
+/* =========================================================
+   MODAL LOTE
+========================================================= */
+
+window.openLot = async function(id) {
+
+  const lot =
+    allLots.find(
+      item => item.id === id
+    );
+
+  if (!lot) return;
+
+  const user =
+    allUsers.find(
+      item =>
+        item.id === lot.assignedTo
+    );
+
+  const mine =
+    lot.assignedTo ===
+    currentUser.uid;
+
+  const canEdit =
+    roleIsAdmin() || mine;
+
+
+  $("lotModalContent").innerHTML = `
+
+    <h2>
+      ${escapeHtml(
+        lot.name || "Lote"
+      )}
+    </h2>
+
+
+    <div class="modal-grid">
+
+      <div>
+
+        <small>
+          OS
+        </small>
+
+        <strong>
+          ${escapeHtml(
+            lot.os || "—"
+          )}
+        </strong>
+
+      </div>
+
+
+      <div>
+
+        <small>
+          Cliente
+        </small>
+
+        <strong>
+          ${escapeHtml(
+            lot.clientName ||
+            lot.name ||
+            "—"
+          )}
+        </strong>
+
+      </div>
+
+
+      <div>
+
+        <small>
+          Peso do lote
+        </small>
+
+        <strong>
+          ${kg(lot.weight)}
+        </strong>
+
+      </div>
+
+
+      <div>
+
+        <small>
+          Produzido
+        </small>
+
+        <strong>
+          ${kg(
+            lotProduced(lot)
+          )}
+        </strong>
+
+      </div>
+
+
+      <div>
+
+        <small>
+          Saldo
+        </small>
+
+        <strong>
+          ${kg(
+            lotRemaining(lot)
+          )}
+        </strong>
+
+      </div>
+
+
+      <div>
+
+        <small>
+          Data entrada
+        </small>
+
+        <strong>
+          ${dateBR(
+            lot.entryDate
+          )}
+        </strong>
+
+      </div>
+
+
+      <div>
+
+        <small>
+          Programação
+        </small>
+
+        <strong>
+          ${dateBR(
+            lot.programDate
+          )}
+        </strong>
+
+      </div>
+
+
+      <div>
+
+        <small>
+          Responsável
+        </small>
+
+        <strong>
+          ${escapeHtml(
+            user?.name || "—"
+          )}
+        </strong>
+
+      </div>
+
+
+      <div>
+
+        <small>
+          Status
+        </small>
+
+        <strong>
+          ${statusLabel(
+            lotStatus(lot)
+          )}
+        </strong>
+
+      </div>
+
+
+      <div>
+
+        <small>
+          Percentual
+        </small>
+
+        <strong>
+          ${pct(
+            lotPercent(lot)
+          )}
+        </strong>
+
+      </div>
+
+    </div>
+
+
+    ${
+      canEdit
+        ? `
+
+          <form
+            id="productionForm"
+            class="production-form">
+
+            <strong>
+              Registrar produção
+            </strong>
+
+            <label>
+
+              Peso produzido agora (kg)
+
+              <input
+                id="productionInput"
+                type="number"
+                step="0.001"
+                min="0.001"
+                required>
+
+            </label>
+
+            <label>
+
+              Observação
+
+              <textarea
+                id="productionObs"
+                rows="3"
+                placeholder="Observação opcional">
+              </textarea>
+
+            </label>
+
+            <button
+              type="submit"
+              class="primary">
+
+              Registrar produção
+
+            </button>
+
+          </form>
+
+        `
+        : ""
+    }
+
+
+    <div class="modal-actions">
+
+      ${
+        roleIsAdmin()
+          ? `
+            <button
+              class="secondary"
+              onclick="redistributeLot('${lot.id}')">
+
+              Redistribuir lote
+
+            </button>
+          `
+          : ""
+      }
+
+      <button
+        class="secondary"
+        onclick="closeLotModal()">
+
+        Fechar
+
+      </button>
+
+    </div>
+
+
+    <div id="modalMessage"></div>
+
+  `;
+
+
+  $("lotModal")
+    .classList
+    .remove("hidden");
+
+
+  if (canEdit) {
+
+    $("productionForm").onsubmit =
+      event =>
+        registerProduction(
+          event,
+          lot
+        );
+
+  }
+
+};
+
+
+window.closeLotModal = function() {
+
+  $("lotModal")
+    .classList
+    .add("hidden");
+
+};
+
+
+/* Fechar clicando fora */
+
+$("lotModal").addEventListener(
+  "click",
+  event => {
+
+    if (
+      event.target ===
+      $("lotModal")
+    ) {
+
+      closeLotModal();
+
+    }
+
+  }
+);
+
+
+/* =========================================================
+   REGISTRAR PRODUÇÃO
+========================================================= */
+
+async function registerProduction(
+  event,
+  lot
+) {
+
+  event.preventDefault();
+
+  const amount =
+    Number(
+      $("productionInput").value || 0
+    );
+
+  if (amount <= 0) {
+
+    $("modalMessage").textContent =
+      "Informe um peso maior que zero.";
+
+    return;
+
+  }
+
+
+  if (
+    lotProduced(lot) +
+    amount >
+    Number(lot.weight) +
+    0.0001
+  ) {
+
+    $("modalMessage").textContent =
+      "O peso produzido ultrapassa o peso do lote.";
+
+    return;
+
+  }
+
+
+  const now =
+    firebase.firestore
+      .FieldValue
+      .serverTimestamp();
+
+
+  const observation =
+    $("productionObs")
+      .value
+      .trim();
+
+
+  try {
+
+    await db.runTransaction(
+      async transaction => {
+
+        const ref =
+          db.collection("lots")
+            .doc(lot.id);
+
+        const snap =
+          await transaction.get(ref);
+
+        if (!snap.exists) {
+
+          throw new Error(
+            "Lote não encontrado."
+          );
+
+        }
+
+
+        const data =
+          snap.data();
+
+
+        const current =
+          Number(
+            data.producedWeight || 0
+          );
+
+
+        const weight =
+          Number(
+            data.weight || 0
+          );
+
+
+        const next =
+          current + amount;
+
+
+        const newStatus =
+          next >= weight - 0.0001
+            ? "finalizado"
+            : "producao";
+
+
+        const productionLog = {
+
+          weight: amount,
+
+          obs: observation,
+
+          userId:
+            currentUser.uid,
+
+          at:
+            new Date()
+
+        };
+
+
+        transaction.update(
+          ref,
+          {
+
+            producedWeight:
+              next,
+
+            status:
+              newStatus,
+
+            updatedAt:
+              now,
+
+            lastObservation:
+              observation,
+
+            productionLogs:
+              firebase.firestore
+                .FieldValue
+                .arrayUnion(
+                  productionLog
+                )
+
+          }
+        );
+
+      }
+    );
+
+
+    closeLotModal();
+
+    await loadData();
+
+
+  } catch (error) {
+
+    console.error(error);
+
+    $("modalMessage").textContent =
+      error.message ||
+      "Erro ao registrar produção.";
+
+  }
+
+}
+
+
+/* =========================================================
+   CADASTRAR LOTE
+========================================================= */
+
+$("lotForm").addEventListener(
+  "submit",
+  async event => {
+
+    event.preventDefault();
+
+    $("lotFormMessage").textContent = "";
+
+    const weight =
+      Number(
+        $("lotWeight").value
+      );
+
+    if (weight <= 0) {
+
+      $("lotFormMessage")
+        .className = "error";
+
+      $("lotFormMessage")
+        .textContent =
+        "Informe um peso válido.";
+
+      return;
+
+    }
+
+
+    try {
+
+      const activeUsers =
+        allUsers.filter(
+          user =>
+            user.active !== false &&
+            user.role ===
+              "colaborador"
+        );
+
+
+      if (!activeUsers.length) {
+
+        throw new Error(
+          "Não existem colaboradores ativos para distribuição."
+        );
+
+      }
+
+
+      const loads = {};
+
+
+      allLots.forEach(lot => {
+
+        if (
+          [
+            "pendente",
+            "producao"
+          ].includes(
+            lotStatus(lot)
+          )
+        ) {
+
+          loads[lot.assignedTo] =
+            (
+              loads[lot.assignedTo] ||
+              0
+            ) +
+            lotRemaining(lot);
+
+        }
+
+      });
+
+
+      activeUsers.sort(
+        (a, b) =>
+          (
+            loads[a.id] || 0
+          ) -
+          (
+            loads[b.id] || 0
+          )
+      );
+
+
+      const chosen =
+        activeUsers[0];
+
+
+      const ref =
+        db.collection("lots").doc();
+
+
+      const data = {
+
+        name:
+          $("lotName")
+            .value
+            .trim(),
+
+        os:
+          $("lotOs")
+            .value
+            .trim(),
+
+        weight,
+
+        entryDate:
+          $("lotEntry").value,
+
+        programDate:
+          $("lotProgram").value,
+
+        assignedTo:
+          chosen.id,
+
+        producedWeight:
+          0,
+
+        status:
+          "pendente",
+
+        clientName:
+          $("lotName")
+            .value
+            .trim(),
+
+        createdBy:
+          currentUser.uid,
+
+        createdAt:
+          firebase.firestore
+            .FieldValue
+            .serverTimestamp(),
+
+        updatedAt:
+          firebase.firestore
+            .FieldValue
+            .serverTimestamp()
+
+      };
+
+
+      await ref.set(data);
+
+
+      $("lotFormMessage")
+        .className = "success";
+
+
+      $("lotFormMessage")
+        .textContent =
+        `Lote distribuído para ${chosen.name}. ` +
+        `Carga pendente atual: ${
+          kg(loads[chosen.id] || 0)
+        }.`;
+
+      event.target.reset();
+
+      await loadData();
+
+
+    } catch (error) {
+
+      console.error(error);
+
+      $("lotFormMessage")
+        .className = "error";
+
+      $("lotFormMessage")
+        .textContent =
+        error.message ||
+        "Erro ao cadastrar lote.";
+
+    }
+
+  }
+);
+
+
+/* =========================================================
+   REDISTRIBUIR LOTE
+========================================================= */
+
+window.redistributeLot =
+  async function(id) {
+
+    if (!roleIsAdmin()) {
+
+      return;
+
+    }
+
+
+    const activeUsers =
+      allUsers.filter(
+        user =>
+          user.active !== false &&
+          user.role ===
+            "colaborador"
+      );
+
+
+    const lot =
+      allLots.find(
+        item => item.id === id
+      );
+
+
+    if (
+      !lot ||
+      !activeUsers.length
+    ) {
+
+      return;
+
+    }
+
+
+    const loads = {};
+
+
+    allLots.forEach(item => {
+
+      if (
+        item.id !== id &&
+        [
+          "pendente",
+          "producao"
+        ].includes(
+          lotStatus(item)
+        )
+      ) {
+
+        loads[item.assignedTo] =
+          (
+            loads[item.assignedTo] ||
+            0
+          ) +
+          lotRemaining(item);
+
+      }
+
+    });
+
+
+    activeUsers.sort(
+      (a, b) =>
+        (
+          loads[a.id] || 0
+        ) -
+        (
+          loads[b.id] || 0
+        )
+    );
+
+
+    const chosen =
+      activeUsers[0];
+
+
+    await db
+      .collection("lots")
+      .doc(id)
+      .update({
+
+        assignedTo:
+          chosen.id,
+
+        updatedAt:
+          firebase.firestore
+            .FieldValue
+            .serverTimestamp()
+
+      });
+
+
+    closeLotModal();
+
+    await loadData();
+
+  };
+
+
+/* =========================================================
+   RELATÓRIO
+========================================================= */
+
+function renderReport() {
+
+  let lots =
+    dateRange(
+      $("reportFrom").value,
+      $("reportTo").value
+    );
+
+
+  const uid =
+    $("reportUser").value;
+
+
+  if (uid) {
+
+    lots =
+      lots.filter(
+        lot =>
+          lot.assignedTo === uid
+      );
+
+  }
+
+
+  if (!roleIsAdmin()) {
+
+    lots =
+      lots.filter(
+        lot =>
+          lot.assignedTo ===
+          currentUser.uid
+      );
+
+  }
+
+
+  const planned =
+    lots.reduce(
+      (total, lot) =>
+        total +
+        Number(lot.weight || 0),
+      0
+    );
+
+
+  const produced =
+    lots.reduce(
+      (total, lot) =>
+        total +
+        lotProduced(lot),
+      0
+    );
+
+
+  const clients =
+    new Set(
+      lots
+        .map(
+          lot =>
+            lot.clientName ||
+            lot.name
+        )
+        .filter(Boolean)
+    );
+
+
+  $("reportSummary").innerHTML = [
+
+    [
+      "Programado",
+      kg(planned)
+    ],
+
+    [
+      "Produzido",
+      kg(produced)
+    ],
+
+    [
+      "Saldo",
+      kg(planned - produced)
+    ],
+
+    [
+      "Realização",
+      pct(
+        planned
+          ? produced / planned * 100
+          : 0
+      )
+    ],
+
+    [
+      "Clientes",
+      clients.size
+    ]
+
+  ].map(item => `
+
+    <div class="card">
+
+      <small>
+        ${item[0]}
+      </small>
+
+      <strong>
+        ${item[1]}
+      </strong>
+
+    </div>
+
+  `).join("");
+
+
+  const by = {};
+
+
+  lots.forEach(lot => {
+
+    const user =
+      allUsers.find(
+        x =>
+          x.id ===
+          lot.assignedTo
+      );
+
+
+    const key =
+      `${lot.programDate}|${lot.assignedTo}`;
+
+
+    if (!by[key]) {
+
+      by[key] = {
+
+        date:
+          lot.programDate,
+
+        user:
+          user?.name || "—",
+
+        produced:
+          0,
+
+        planned:
+          0,
+
+        clients:
+          new Set(),
+
+        lots:
+          0
+
+      };
+
+    }
+
+
+    by[key].planned +=
+      Number(lot.weight || 0);
+
+
+    by[key].produced +=
+      lotProduced(lot);
+
+
+    by[key].clients.add(
+      lot.clientName ||
+      lot.name ||
+      "Sem cliente"
+    );
+
+
+    by[key].lots++;
+
+  });
+
+
+  const rows =
+    Object.values(by)
+      .sort((a, b) => {
+
+        return (
+          a.date.localeCompare(
+            b.date
+          ) ||
+          a.user.localeCompare(
+            b.user
+          )
+        );
+
+      });
+
+
+  $("reportByCollaborator").innerHTML = `
+
+    <h3>
+      Produção por colaborador e por dia
+    </h3>
+
+    <div class="table-wrap">
+
+      <table class="data-table">
+
+        <thead>
+
+          <tr>
+
+            <th>Data</th>
+
+            <th>Colaborador</th>
+
+            <th>Peso do dia</th>
+
+            <th>Programado</th>
+
+            <th>Clientes</th>
+
+            <th>Lotes</th>
+
+          </tr>
+
+        </thead>
+
+        <tbody>
+
+          ${
+            rows.length
+
+              ? rows.map(row => `
+
+                  <tr>
+
+                    <td>
+                      ${dateBR(row.date)}
+                    </td>
+
+                    <td>
+                      ${escapeHtml(row.user)}
+                    </td>
+
+                    <td>
+                      ${kg(row.produced)}
+                    </td>
+
+                    <td>
+                      ${kg(row.planned)}
+                    </td>
+
+                    <td>
+                      ${escapeHtml(
+                        [...row.clients]
+                          .join(", ")
+                      )}
+                    </td>
+
+                    <td>
+                      ${row.lots}
+                    </td>
+
+                  </tr>
+
+                `).join("")
+
+              : `
+
+                <tr>
+
+                  <td colspan="6">
+                    Sem dados.
+                  </td>
+
+                </tr>
+
+              `
+          }
+
+        </tbody>
+
+      </table>
+
+    </div>
+
+  `;
+
+
+  $("reportDetails").innerHTML = `
+
+    <h3>
+      Detalhamento dos lotes
+    </h3>
+
+    <div class="table-wrap">
+
+      <table class="data-table">
+
+        <thead>
+
+          <tr>
+
+            <th>Programação</th>
+
+            <th>OS</th>
+
+            <th>Lote</th>
+
+            <th>Colaborador</th>
+
+            <th>Peso</th>
+
+            <th>Produzido</th>
+
+            <th>Saldo</th>
+
+            <th>Status</th>
+
+          </tr>
+
+        </thead>
+
+        <tbody>
+
+          ${
+            lots.length
+
+              ? [...lots]
+                  .sort(
+                    (a, b) =>
+                      (
+                        a.programDate || ""
+                      ).localeCompare(
+                        b.programDate || ""
+                      )
+                  )
+                  .map(lot => {
+
+                    const user =
+                      allUsers.find(
+                        x =>
+                          x.id ===
+                          lot.assignedTo
+                      );
+
+                    return `
+
+                      <tr>
+
+                        <td>
+                          ${dateBR(
+                            lot.programDate
+                          )}
+                        </td>
+
+                        <td>
+                          ${escapeHtml(
+                            lot.os || "—"
+                          )}
+                        </td>
+
+                        <td>
+                          ${escapeHtml(
+                            lot.name || "—"
+                          )}
+                        </td>
+
+                        <td>
+                          ${escapeHtml(
+                            user?.name || "—"
+                          )}
+                        </td>
+
+                        <td>
+                          ${kg(lot.weight)}
+                        </td>
+
+                        <td>
+                          ${kg(
+                            lotProduced(lot)
+                          )}
+                        </td>
+
+                        <td>
+                          ${kg(
+                            lotRemaining(lot)
+                          )}
+                        </td>
+
+                        <td>
+                          ${statusLabel(
+                            lotStatus(lot)
+                          )}
+                        </td>
+
+                      </tr>
+
+                    `;
+
+                  })
+                  .join("")
+
+              : `
+
+                <tr>
+
+                  <td colspan="8">
+                    Sem dados.
+                  </td>
+
+                </tr>
+
+              `
+          }
+
+        </tbody>
+
+      </table>
+
+    </div>
+
+  `;
+
+}
+
+
+$("reportFilterBtn").onclick =
+  renderReport;
+
+
+/* =========================================================
+   PDF
+========================================================= */
+
+function pdfBase(
+  title,
+  from,
+  to
+) {
+
+  const {
+    jsPDF
+  } = window.jspdf;
+
+
+  const doc =
+    new jsPDF({
+      orientation:
+        "landscape"
+    });
+
+
+  doc.setFontSize(18);
+
+  doc.text(
+    title,
+    14,
+    16
+  );
+
+
+  doc.setFontSize(9);
+
+  doc.text(
+    `Programação: ${
+      dateBR(from)
+    } a ${
+      dateBR(to)
+    }`,
+    14,
+    23
+  );
+
+
+  doc.text(
+    `Gerado em: ${
+      new Date()
+        .toLocaleString(
+          "pt-BR"
+        )
+    }`,
+    200,
+    23
+  );
+
+
+  return doc;
+
+}
+
+
+function pdfRows(lots) {
+
+  return lots.map(lot => {
+
+    const user =
+      allUsers.find(
+        x =>
+          x.id ===
+          lot.assignedTo
+      );
+
+
+    return [
+
+      dateBR(
+        lot.programDate
+      ),
+
+      lot.os || "—",
+
+      lot.name || "—",
+
+      user?.name || "—",
+
+      kg(lot.weight),
+
+      kg(
+        lotProduced(lot)
+      ),
+
+      kg(
+        lotRemaining(lot)
+      ),
+
+      statusLabel(
+        lotStatus(lot)
+      )
+
+    ];
+
+  });
+
+}
+
+
+function savePdf(
+  doc,
+  name
+) {
+
+  doc.save(
+    name
+      .replace(
+        /\s+/g,
+        "_"
+      ) +
+      ".pdf"
+  );
+
+}
+
+
+/* PDF GERAL */
+
+$("pdfGeneralBtn").onclick =
+  () => {
+
+    if (!roleIsAdmin()) {
+
+      alert(
+        "Somente administradores podem gerar o PDF geral."
+      );
+
+      return;
+
+    }
+
+
+    const from =
+      $("reportFrom").value;
+
+    const to =
+      $("reportTo").value;
+
+
+    const lots =
+      dateRange(
+        from,
+        to
+      );
+
+
+    const doc =
+      pdfBase(
+        "RELATÓRIO GERAL DE PRODUÇÃO",
+        from,
+        to
+      );
+
+
+    const planned =
+      lots.reduce(
+        (total, lot) =>
+          total +
+          Number(
+            lot.weight || 0
+          ),
+        0
+      );
+
+
+    const produced =
+      lots.reduce(
+        (total, lot) =>
+          total +
+          lotProduced(lot),
+        0
+      );
+
+
+    doc.setFontSize(11);
+
+    doc.text(
+
+      `Programado: ${
+        kg(planned)
+      }   ` +
+
+      `Produzido: ${
+        kg(produced)
+      }   ` +
+
+      `Saldo: ${
+        kg(
+          planned -
+          produced
+        )
+      }   ` +
+
+      `Realização: ${
+        pct(
+          planned
+            ? produced /
+              planned *
+              100
+            : 0
+        )
+      }`,
+
+      14,
+      31
+
+    );
+
+
+    const by = {};
+
+
+    lots.forEach(lot => {
+
+      const user =
+        allUsers.find(
+          x =>
+            x.id ===
+            lot.assignedTo
+        );
+
+
+      const key =
+        `${lot.programDate}|${lot.assignedTo}`;
+
+
+      if (!by[key]) {
+
+        by[key] = {
+
+          date:
+            lot.programDate,
+
+          name:
+            user?.name ||
+            "—",
+
+          produced:
+            0,
+
+          clients:
+            new Set(),
+
+          lots:
+            0
+
+        };
+
+      }
+
+
+      by[key].produced +=
+        lotProduced(lot);
+
+
+      by[key].clients.add(
+        lot.clientName ||
+        lot.name ||
+        "Sem cliente"
+      );
+
+
+      by[key].lots++;
+
+    });
+
+
+    doc.autoTable({
+
+      startY: 38,
+
+      head: [[
+
+        "Data",
+
+        "Colaborador",
+
+        "Peso do dia",
+
+        "Clientes",
+
+        "Lotes"
+
+      ]],
+
+      body:
+
+        Object
+          .values(by)
+          .sort(
+            (a, b) =>
+              a.date.localeCompare(
+                b.date
+              )
+          )
+          .map(row => [
+
+            dateBR(row.date),
+
+            row.name,
+
+            kg(row.produced),
+
+            [
+              ...row.clients
+            ].join(", "),
+
+            row.lots
+
+          ])
+
+    });
+
+
+    doc.addPage();
+
+
+    doc.setFontSize(14);
+
+    doc.text(
+      "DETALHAMENTO DOS LOTES",
+      14,
+      16
+    );
+
+
+    doc.autoTable({
+
+      startY: 22,
+
+      head: [[
+
+        "Programação",
+
+        "OS",
+
+        "Lote",
+
+        "Colaborador",
+
+        "Peso",
+
+        "Produzido",
+
+        "Saldo",
+
+        "Status"
+
+      ]],
+
+      body:
+        pdfRows(lots)
+
+    });
+
+
+    savePdf(
+      doc,
+      `Relatorio_Geral_${from}_${to}`
+    );
+
+  };
+
+
+/* PDF INDIVIDUAL */
+
+$("pdfIndividualBtn").onclick =
+  () => {
+
+    const uid =
+      $("reportUser").value;
+
+
+    if (!uid) {
+
+      alert(
+        "Selecione um colaborador para o PDF individual."
+      );
+
+      return;
+
+    }
+
+
+    const from =
+      $("reportFrom").value;
+
+    const to =
+      $("reportTo").value;
+
+
+    const user =
+      allUsers.find(
+        item =>
+          item.id === uid
+      );
+
+
+    const lots =
+      dateRange(
+        from,
+        to
+      ).filter(
+        lot =>
+          lot.assignedTo === uid
+      );
+
+
+    const doc =
+      pdfBase(
+        `RELATÓRIO INDIVIDUAL - ${
+          user?.name ||
+          "Colaborador"
+        }`,
+        from,
+        to
+      );
+
+
+    const planned =
+      lots.reduce(
+        (total, lot) =>
+          total +
+          Number(
+            lot.weight || 0
+          ),
+        0
+      );
+
+
+    const produced =
+      lots.reduce(
+        (total, lot) =>
+          total +
+          lotProduced(lot),
+        0
+      );
+
+
+    const clients =
+      new Set(
+        lots.map(
+          lot =>
+            lot.clientName ||
+            lot.name
+        )
+      );
+
+
+    doc.setFontSize(11);
+
+    doc.text(
+
+      `Programado: ${
+        kg(planned)
+      }   ` +
+
+      `Produzido: ${
+        kg(produced)
+      }   ` +
+
+      `Saldo: ${
+        kg(
+          planned -
+          produced
+        )
+      }   ` +
+
+      `Realização: ${
+        pct(
+          planned
+            ? produced /
+              planned *
+              100
+            : 0
+        )
+      }   ` +
+
+      `Clientes: ${
+        clients.size
+      }`,
+
+      14,
+      31
+
+    );
+
+
+    const by = {};
+
+
+    lots.forEach(lot => {
+
+      const date =
+        lot.programDate;
+
+
+      if (!by[date]) {
+
+        by[date] = {
+
+          produced:
+            0,
+
+          clients:
+            new Set(),
+
+          lots:
+            0
+
+        };
+
+      }
+
+
+      by[date].produced +=
+        lotProduced(lot);
+
+
+      by[date].clients.add(
+        lot.clientName ||
+        lot.name ||
+        "Sem cliente"
+      );
+
+
+      by[date].lots++;
+
+    });
+
+
+    doc.autoTable({
+
+      startY: 38,
+
+      head: [[
+
+        "Data",
+
+        "Peso do dia",
+
+        "Clientes",
+
+        "Lotes"
+
+      ]],
+
+      body:
+
+        Object
+          .entries(by)
+          .sort(
+            (a, b) =>
+              a[0].localeCompare(
+                b[0]
+              )
+          )
+          .map(
+            ([date, row]) => [
+
+              dateBR(date),
+
+              kg(
+                row.produced
+              ),
+
+              [
+                ...row.clients
+              ].join(", "),
+
+              row.lots
+
+            ]
+          )
+
+    });
+
+
+    doc.addPage();
+
+
+    doc.setFontSize(14);
+
+    doc.text(
+      "DETALHAMENTO DOS LOTES",
+      14,
+      16
+    );
+
+
+    doc.autoTable({
+
+      startY: 22,
+
+      head: [[
+
+        "Programação",
+
+        "OS",
+
+        "Lote",
+
+        "Peso",
+
+        "Produzido",
+
+        "Saldo",
+
+        "Status"
+
+      ]],
+
+      body:
+
+        lots.map(
+          lot => [
+
+            dateBR(
+              lot.programDate
+            ),
+
+            lot.os || "—",
+
+            lot.name || "—",
+
+            kg(
+              lot.weight
+            ),
+
+            kg(
+              lotProduced(lot)
+            ),
+
+            kg(
+              lotRemaining(lot)
+            ),
+
+            statusLabel(
+              lotStatus(lot)
+            )
+
+          ]
+        )
+
+    });
+
+
+    savePdf(
+
+      doc,
+
+      `Relatorio_${
+        user?.name ||
+        "Colaborador"
+      }_${from}_${to}`
+
+    );
+
+  };
+
+
+/* =========================================================
+   COLABORADORES
+========================================================= */
+
+function renderUsers() {
+
+  if (!roleIsAdmin()) {
+
+    return;
+
+  }
+
+
+  $("usersTable").innerHTML = `
+
+    <div class="table-wrap">
+
+      <table class="data-table">
+
+        <thead>
+
+          <tr>
+
+            <th>Nome</th>
+
+            <th>E-mail</th>
+
+            <th>Perfil</th>
+
+            <th>Ativo</th>
+
+            <th>Carga pendente</th>
+
+          </tr>
+
+        </thead>
+
+        <tbody>
+
+          ${
+            allUsers.length
+
+              ? allUsers.map(user => {
+
+                  const load =
+                    allLots
+                      .filter(
+                        lot =>
+                          lot.assignedTo ===
+                            user.id &&
+                          [
+                            "pendente",
+                            "producao"
+                          ].includes(
+                            lotStatus(lot)
+                          )
+                      )
+                      .reduce(
+                        (total, lot) =>
+                          total +
+                          lotRemaining(lot),
+                        0
+                      );
+
+
+                  return `
+
+                    <tr>
+
+                      <td>
+                        ${escapeHtml(
+                          user.name ||
+                          "—"
+                        )}
+                      </td>
+
+                      <td>
+                        ${escapeHtml(
+                          user.email ||
+                          "—"
+                        )}
+                      </td>
+
+                      <td>
+                        ${escapeHtml(
+                          user.role ||
+                          "—"
+                        )}
+                      </td>
+
+                      <td>
+                        ${
+                          user.active !== false
+                            ? "Sim"
+                            : "Não"
+                        }
+                      </td>
+
+                      <td>
+                        ${kg(load)}
+                      </td>
+
+                    </tr>
+
+                  `;
+
+                }).join("")
+
+              : `
+
+                <tr>
+
+                  <td colspan="5">
+                    Nenhum colaborador cadastrado.
+                  </td>
+
+                </tr>
+
+              `
+          }
+
+        </tbody>
+
+      </table>
+
+    </div>
+
+  `;
+
+}
+
+
+/* =========================================================
+   CRIAR COLABORADOR
+========================================================= */
+
+$("userForm").addEventListener(
+  "submit",
+  async event => {
+
+    event.preventDefault();
+
+    if (!roleIsAdmin()) {
+
+      return;
+
+    }
+
+
+    const name =
+      $("newUserName")
+        .value
+        .trim();
+
+
+    const email =
+      $("newUserEmail")
+        .value
+        .trim();
+
+
+    const password =
+      $("newUserPassword")
+        .value;
+
+
+    $("userFormMessage")
+      .textContent = "";
+
+
+    try {
+
+      /*
+       * App secundário.
+       * Isso evita deslogar o administrador.
+       */
+
+      const secondaryName =
+        "secondary-" +
+        Date.now();
+
+
+      const secondary =
+        firebase.initializeApp(
+          firebaseConfig,
+          secondaryName
+        );
+
+
+      const secondaryAuth =
+        secondary.auth();
+
+
+      const credential =
+        await secondaryAuth
+          .createUserWithEmailAndPassword(
+            email,
+            password
+          );
+
+
+      await db
+        .collection("users")
+        .doc(
+          credential.user.uid
+        )
+        .set({
+
+          name,
+
+          email,
+
+          role:
+            "colaborador",
+
+          active:
+            true,
+
+          createdAt:
+            firebase.firestore
+              .FieldValue
+              .serverTimestamp()
+
+        });
+
+
+      await secondary.delete();
+
+
+      $("userFormMessage")
+        .className =
+        "success";
+
+
+      $("userFormMessage")
+        .textContent =
+        "Colaborador criado com sucesso.";
+
+
+      event.target.reset();
+
+
+      await loadData();
+
+
+    } catch (error) {
+
+      console.error(error);
+
+
+      $("userFormMessage")
+        .className =
+        "error";
+
+
+      $("userFormMessage")
+        .textContent =
+        error.message ||
+        "Erro ao criar colaborador.";
+
+    }
+
+  }
+);
+
+
+/* =========================================================
+   INICIALIZAÇÃO
+========================================================= */
+
+document.addEventListener(
+  "DOMContentLoaded",
+  () => {
+
+    console.log(
+      "Reluz Produção carregado."
+    );
+
+  }
+);
+
+</script>
+
 </body>
 </html>
