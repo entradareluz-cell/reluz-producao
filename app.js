@@ -1678,6 +1678,11 @@ async function(id) {
         return;
     }
 
+    // Guarda exatamente o lote que está aberto no modal.
+    // Isso permite que o botão "Editar lote" saiba qual registro editar.
+    window.currentLot = lot;
+    window.currentSelectedLot = lot;
+
 
     const user =
         allUsers.find(
@@ -2011,6 +2016,9 @@ function() {
     $("lotModal")
         ?.classList
         .add("hidden");
+
+    window.currentLot = null;
+    window.currentSelectedLot = null;
 
 };
 
