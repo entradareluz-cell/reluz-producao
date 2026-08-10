@@ -9,8 +9,11 @@ service cloud.firestore {
     // ============================================================
 
     function isMasterAdmin() {
+
       return request.auth != null
-        && request.auth.uid == "3QlkmlndAXaGxErEpCL17Mun35E3";
+        && request.auth.uid ==
+           "3QlkmlndAXaGxErEpCL17Mun35E3";
+
     }
 
 
@@ -19,18 +22,22 @@ service cloud.firestore {
     // ============================================================
 
     function isSignedIn() {
+
       return request.auth != null;
+
     }
 
 
     // ============================================================
-    // DADOS DO USUÁRIO
+    // PERFIL DO USUÁRIO
     // ============================================================
 
     function userData() {
+
       return get(
         /databases/$(database)/documents/users/$(request.auth.uid)
       ).data;
+
     }
 
 
@@ -39,9 +46,11 @@ service cloud.firestore {
     // ============================================================
 
     function isCollaborator() {
+
       return isSignedIn()
         && userData().role == "colaborador"
         && userData().active == true;
+
     }
 
 
@@ -51,25 +60,54 @@ service cloud.firestore {
 
     match /users/{userId} {
 
-      // Seu login pode ver todos.
-      // Colaborador pode ver somente o próprio perfil.
+      // ----------------------------------------------------------
+      // LEITURA
+      // ----------------------------------------------------------
+
+      // ADMIN PRINCIPAL:
+      // pode visualizar todos os usuários.
+      //
+      // COLABORADOR:
+      // pode visualizar somente o próprio perfil.
+      // ----------------------------------------------------------
+
       allow read: if isMasterAdmin()
-        || (
+        ||
+        (
           isSignedIn()
           && request.auth.uid == userId
         );
 
 
-      // Somente seu login pode criar usuários.
+      // ----------------------------------------------------------
+      // CRIAÇÃO
+      // ----------------------------------------------------------
+
+      // Somente o administrador principal.
+      // ----------------------------------------------------------
+
       allow create: if isMasterAdmin();
 
 
-      // Somente seu login pode alterar usuários.
+      // ----------------------------------------------------------
+      // ALTERAÇÃO
+      // ----------------------------------------------------------
+
+      // Somente o administrador principal.
+      // ----------------------------------------------------------
+
       allow update: if isMasterAdmin();
 
 
-      // Somente seu login pode excluir usuários.
+      // ----------------------------------------------------------
+      // EXCLUSÃO
+      // ----------------------------------------------------------
+
+      // Somente o administrador principal.
+      // ----------------------------------------------------------
+
       allow delete: if isMasterAdmin();
+
     }
 
 
@@ -82,84 +120,112 @@ service cloud.firestore {
       // ----------------------------------------------------------
       // LEITURA
       // ----------------------------------------------------------
-      //
+
       // ADMIN PRINCIPAL:
-      // acesso a TODOS os lotes.
+      // vê todos os lotes.
       //
       // COLABORADOR:
-      // somente os lotes atribuídos a ele.
+      // vê somente os lotes atribuídos a ele.
       // ----------------------------------------------------------
 
       allow read: if isMasterAdmin()
-        || (
+        ||
+        (
           isCollaborator()
-          && resource.data.assignedTo == request.auth.uid
+          &&
+          resource.data.assignedTo ==
+          request.auth.uid
         );
 
 
       // ----------------------------------------------------------
-      // CRIAR
+      // CRIAR LOTE
       // ----------------------------------------------------------
-      //
-      // Somente administrador principal.
+
+      // Somente o administrador principal.
       // ----------------------------------------------------------
 
       allow create: if isMasterAdmin();
 
 
       // ----------------------------------------------------------
-      // ALTERAR
+      // ALTERAR LOTE
       // ----------------------------------------------------------
-      //
+
       // ADMIN PRINCIPAL:
-      // pode alterar QUALQUER CAMPO de QUALQUER LOTE.
+      // pode alterar absolutamente qualquer campo.
       //
       // COLABORADOR:
-      // pode registrar produção somente no lote atribuído.
+      // pode alterar somente dados de produção
+      // do lote que está atribuído a ele.
       // ----------------------------------------------------------
 
       allow update: if isMasterAdmin()
-        || (
+        ||
+        (
           isCollaborator()
-          && resource.data.assignedTo == request.auth.uid
+          &&
+          resource.data.assignedTo ==
+          request.auth.uid
 
-          // Não pode trocar o responsável
-          && request.resource.data.assignedTo ==
-             resource.data.assignedTo
+          &&
 
-          // Não pode alterar dados cadastrais
-          && request.resource.data.name ==
-             resource.data.name
+          request.resource.data.name ==
+          resource.data.name
 
-          && request.resource.data.os ==
-             resource.data.os
+          &&
 
-          && request.resource.data.clientName ==
-             resource.data.clientName
+          request.resource.data.os ==
+          resource.data.os
 
-          && request.resource.data.weight ==
-             resource.data.weight
+          &&
 
-          && request.resource.data.entryDate ==
-             resource.data.entryDate
+          request.resource.data.clientName ==
+          resource.data.clientName
 
-          && request.resource.data.programDate ==
-             resource.data.programDate
+          &&
 
-          && request.resource.data.createdBy ==
-             resource.data.createdBy
+          request.resource.data.weight ==
+          resource.data.weight
 
-          && request.resource.data.createdAt ==
-             resource.data.createdAt
+          &&
+
+          request.resource.data.entryDate ==
+          resource.data.entryDate
+
+          &&
+
+          request.resource.data.programDate ==
+          resource.data.programDate
+
+          &&
+
+          request.resource.data.assignedTo ==
+          resource.data.assignedTo
+
+          &&
+
+          request.resource.data.createdBy ==
+          resource.data.createdBy
+
+          &&
+
+          request.resource.data.createdAt ==
+          resource.data.createdAt
         );
 
 
       // ----------------------------------------------------------
-      // EXCLUIR
+      // EXCLUSÃO
+      // ----------------------------------------------------------
+
+      // Somente o administrador principal.
       // ----------------------------------------------------------
 
       allow delete: if isMasterAdmin();
+
     }
 
   }
+
 }
