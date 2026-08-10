@@ -1445,6 +1445,452 @@ window.openLot = async function(id) {
 };
 
 // ============================================================
+// EDITAR LOTE - ADMIN PRINCIPAL
+// ============================================================
+
+window.editLot = async function (id) {
+
+    // Somente o administrador principal pode editar
+    if (!roleIsAdmin()) {
+
+        alert(
+            "Somente o administrador pode editar lotes."
+        );
+
+        return;
+    }
+
+    const lot =
+        allLots.find(
+            item => item.id === id
+        );
+
+    if (!lot) {
+
+        alert(
+            "Lote não encontrado."
+        );
+
+        return;
+    }
+
+
+    // --------------------------------------------------------
+    // Lista de colaboradores
+    // --------------------------------------------------------
+
+    const collaborators =
+        allUsers.filter(
+            user =>
+                user.role === "colaborador" &&
+                user.active !== false
+        );
+
+
+    // --------------------------------------------------------
+    // Montar formulário
+    // --------------------------------------------------------
+
+    $("lotModalContent").innerHTML = `
+
+        <h2>
+            ✏️ Editar lote
+        </h2>
+
+        <form
+            id="editLotForm"
+            class="form-grid"
+        >
+
+            <label>
+                Nome do lote
+
+                <input
+                    id="editLotName"
+                    value="${escapeHtml(
+                        lot.name || ""
+                    )}"
+                    required
+                >
+            </label>
+
+
+            <label>
+                OS
+
+                <input
+                    id="editLotOs"
+                    value="${escapeHtml(
+                        lot.os || ""
+                    )}"
+                    required
+                >
+            </label>
+
+
+            <label>
+                Cliente
+
+                <input
+                    id="editLotClient"
+                    value="${escapeHtml(
+                        lot.clientName ||
+                        lot.name ||
+                        ""
+                    )}"
+                    required
+                >
+            </label>
+
+
+            <label>
+                Peso (kg)
+
+                <input
+                    id="editLotWeight"
+                    type="number"
+                    step="0.001"
+                    min="0.001"
+                    value="${Number(
+                        lot.weight || 0
+                    )}"
+                    required
+                >
+            </label>
+
+
+            <label>
+                Data de entrada
+
+                <input
+                    id="editLotEntry"
+                    type="date"
+                    value="${lot.entryDate || ""}"
+                    required
+                >
+            </label>
+
+
+            <label>
+                Data de programação
+
+                <input
+                    id="editLotProgram"
+                    type="date"
+                    value="${lot.programDate || ""}"
+                    required
+                >
+            </label>
+
+
+            <label>
+                Colaborador
+
+                <select
+                    id="editLotAssigned"
+                    required
+                >
+
+                    ${
+                        collaborators
+                            .map(
+                                user => `
+
+                                    <option
+                                        value="${user.id}"
+                                        ${
+                                            user.id ===
+                                            lot.assignedTo
+                                                ? "selected"
+                                                : ""
+                                        }
+                                    >
+                                        ${escapeHtml(
+                                            user.name ||
+                                            user.email ||
+                                            "Sem nome"
+                                        )}
+                                    </option>
+
+                                `
+                            )
+                            .join("")
+                    }
+
+                </select>
+
+            </label>
+
+
+            <div class="full">
+
+                <button
+                    type="submit"
+                    class="primary"
+                >
+                    💾 Salvar alterações
+                </button>
+
+            </div>
+
+        </form>
+
+
+        <div class="modal-actions">
+
+            <button
+                type="button"
+                class="secondary"
+                onclick="openLot('${lot.id}')"
+            >
+                Voltar
+            </button>
+
+            <button
+                type="button"
+                class="secondary"
+                onclick="closeLotModal()"
+            >
+                Fechar
+            </button>
+
+        </div>
+
+
+        <div id="editLotMessage"></div>
+    `;
+
+
+    $("lotModal")
+        .classList
+        .remove("hidden");
+
+
+    // --------------------------------------------------------
+    // SALVAR ALTERAÇÕES
+    // --------------------------------------------------------
+
+    $("editLotForm").onsubmit =
+        async function (event) {
+
+            event.preventDefault();
+
+
+            const name =
+                $("editLotName")
+                    .value
+                    .trim();
+
+
+            const os =
+                $("editLotOs")
+                    .value
+                    .trim();
+
+
+            const clientName =
+                $("editLotClient")
+                    .value
+                    .trim();
+
+
+            const weight =
+                Number(
+                    $("editLotWeight").value
+                );
+
+
+            const entryDate =
+                $("editLotEntry").value;
+
+
+            const programDate =
+                $("editLotProgram").value;
+
+
+            const assignedTo =
+                $("editLotAssigned").value;
+
+
+            // ------------------------------------------------
+            // Validações
+            // ------------------------------------------------
+
+            if (!name) {
+
+                $("editLotMessage")
+                    .textContent =
+                    "Informe o nome do lote.";
+
+                return;
+            }
+
+
+            if (!os) {
+
+                $("editLotMessage")
+                    .textContent =
+                    "Informe a OS.";
+
+                return;
+            }
+
+
+            if (!clientName) {
+
+                $("editLotMessage")
+                    .textContent =
+                    "Informe o cliente.";
+
+                return;
+            }
+
+
+            if (weight <= 0) {
+
+                $("editLotMessage")
+                    .textContent =
+                    "Informe um peso válido.";
+
+                return;
+            }
+
+
+            if (!entryDate) {
+
+                $("editLotMessage")
+                    .textContent =
+                    "Informe a data de entrada.";
+
+                return;
+            }
+
+
+            if (!programDate) {
+
+                $("editLotMessage")
+                    .textContent =
+                    "Informe a data de programação.";
+
+                return;
+            }
+
+
+            if (!assignedTo) {
+
+                $("editLotMessage")
+                    .textContent =
+                    "Selecione um colaborador.";
+
+                return;
+            }
+
+
+            // ------------------------------------------------
+            // Não permite diminuir o peso abaixo do produzido
+            // ------------------------------------------------
+
+            const produced =
+                lotProduced(lot);
+
+
+            if (
+                weight <
+                produced
+            ) {
+
+                $("editLotMessage")
+                    .textContent =
+                    `O peso do lote não pode ser menor que o peso já produzido (${kg(produced)}).`;
+
+                return;
+            }
+
+
+            try {
+
+                $("editLotMessage")
+                    .className = "";
+
+
+                $("editLotMessage")
+                    .textContent =
+                    "Salvando alterações...";
+
+
+                await db
+                    .collection("lots")
+                    .doc(id)
+                    .update({
+
+                        name,
+
+                        os,
+
+                        clientName,
+
+                        weight,
+
+                        entryDate,
+
+                        programDate,
+
+                        assignedTo,
+
+                        updatedAt:
+                            firebase.firestore
+                                .FieldValue
+                                .serverTimestamp()
+                    });
+
+
+                $("editLotMessage")
+                    .className =
+                    "success";
+
+
+                $("editLotMessage")
+                    .textContent =
+                    "Lote alterado com sucesso.";
+
+
+                // Atualiza os dados
+                await loadData();
+
+
+                // Abre novamente o lote atualizado
+                setTimeout(
+                    () => {
+
+                        openLot(id);
+
+                    },
+                    400
+                );
+
+
+            } catch (error) {
+
+                console.error(
+                    "Erro ao editar lote:",
+                    error
+                );
+
+
+                $("editLotMessage")
+                    .className =
+                    "error";
+
+
+                $("editLotMessage")
+                    .textContent =
+                    error.message ||
+                    "Erro ao salvar alterações.";
+            }
+        };
+};
+
+// ============================================================
 // FECHAR MODAL
 // ============================================================
 
@@ -1475,7 +1921,30 @@ if ($("lotModal")) {
         }
     );
 }
-
+${
+    roleIsAdmin()
+        ? `
+            <button
+                type="button"
+                onclick="
+                    event.stopPropagation();
+                    window.editLot('${l.id}');
+                "
+                style="
+                    display:block !important;
+                    width:100% !important;
+                    margin-top:15px !important;
+                    padding:10px !important;
+                    cursor:pointer !important;
+                    opacity:1 !important;
+                    visibility:visible !important;
+                "
+            >
+                ✏️ EDITAR LOTE
+            </button>
+        `
+        : ""
+}
 // ============================================================
 // REGISTRAR PRODUÇÃO
 // ============================================================
