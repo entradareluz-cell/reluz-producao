@@ -799,6 +799,7 @@ if ($("dashFilterBtn")) {
 }
 
 ```js
+```js
 // ============================================================
 // CARD DO KANBAN
 // ============================================================
@@ -807,21 +808,20 @@ function lotCard(l) {
 
     const u =
         allUsers.find(
-            x =>
-                x.id ===
-                l.assignedTo
+            x => x.id === l.assignedTo
         );
 
     const st =
         lotStatus(l);
 
     return `
+        <div
+            class="lot-card"
+            onclick="openLot('${l.id}')"
+            style="position:relative;"
+        >
 
-        <div class="lot-card">
-
-            <div
-                class="lot-status"
-            >
+            <div class="lot-status">
                 ${statusLabel(st)}
             </div>
 
@@ -839,6 +839,7 @@ function lotCard(l) {
             </div>
 
             <div>
+                Peso:
                 ${kg(l.weight)}
             </div>
 
@@ -874,36 +875,38 @@ function lotCard(l) {
 
             </div>
 
-            ${
-                roleIsAdmin()
-                    ? `
+            <!-- ================================================= -->
+            <!-- BOTÃO EDITAR -->
+            <!-- ================================================= -->
 
-                        <div
-                            class="lot-card-actions"
-                            style="
-                                margin-top:12px;
-                                display:flex;
-                                gap:8px;
-                            "
-                        >
+            <div
+                style="
+                    margin-top:15px;
+                    padding-top:12px;
+                    border-top:1px solid #ddd;
+                "
+            >
 
-                            <button
-                                type="button"
-                                class="primary"
-                                style="
-                                    width:100%;
-                                    cursor:pointer;
-                                "
-                                onclick="event.stopPropagation(); editLot('${l.id}')"
-                            >
-                                ✏️ EDITAR
-                            </button>
+                <button
+                    type="button"
+                    class="primary"
+                    style="
+                        width:100%;
+                        min-height:40px;
+                        cursor:pointer;
+                        display:block;
+                        visibility:visible;
+                        opacity:1;
+                    "
+                    onclick="
+                        event.stopPropagation();
+                        editLot('${l.id}');
+                    "
+                >
+                    ✏️ EDITAR LOTE
+                </button>
 
-                        </div>
-
-                    `
-                    : ""
-            }
+            </div>
 
         </div>
     `;
