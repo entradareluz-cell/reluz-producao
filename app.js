@@ -54,16 +54,21 @@ const dateBR = d =>
     d ? String(d).split("-").reverse().join("/") : "—";
 
 function escapeHtml(s = "") {
-    return String(s).replace(/[&<>"']/g, m => ({
-        "&": "&amp;",
-        "<": "&lt;",
-        ">": "&gt;",
-        '"': "&quot;",
-        "'": "&#039;"
-    }[m]));
+
+    return String(s).replace(
+        /[&<>"']/g,
+        m => ({
+            "&": "&amp;",
+            "<": "&lt;",
+            ">": "&gt;",
+            '"': "&quot;",
+            "'": "&#039;"
+        }[m])
+    );
 }
 
 function dateRange(from, to) {
+
     return allLots.filter(l =>
         (!from || l.programDate >= from) &&
         (!to || l.programDate <= to)
@@ -449,7 +454,11 @@ function fillUserSelects() {
             active
                 .map(u =>
                     `<option value="${u.id}">
-                        ${escapeHtml(u.name || u.email || "Sem nome")}
+                        ${escapeHtml(
+                            u.name ||
+                            u.email ||
+                            "Sem nome"
+                        )}
                     </option>`
                 )
                 .join("");
@@ -464,7 +473,11 @@ function fillUserSelects() {
             active
                 .map(u =>
                     `<option value="${u.id}">
-                        ${escapeHtml(u.name || u.email || "Sem nome")}
+                        ${escapeHtml(
+                            u.name ||
+                            u.email ||
+                            "Sem nome"
+                        )}
                     </option>`
                 )
                 .join("");
@@ -798,95 +811,138 @@ if ($("dashFilterBtn")) {
         renderDashboard;
 }
 
-```js
-```js
 // ============================================================
 // CARD DO KANBAN
 // ============================================================
 
 function lotCard(l) {
 
-    const u = allUsers.find(
-        x => x.id === l.assignedTo
-    );
+    const u =
+        allUsers.find(
+            x => x.id === l.assignedTo
+        );
 
-    const st = lotStatus(l);
+    const st =
+        lotStatus(l);
 
     return `
+
         <div
             class="lot-card"
-            onclick="openLot('${l.id}')"
+            style="position:relative;"
         >
 
-            <div class="lot-status">
-                ${statusLabel(st)}
-            </div>
+            <div
+                onclick="openLot('${l.id}')"
+                style="cursor:pointer;"
+            >
 
-            <h4>
-                ${escapeHtml(l.name || "Lote")}
-            </h4>
+                <div class="lot-status">
+                    ${statusLabel(st)}
+                </div>
 
-            <div>
-                OS:
-                ${escapeHtml(l.os || "—")}
-            </div>
+                <h4>
+                    ${escapeHtml(
+                        l.name ||
+                        "Lote"
+                    )}
+                </h4>
 
-            <div>
-                Peso:
-                ${kg(l.weight)}
-            </div>
+                <div>
+                    <strong>OS:</strong>
+                    ${escapeHtml(
+                        l.os ||
+                        "—"
+                    )}
+                </div>
 
-            <div>
-                Programação:
-                ${dateBR(l.programDate)}
-            </div>
+                <div>
+                    <strong>Peso:</strong>
+                    ${kg(l.weight)}
+                </div>
 
-            <div>
-                Responsável:
-                ${escapeHtml(u?.name || "—")}
-            </div>
+                <div>
+                    <strong>Programação:</strong>
+                    ${dateBR(
+                        l.programDate
+                    )}
+                </div>
 
-            <div class="lot-progress">
+                <div>
+                    <strong>Responsável:</strong>
+                    ${escapeHtml(
+                        u?.name ||
+                        "—"
+                    )}
+                </div>
 
-                <div class="progress-bar">
+                <div class="lot-progress">
 
-                    <div
-                        class="progress-fill"
-                        style="width:${lotPercent(l)}%"
-                    ></div>
+                    <div class="progress-bar">
+
+                        <div
+                            class="progress-fill"
+                            style="
+                                width:${lotPercent(l)}%;
+                            "
+                        ></div>
+
+                    </div>
+
+                    <small>
+                        ${kg(
+                            lotProduced(l)
+                        )}
+                        produzido
+                        •
+                        ${pct(
+                            lotPercent(l)
+                        )}
+                    </small>
 
                 </div>
 
-                <small>
-                    ${kg(lotProduced(l))}
-                    produzido
-                    •
-                    ${pct(lotPercent(l))}
-                </small>
-
             </div>
 
-            <!-- BOTÃO EDITAR -->
-
-            <button
-                type="button"
-                onclick="event.stopPropagation(); window.editLot('${l.id}');"
-                style="
-                    display:block !important;
-                    width:100% !important;
-                    margin-top:15px !important;
-                    padding:10px !important;
-                    cursor:pointer !important;
-                    opacity:1 !important;
-                    visibility:visible !important;
-                "
-            >
-                ✏️ EDITAR LOTE
-            </button>
+            ${
+                roleIsAdmin()
+                    ? `
+                        <button
+                            type="button"
+                            class="edit-lot-btn"
+                            onclick="
+                                event.stopPropagation();
+                                editLot('${l.id}');
+                            "
+                            style="
+                                display:block !important;
+                                width:100% !important;
+                                min-height:42px !important;
+                                margin-top:14px !important;
+                                padding:10px 14px !important;
+                                background:#111827 !important;
+                                color:#ffffff !important;
+                                border:none !important;
+                                border-radius:8px !important;
+                                font-size:14px !important;
+                                font-weight:700 !important;
+                                cursor:pointer !important;
+                                visibility:visible !important;
+                                opacity:1 !important;
+                                position:relative !important;
+                                z-index:50 !important;
+                            "
+                        >
+                            ✏️ EDITAR LOTE
+                        </button>
+                    `
+                    : ""
+            }
 
         </div>
     `;
 }
+
 // ============================================================
 // KANBAN
 // ============================================================
@@ -1034,7 +1090,7 @@ if ($("mineFilterBtn")) {
 }
 
 // ============================================================
-// MODAL DO LOTE
+// ABRIR LOTE
 // ============================================================
 
 window.openLot = async function(id) {
@@ -1068,7 +1124,8 @@ window.openLot = async function(id) {
 
         <h2>
             ${escapeHtml(
-                l.name || "Lote"
+                l.name ||
+                "Lote"
             )}
         </h2>
 
@@ -1078,7 +1135,8 @@ window.openLot = async function(id) {
                 <small>OS</small>
                 <strong>
                     ${escapeHtml(
-                        l.os || "—"
+                        l.os ||
+                        "—"
                     )}
                 </strong>
             </div>
@@ -1104,28 +1162,36 @@ window.openLot = async function(id) {
             <div>
                 <small>Produzido</small>
                 <strong>
-                    ${kg(lotProduced(l))}
+                    ${kg(
+                        lotProduced(l)
+                    )}
                 </strong>
             </div>
 
             <div>
                 <small>Saldo</small>
                 <strong>
-                    ${kg(lotRemaining(l))}
+                    ${kg(
+                        lotRemaining(l)
+                    )}
                 </strong>
             </div>
 
             <div>
                 <small>Data entrada</small>
                 <strong>
-                    ${dateBR(l.entryDate)}
+                    ${dateBR(
+                        l.entryDate
+                    )}
                 </strong>
             </div>
 
             <div>
                 <small>Programação</small>
                 <strong>
-                    ${dateBR(l.programDate)}
+                    ${dateBR(
+                        l.programDate
+                    )}
                 </strong>
             </div>
 
@@ -1133,7 +1199,8 @@ window.openLot = async function(id) {
                 <small>Responsável</small>
                 <strong>
                     ${escapeHtml(
-                        u?.name || "—"
+                        u?.name ||
+                        "—"
                     )}
                 </strong>
             </div>
@@ -1161,7 +1228,9 @@ window.openLot = async function(id) {
                         <button
                             type="button"
                             class="primary"
-                            onclick="editLot('${l.id}')"
+                            onclick="
+                                editLot('${l.id}')
+                            "
                         >
                             ✏️ EDITAR LOTE
                         </button>
@@ -1231,7 +1300,9 @@ window.openLot = async function(id) {
                         <button
                             type="button"
                             class="secondary"
-                            onclick="redistributeLot('${l.id}')"
+                            onclick="
+                                redistributeLot('${l.id}')
+                            "
                         >
                             Redistribuir lote
                         </button>
@@ -1276,10 +1347,15 @@ window.openLot = async function(id) {
 
 // ============================================================
 // EDITAR LOTE
-// ADMINISTRADOR
+// SOMENTE ADMINISTRADOR
 // ============================================================
 
 window.editLot = function(id) {
+
+    console.log(
+        "EDITANDO LOTE:",
+        id
+    );
 
     if (!roleIsAdmin()) {
 
@@ -1306,12 +1382,13 @@ window.editLot = function(id) {
     }
 
     if (!$("lotModalContent")) {
+
+        alert(
+            "Modal do lote não encontrado no HTML."
+        );
+
         return;
     }
-
-    // ========================================================
-    // COLABORADORES DISPONÍVEIS
-    // ========================================================
 
     const activeUsers =
         allUsers.filter(
@@ -1327,6 +1404,11 @@ window.editLot = function(id) {
                         .trim()
                         .toLowerCase() ===
                     "admin"
+                    ||
+                    String(u.role || "")
+                        .trim()
+                        .toLowerCase() ===
+                    "administrador"
                 )
         );
 
@@ -1349,7 +1431,8 @@ window.editLot = function(id) {
                     id="editLotName"
                     type="text"
                     value="${escapeHtml(
-                        l.name || ""
+                        l.name ||
+                        ""
                     )}"
                     required
                 >
@@ -1364,7 +1447,8 @@ window.editLot = function(id) {
                     id="editLotOs"
                     type="text"
                     value="${escapeHtml(
-                        l.os || ""
+                        l.os ||
+                        ""
                     )}"
                 >
 
@@ -1396,7 +1480,8 @@ window.editLot = function(id) {
                     step="0.001"
                     min="0.001"
                     value="${Number(
-                        l.weight || 0
+                        l.weight ||
+                        0
                     )}"
                     required
                 >
@@ -1411,7 +1496,8 @@ window.editLot = function(id) {
                     id="editLotEntry"
                     type="date"
                     value="${escapeHtml(
-                        l.entryDate || ""
+                        l.entryDate ||
+                        ""
                     )}"
                 >
 
@@ -1425,7 +1511,8 @@ window.editLot = function(id) {
                     id="editLotProgram"
                     type="date"
                     value="${escapeHtml(
-                        l.programDate || ""
+                        l.programDate ||
+                        ""
                     )}"
                     required
                 >
@@ -1485,7 +1572,9 @@ window.editLot = function(id) {
                     Produzido atualmente:
                 </strong>
 
-                ${kg(lotProduced(l))}
+                ${kg(
+                    lotProduced(l)
+                )}
 
                 <br>
 
@@ -1493,18 +1582,26 @@ window.editLot = function(id) {
                     Saldo atual:
                 </strong>
 
-                ${kg(lotRemaining(l))}
+                ${kg(
+                    lotRemaining(l)
+                )}
 
             </div>
 
             <div
                 id="editLotMessage"
-                style="margin-top:10px;"
+                style="
+                    margin-top:10px;
+                "
             ></div>
 
             <div
                 class="modal-actions"
-                style="margin-top:20px;"
+                style="
+                    margin-top:20px;
+                    display:flex;
+                    gap:10px;
+                "
             >
 
                 <button
@@ -1517,15 +1614,24 @@ window.editLot = function(id) {
                 <button
                     type="button"
                     class="secondary"
-                    onclick="openLot('${l.id}')"
+                    onclick="
+                        openLot('${l.id}')
+                    "
                 >
-                    Cancelar
+                    CANCELAR
                 </button>
 
             </div>
 
         </form>
     `;
+
+    if ($("lotModal")) {
+
+        $("lotModal")
+            .classList
+            .remove("hidden");
+    }
 
     if ($("editLotForm")) {
 
@@ -1570,39 +1676,42 @@ async function saveLotEdit(
     const name =
         $("editLotName")
             ?.value
-            .trim() || "";
+            .trim() ||
+        "";
 
     const os =
         $("editLotOs")
             ?.value
-            .trim() || "";
+            .trim() ||
+        "";
 
     const clientName =
         $("editLotClient")
             ?.value
-            .trim() || "";
+            .trim() ||
+        "";
 
     const weight =
         Number(
             $("editLotWeight")
-                ?.value || 0
+                ?.value ||
+            0
         );
 
     const entryDate =
         $("editLotEntry")
-            ?.value || "";
+            ?.value ||
+        "";
 
     const programDate =
         $("editLotProgram")
-            ?.value || "";
+            ?.value ||
+        "";
 
     const assignedTo =
         $("editLotCollaborator")
-            ?.value || "";
-
-    // ========================================================
-    // VALIDAÇÕES
-    // ========================================================
+            ?.value ||
+        "";
 
     if (!name) {
 
@@ -1633,10 +1742,9 @@ async function saveLotEdit(
     }
 
     const produced =
-        lotProduced(originalLot);
-
-    // Não permite peso menor que o
-    // peso já produzido.
+        lotProduced(
+            originalLot
+        );
 
     if (
         weight <
@@ -1686,7 +1794,8 @@ async function saveLotEdit(
     const collaborator =
         allUsers.find(
             u =>
-                u.id === assignedTo
+                u.id ===
+                assignedTo
         );
 
     if (!collaborator) {
@@ -1702,10 +1811,6 @@ async function saveLotEdit(
 
         return;
     }
-
-    // ========================================================
-    // DEFINIR NOVO STATUS
-    // ========================================================
 
     const newStatus =
         originalLot.status ===
@@ -1724,10 +1829,6 @@ async function saveLotEdit(
 
                         : "pendente"
             );
-
-    // ========================================================
-    // SALVAR NO FIRESTORE
-    // ========================================================
 
     try {
 
@@ -1773,7 +1874,7 @@ async function saveLotEdit(
                 "success";
 
             message.textContent =
-                `Lote atualizado com sucesso. Responsável: ${collaborator.name || collaborator.email}.`;
+                "Lote atualizado com sucesso!";
         }
 
         await loadData();
@@ -1837,7 +1938,8 @@ async function registerProduction(
     const amount =
         Number(
             $("productionInput")
-                ?.value || 0
+                ?.value ||
+            0
         );
 
     if (amount <= 0) {
@@ -1897,7 +1999,8 @@ async function registerProduction(
 
                 const next =
                     Number(
-                        data.producedWeight || 0
+                        data.producedWeight ||
+                        0
                     ) +
                     amount;
 
@@ -1917,7 +2020,8 @@ async function registerProduction(
 
                     obs:
                         $("productionObs")
-                            ?.value || "",
+                            ?.value ||
+                        "",
 
                     userId:
                         currentUser.uid,
@@ -1995,7 +2099,8 @@ if ($("lotForm")) {
             const weight =
                 Number(
                     $("lotWeight")
-                        ?.value || 0
+                        ?.value ||
+                    0
                 );
 
             if (weight <= 0) {
@@ -2051,10 +2156,12 @@ if ($("lotForm")) {
                 active.sort(
                     (a, b) =>
                         (
-                            loads[a.id] || 0
+                            loads[a.id] ||
+                            0
                         ) -
                         (
-                            loads[b.id] || 0
+                            loads[b.id] ||
+                            0
                         )
                 );
 
@@ -2069,7 +2176,8 @@ if ($("lotForm")) {
                 const lotName =
                     $("lotName")
                         ?.value
-                        .trim() || "";
+                        .trim() ||
+                    "";
 
                 const data = {
 
@@ -2079,17 +2187,20 @@ if ($("lotForm")) {
                     os:
                         $("lotOs")
                             ?.value
-                            .trim() || "",
+                            .trim() ||
+                        "",
 
                     weight,
 
                     entryDate:
                         $("lotEntry")
-                            ?.value || "",
+                            ?.value ||
+                        "",
 
                     programDate:
                         $("lotProgram")
-                            ?.value || "",
+                            ?.value ||
+                        "",
 
                     assignedTo:
                         chosen.id,
@@ -2213,10 +2324,12 @@ window.redistributeLot =
         active.sort(
             (a, b) =>
                 (
-                    loads[a.id] || 0
+                    loads[a.id] ||
+                    0
                 ) -
                 (
-                    loads[b.id] || 0
+                    loads[b.id] ||
+                    0
                 )
         );
 
@@ -2383,7 +2496,8 @@ function renderReport() {
                     l.programDate,
 
                 user:
-                    u?.name || "—",
+                    u?.name ||
+                    "—",
 
                 produced:
                     0,
@@ -2400,7 +2514,10 @@ function renderReport() {
         }
 
         by[key].planned +=
-            Number(l.weight || 0);
+            Number(
+                l.weight ||
+                0
+            );
 
         by[key].produced +=
             lotProduced(l);
@@ -2417,8 +2534,12 @@ function renderReport() {
     const rows =
         Object.values(by).sort(
             (a, b) =>
-                a.date.localeCompare(b.date) ||
-                a.user.localeCompare(b.user)
+                a.date.localeCompare(
+                    b.date
+                ) ||
+                a.user.localeCompare(
+                    b.user
+                )
         );
 
     if ($("reportByCollaborator")) {
@@ -2456,24 +2577,33 @@ function renderReport() {
                                     <tr>
 
                                         <td>
-                                            ${dateBR(r.date)}
-                                        </td>
-
-                                        <td>
-                                            ${escapeHtml(r.user)}
-                                        </td>
-
-                                        <td>
-                                            ${kg(r.produced)}
-                                        </td>
-
-                                        <td>
-                                            ${kg(r.planned)}
+                                            ${dateBR(
+                                                r.date
+                                            )}
                                         </td>
 
                                         <td>
                                             ${escapeHtml(
-                                                [...r.clients].join(", ")
+                                                r.user
+                                            )}
+                                        </td>
+
+                                        <td>
+                                            ${kg(
+                                                r.produced
+                                            )}
+                                        </td>
+
+                                        <td>
+                                            ${kg(
+                                                r.planned
+                                            )}
+                                        </td>
+
+                                        <td>
+                                            ${escapeHtml(
+                                                [...r.clients]
+                                                    .join(", ")
                                             )}
                                         </td>
 
@@ -2538,9 +2668,11 @@ function renderReport() {
                                     .sort(
                                         (a, b) =>
                                             (
-                                                a.programDate || ""
+                                                a.programDate ||
+                                                ""
                                             ).localeCompare(
-                                                b.programDate || ""
+                                                b.programDate ||
+                                                ""
                                             )
                                     )
                                     .map(l => {
@@ -2564,24 +2696,29 @@ function renderReport() {
 
                                                 <td>
                                                     ${escapeHtml(
-                                                        l.os || "—"
+                                                        l.os ||
+                                                        "—"
                                                     )}
                                                 </td>
 
                                                 <td>
                                                     ${escapeHtml(
-                                                        l.name || "—"
+                                                        l.name ||
+                                                        "—"
                                                     )}
                                                 </td>
 
                                                 <td>
                                                     ${escapeHtml(
-                                                        u?.name || "—"
+                                                        u?.name ||
+                                                        "—"
                                                     )}
                                                 </td>
 
                                                 <td>
-                                                    ${kg(l.weight)}
+                                                    ${kg(
+                                                        l.weight
+                                                    )}
                                                 </td>
 
                                                 <td>
@@ -2689,19 +2826,30 @@ function pdfRows(lots) {
 
         return [
 
-            dateBR(l.programDate),
+            dateBR(
+                l.programDate
+            ),
 
-            l.os || "—",
+            l.os ||
+            "—",
 
-            l.name || "—",
+            l.name ||
+            "—",
 
-            u?.name || "—",
+            u?.name ||
+            "—",
 
-            kg(l.weight),
+            kg(
+                l.weight
+            ),
 
-            kg(lotProduced(l)),
+            kg(
+                lotProduced(l)
+            ),
 
-            kg(lotRemaining(l)),
+            kg(
+                lotRemaining(l)
+            ),
 
             statusLabel(
                 lotStatus(l)
@@ -2760,7 +2908,10 @@ if ($("pdfGeneralBtn")) {
                 lots.reduce(
                     (a, l) =>
                         a +
-                        Number(l.weight || 0),
+                        Number(
+                            l.weight ||
+                            0
+                        ),
                     0
                 );
 
@@ -2812,7 +2963,8 @@ if ($("pdfGeneralBtn")) {
                             l.programDate,
 
                         n:
-                            u?.name || "—",
+                            u?.name ||
+                            "—",
 
                         p:
                             0,
@@ -2853,7 +3005,9 @@ if ($("pdfGeneralBtn")) {
                     Object.values(by)
                         .sort(
                             (a, b) =>
-                                a.d.localeCompare(b.d)
+                                a.d.localeCompare(
+                                    b.d
+                                )
                         )
                         .map(
                             r => [
@@ -2864,7 +3018,9 @@ if ($("pdfGeneralBtn")) {
 
                                 kg(r.p),
 
-                                [...r.c].join(", "),
+                                [
+                                    ...r.c
+                                ].join(", "),
 
                                 r.q
                             ]
@@ -2961,7 +3117,10 @@ if ($("pdfIndividualBtn")) {
                 lots.reduce(
                     (a, l) =>
                         a +
-                        Number(l.weight || 0),
+                        Number(
+                            l.weight ||
+                            0
+                        ),
                     0
                 );
 
@@ -3052,7 +3211,9 @@ if ($("pdfIndividualBtn")) {
                     Object.entries(by)
                         .sort(
                             (a, b) =>
-                                a[0].localeCompare(b[0])
+                                a[0].localeCompare(
+                                    b[0]
+                                )
                         )
                         .map(
                             ([d, r]) => [
@@ -3061,7 +3222,9 @@ if ($("pdfIndividualBtn")) {
 
                                 kg(r.p),
 
-                                [...r.c].join(", "),
+                                [
+                                    ...r.c
+                                ].join(", "),
 
                                 r.q
                             ]
@@ -3100,11 +3263,15 @@ if ($("pdfIndividualBtn")) {
                                 l.programDate
                             ),
 
-                            l.os || "—",
+                            l.os ||
+                            "—",
 
-                            l.name || "—",
+                            l.name ||
+                            "—",
 
-                            kg(l.weight),
+                            kg(
+                                l.weight
+                            ),
 
                             kg(
                                 lotProduced(l)
@@ -3193,19 +3360,22 @@ function renderUsers() {
 
                                         <td>
                                             ${escapeHtml(
-                                                u.name || "—"
+                                                u.name ||
+                                                "—"
                                             )}
                                         </td>
 
                                         <td>
                                             ${escapeHtml(
-                                                u.email || "—"
+                                                u.email ||
+                                                "—"
                                             )}
                                         </td>
 
                                         <td>
                                             ${escapeHtml(
-                                                u.role || "—"
+                                                u.role ||
+                                                "—"
                                             )}
                                         </td>
 
