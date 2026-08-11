@@ -1043,6 +1043,107 @@ a{
 }
 </style>
 
+
+<style id="reluz-kanban-premium">
+/* ================= KANBAN PREMIUM ================= */
+#view-kanban{padding-bottom:28px}
+#view-kanban .filters{
+  background:linear-gradient(135deg,rgba(10,24,41,.94),rgba(7,15,28,.94));
+  border:1px solid rgba(72,201,242,.24);
+  border-radius:18px;
+  padding:16px;
+  margin-bottom:18px;
+  box-shadow:0 12px 35px rgba(0,0,0,.22),inset 0 1px rgba(255,255,255,.035);
+}
+#view-kanban .filters label{color:#dff4ff!important;font-weight:700}
+#view-kanban .filters input,#view-kanban .filters select{
+  min-height:42px;
+  background:#06111e!important;
+  color:#f4fbff!important;
+  border:1px solid rgba(89,200,240,.35)!important;
+}
+#view-kanban .filters button{min-height:42px;font-weight:800}
+.kanban{
+  display:grid!important;
+  grid-template-columns:repeat(4,minmax(250px,1fr))!important;
+  gap:16px!important;
+  align-items:stretch!important;
+  overflow-x:auto;
+  padding:2px 2px 14px;
+}
+.kanban-column{
+  position:relative;
+  min-height:510px!important;
+  padding:14px!important;
+  border-radius:18px!important;
+  background:linear-gradient(180deg,rgba(12,27,44,.94),rgba(5,14,26,.96))!important;
+  border:1px solid rgba(87,188,229,.20)!important;
+  box-shadow:0 14px 38px rgba(0,0,0,.25),inset 0 1px rgba(255,255,255,.025)!important;
+  overflow:hidden;
+}
+.kanban-column:before{
+  content:"";position:absolute;left:0;right:0;top:0;height:3px;
+  background:linear-gradient(90deg,#36d7ff,#667cff,#a46cff);
+  opacity:.9;
+}
+.kanban-column:nth-child(1):before{background:linear-gradient(90deg,#f6b84b,#f59e0b)}
+.kanban-column:nth-child(2):before{background:linear-gradient(90deg,#39dcff,#228be6)}
+.kanban-column:nth-child(3):before{background:linear-gradient(90deg,#36e2a3,#12b981)}
+.kanban-column:nth-child(4):before{background:linear-gradient(90deg,#ff6b7a,#dc3545)}
+.kanban-column h3{
+  margin:3px 2px 14px!important;
+  color:#f5fbff!important;
+  font-size:13px!important;
+  letter-spacing:.06em;
+  font-weight:800!important;
+}
+.kanban-column h3 .badge{
+  min-width:28px!important;height:26px;
+  background:rgba(57,220,255,.12)!important;
+  color:#bff2ff!important;
+  border:1px solid rgba(57,220,255,.25);
+  font-weight:800!important;
+}
+.lot-card{
+  position:relative;
+  background:linear-gradient(145deg,#0c1c2d,#081321)!important;
+  border:1px solid rgba(103,193,235,.20)!important;
+  border-radius:14px!important;
+  padding:14px!important;
+  margin-bottom:11px!important;
+  color:#eaf6ff!important;
+  box-shadow:0 8px 22px rgba(0,0,0,.24),inset 0 1px rgba(255,255,255,.025)!important;
+  transition:transform .18s ease,border-color .18s ease,box-shadow .18s ease!important;
+}
+.lot-card:hover{
+  transform:translateY(-3px)!important;
+  border-color:rgba(57,220,255,.50)!important;
+  box-shadow:0 12px 28px rgba(0,0,0,.30),0 0 20px rgba(57,220,255,.08)!important;
+}
+.lot-card h4{
+  color:#ffffff!important;
+  margin:0 0 8px!important;
+  font-size:15px!important;
+  font-weight:800!important;
+}
+.lot-status{
+  color:#dff7ff!important;
+  background:rgba(57,220,255,.10)!important;
+  border:1px solid rgba(57,220,255,.22)!important;
+  font-size:9px!important;
+  letter-spacing:.06em;
+  padding:5px 8px!important;
+}
+.lot-info{color:#b9cede!important;font-size:12px!important;line-height:1.7!important}
+.progress{height:7px!important;background:#12283a!important;border:1px solid rgba(80,170,210,.10)}
+.progress-bar{background:linear-gradient(90deg,#39dcff,#637fff)!important;box-shadow:0 0 12px rgba(57,220,255,.28)}
+#kanban .lot-card .lot-info strong,#kanban .lot-card .lot-info b{color:#ffffff!important}
+#kanban .empty,.kanban-column>div[style*="Nenhum lote"]{color:#8fa8bc!important}
+@media(max-width:1200px){.kanban{grid-template-columns:repeat(4,280px)!important}}
+@media(max-width:760px){.kanban{grid-template-columns:repeat(4,270px)!important}}
+.kanban-admin-filter.hidden{display:none!important}
+</style>
+
 </head>
 
 <body>
@@ -1129,12 +1230,6 @@ a{
           class="nav-btn"
           data-view="kanban">
           Kanban
-        </button>
-
-        <button
-          class="nav-btn"
-          data-view="meus-lotes">
-          Meus Lotes
         </button>
 
         <button
@@ -1255,8 +1350,8 @@ a{
             <input id="kanbanTo" type="date">
           </label>
 
-          <label>
-            Colaborador
+          <label class="kanban-admin-filter">
+            Responsável
             <select id="kanbanCollaborator">
               <option value="">Todos</option>
             </select>
@@ -1269,35 +1364,6 @@ a{
         </div>
 
         <div class="kanban" id="kanban"></div>
-
-      </section>
-
-
-      <!-- =========================
-           MEUS LOTES
-      ========================= -->
-
-      <section id="view-meus-lotes" class="view hidden">
-
-        <div class="filters">
-
-          <label>
-            Programação de
-            <input id="mineFrom" type="date">
-          </label>
-
-          <label>
-            até
-            <input id="mineTo" type="date">
-          </label>
-
-          <button id="mineFilterBtn" class="primary">
-            Filtrar
-          </button>
-
-        </div>
-
-        <div id="mineKanban" class="kanban"></div>
 
       </section>
 
@@ -1852,6 +1918,11 @@ function showApp() {
 
     });
 
+  const kanbanAdminFilter = document.querySelector(".kanban-admin-filter");
+  if (kanbanAdminFilter) {
+    kanbanAdminFilter.classList.toggle("hidden", !roleIsAdmin());
+  }
+
   $("todayLabel").textContent =
     new Date().toLocaleDateString(
       "pt-BR",
@@ -1865,7 +1936,6 @@ function showApp() {
   [
     "dashFrom",
     "kanbanFrom",
-    "mineFrom",
     "reportFrom"
   ].forEach(id => {
 
@@ -1878,7 +1948,6 @@ function showApp() {
   [
     "dashTo",
     "kanbanTo",
-    "mineTo",
     "reportTo"
   ].forEach(id => {
 
@@ -1989,9 +2058,6 @@ document
           renderKanban();
           break;
 
-        case "meus-lotes":
-          renderMine();
-          break;
 
         case "colaboradores":
           renderUsers();
@@ -2045,7 +2111,6 @@ async function loadData() {
 
     renderKanban();
 
-    renderMine();
 
     renderReport();
 
@@ -2467,7 +2532,7 @@ function renderKanban() {
     );
 
   const uid =
-    $("kanbanCollaborator").value;
+    roleIsAdmin() ? $("kanbanCollaborator").value : currentUser.uid;
 
   if (uid) {
 
@@ -2492,26 +2557,6 @@ function renderKanban() {
 
   renderKanbanInto(
     "kanban",
-    lots
-  );
-
-}
-
-
-function renderMine() {
-
-  const lots =
-    dateRange(
-      $("mineFrom").value,
-      $("mineTo").value
-    ).filter(
-      lot =>
-        lot.assignedTo ===
-        currentUser.uid
-    );
-
-  renderKanbanInto(
-    "mineKanban",
     lots
   );
 
@@ -2604,8 +2649,6 @@ function renderKanbanInto(
 $("kanbanFilterBtn").onclick =
   renderKanban;
 
-$("mineFilterBtn").onclick =
-  renderMine;
 
 
 /* =========================================================
