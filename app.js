@@ -1,17 +1,28 @@
 
-async function migrateAssignedTo() {
-  if (!roleIsAdmin() || !allUsers.length || !allLots.length) return;
-  const map = new Map(allUsers.map(u=>[String(u.id), String(u.uid||u.id)]));
-  const jobs=[];
-  allLots.forEach(l=>{
-    const old=String(l.assignedTo||"");
-    const uid=map.get(old);
-    if(uid && uid!==old){
-      jobs.push(db.collection("lots").doc(l.id).update({assignedTo:uid}));
-    }
-  });
-  if(jobs.length){ await Promise.all(jobs); location.reload(); }
+function reluzAssignedToCurrentCollaborator(lote) {
+  const uid = reluzAuthUid();
+  return !!uid && String(lote?.assignedTo || "") === String(uid);
 }
+
+
+/* RELÜZ - UID REAL DO FIREBASE PARA O KANBAN DO COLABORADOR */
+function reluzAuthUid() {
+  try {
+    if (typeof firebase !== "undefined" &&
+        firebase.auth &&
+        firebase.auth().currentUser &&
+        firebase.auth().currentUser.uid) {
+      return firebase.auth().currentUser.uid;
+    }
+  } catch (e) {}
+  try {
+    if (typeof auth !== "undefined" && auth?.currentUser?.uid) {
+      return auth.currentUser.uid;
+    }
+  } catch (e) {}
+  return "";
+}
+
 /* =========================================================
    FIREBASE
 ========================================================= */
@@ -499,14 +510,14 @@ async function loadData() {
       // que depois o JavaScript filtre os lotes.
       lotsSnap = await db
         .collection("lots")
-        .where("assignedTo", "==", currentUser.uid)
+        .where("assignedTo", "==", reluzAuthUid())
         .get();
 
       // O colaborador também não pode fazer users.get() em toda a coleção.
       // Ele só precisa do próprio perfil.
       usersSnap = await db
         .collection("users")
-        .doc(currentUser.uid)
+        .doc(reluzAuthUid())
         .get();
     }
 
@@ -518,21 +529,18 @@ async function loadData() {
     if (roleIsAdmin()) {
       allUsers = usersSnap.docs.map(doc => ({
         id: doc.id,
-        uid: doc.id,
         ...doc.data()
       }));
     } else {
       allUsers = usersSnap.exists
         ? [{
             id: usersSnap.id,
-            uid: usersSnap.id,
             ...usersSnap.data()
           }]
         : [currentProfile];
     }
 
-    await migrateAssignedTo();
-fillUserSelects();
+    fillUserSelects();
 
     if (roleIsAdmin()) {
       renderDashboard();
@@ -575,7 +583,7 @@ function fillUserSelects() {
     `<option value="">Todos</option>` +
     activeUsers
       .map(user =>
-        `<option value="${escapeHtml(user.uid || user.id)}">
+        `<option value="${escapeHtml(user.id)}">
           ${escapeHtml(user.name || "Sem nome")}
         </option>`
       )
@@ -587,7 +595,7 @@ function fillUserSelects() {
     </option>` +
     activeUsers
       .map(user =>
-        `<option value="${escapeHtml(user.uid || user.id)}">
+        `<option value="${escapeHtml(user.id)}">
           ${escapeHtml(user.name || "Sem nome")}
         </option>`
       )
@@ -951,6 +959,10 @@ function lotCard(lot) {
 
 
 function renderKanban() {
+  if (roleIsCollaborator()) {
+    lotes = (Array.isArray(lotes) ? lotes : []).filter(reluzAssignedToCurrentCollaborator);
+  }
+
 
   let lots =
     dateRange(
@@ -1198,7 +1210,7 @@ window.openLot = async function(id) {
                   collaborators.map(u => `
                     <option
                       value="${escapeHtml(u.id)}"
-                      ${(u.uid || u.id) === lot.assignedTo ? "selected" : ""}>
+                      ${u.id === lot.assignedTo ? "selected" : ""}>
                       ${escapeHtml(u.name || u.email || "Sem nome")}
                     </option>
                   `).join("")
@@ -1791,7 +1803,7 @@ $("lotForm").addEventListener(
           $("lotProgram").value,
 
         assignedTo:
-          (chosen.uid || chosen.id),
+          chosen.id,
 
         producedWeight:
           0,
@@ -1944,7 +1956,7 @@ window.redistributeLot =
       .update({
 
         assignedTo:
-          (chosen.uid || chosen.id),
+          chosen.id,
 
         updatedAt:
           firebase.firestore
@@ -3019,7 +3031,7 @@ function pdfRows(lots) {
     dateBR(lot.programDate || lot.entryDate || ""),
     lot.os || "—",
     lot.name || "—",
-    allUsers.find(u => (u.uid || u.id) === lot.assignedTo)?.name || "—",
+    allUsers.find(u => u.id === lot.assignedTo)?.name || "—",
     kg(lot.weight || 0),
     kg(lotProduced(lot) || 0),
     kg(lotRemaining(lot) || 0),
