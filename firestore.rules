@@ -11,47 +11,38 @@ service cloud.firestore {
       return /databases/$(database)/documents/users/$(request.auth.uid);
     }
 
-    function hasProfile() {
-      return signedIn() && exists(userDoc());
-    }
-
     function isAdmin() {
-      return hasProfile()
+      return signedIn()
+        && exists(userDoc())
         && get(userDoc()).data.role == "admin"
         && get(userDoc()).data.active == true;
     }
 
-    function isCollaborator() {
-      return hasProfile()
-        && get(userDoc()).data.role == "colaborador"
-        && get(userDoc()).data.active == true;
-    }
-
     match /users/{userId} {
-      allow read: if isAdmin() || (signedIn() && request.auth.uid == userId);
-      allow create, update, delete: if isAdmin();
+      // Cada usuário pode ler seu próprio perfil.
+      allow read: if signedIn() && request.auth.uid == userId;
+      // Administrador gerencia todos os perfis.
+      allow read, create, update, delete: if isAdmin();
     }
 
-    
     match /lots/{lotId} {
-      // Administradores podem ler/criar/editar/excluir qualquer lote.
+      // Administrador tem acesso total.
       allow read, create, update, delete: if isAdmin();
 
-      // Colaborador só pode ler o lote que está atribuído ao seu Auth UID.
-      // A consulta do Kanban usa where("assignedTo", "==", request.auth.uid).
+      // Colaborador autenticado pode consultar somente lotes atribuídos
+      // ao UID do Firebase. Não depende da coleção users para evitar
+      // permission-denied antes da consulta.
       allow read: if signedIn()
-        && isCollaborator()
         && resource.data.assignedTo == request.auth.uid;
 
-      // Colaborador pode atualizar o próprio lote, mantendo a atribuição.
+      // Colaborador pode atualizar seu próprio lote, mas não pode trocar
+      // o responsável pelo lote.
       allow update: if signedIn()
-        && isCollaborator()
         && resource.data.assignedTo == request.auth.uid
         && request.resource.data.assignedTo == request.auth.uid;
 
-      // Colaborador não pode criar/excluir lotes.
-      allow create, delete: if false;
+      // Somente administrador cria/exclui.
+      allow create, delete: if isAdmin();
     }
-
   }
 }

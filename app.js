@@ -156,6 +156,10 @@ function dateRange(from, to) {
 }
 
 
+function roleIsCollaborator() {
+  return currentProfile?.role === "colaborador";
+}
+
 function roleIsAdmin() {
 
   return currentProfile?.role === "admin";
@@ -517,7 +521,7 @@ async function loadData() {
       // que depois o JavaScript filtre os lotes.
       lotsSnap = await db
         .collection("lots")
-        .where("assignedTo", "==", reluzAuthUid())
+        .where("assignedTo", "==", firebase.auth().currentUser.uid)
         .get();
 
       // O colaborador também não pode fazer users.get() em toda a coleção.
@@ -1810,7 +1814,7 @@ $("lotForm").addEventListener(
           $("lotProgram").value,
 
         assignedTo:
-          chosen.id,
+          chosen.uid || chosen.id,
 
         producedWeight:
           0,
@@ -1963,7 +1967,7 @@ window.redistributeLot =
       .update({
 
         assignedTo:
-          chosen.id,
+          chosen.uid || chosen.id,
 
         updatedAt:
           firebase.firestore
