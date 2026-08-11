@@ -1168,7 +1168,21 @@ body.role-colaborador [data-page="colaboradores"]{
   display:none!important;
 }
 
-</style></head>
+</style>
+<style id="reluz-diagnostic-style">
+#reluzDiagnostic {
+  display:none;
+  margin:10px 0;
+  padding:10px 12px;
+  border:1px solid rgba(255,255,255,.18);
+  border-radius:10px;
+  font:12px/1.45 system-ui,sans-serif;
+  white-space:pre-wrap;
+}
+body.collaborator-mode #reluzDiagnostic { display:block; }
+</style>
+
+</head>
 
 <body>
 
@@ -1225,6 +1239,8 @@ body.role-colaborador [data-page="colaboradores"]{
 ========================= -->
 
 <div id="app" class="hidden">
+<div id="reluzDiagnostic">Diagnóstico: iniciando...</div>
+
 
   <div class="layout">
 

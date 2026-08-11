@@ -503,33 +503,63 @@ document
 ========================================================= */
 
 async function loadData() {
+  const diagnostic = {
+    uid: "",
+    role: "",
+    lotsQuery: "not-run",
+    lotsFound: 0,
+    usersQuery: "not-run",
+    error: null
+  };
 
   try {
+    diagnostic.uid = String(firebase.auth().currentUser?.uid || "");
+    diagnostic.role = String(currentProfile?.role || "");
+
+    console.group("[RELÜZ DIAGNÓSTICO] loadData");
+    console.log("UID autenticado:", diagnostic.uid);
+    console.log("Perfil:", currentProfile);
+    console.log("Função:", diagnostic.role);
 
     let lotsSnap;
-    let usersSnap;
+    let usersSnap = null;
 
     if (roleIsAdmin()) {
-      // Administrador pode consultar todos os lotes e usuários.
+      diagnostic.usersQuery = "admin: users.get()";
+      diagnostic.lotsQuery = "admin: lots.get()";
+
       [lotsSnap, usersSnap] = await Promise.all([
         db.collection("lots").get(),
         db.collection("users").get()
       ]);
-    } else {
-      // COLABORADOR: a consulta precisa respeitar as Firestore Rules.
-      // Um .get() em toda a coleção "lots" é negado pelas Rules, mesmo
-      // que depois o JavaScript filtre os lotes.
-      lotsSnap = await db
-        .collection("lots")
-        .where("assignedTo", "==", firebase.auth().currentUser.uid)
-        .get();
 
-      // O colaborador também não pode fazer users.get() em toda a coleção.
-      // Ele só precisa do próprio perfil.
-      usersSnap = await db
-        .collection("users")
-        .doc(reluzAuthUid())
-        .get();
+      diagnostic.usersQuery = `OK (${usersSnap.size} usuários)`;
+      diagnostic.lotsQuery = `OK (${lotsSnap.size} lotes)`;
+    } else {
+      const uid = firebase.auth().currentUser?.uid;
+      if (!uid) throw new Error("Firebase Auth UID ausente.");
+
+      diagnostic.lotsQuery = `lots.where(assignedTo == ${uid})`;
+
+      try {
+        lotsSnap = await db
+          .collection("lots")
+          .where("assignedTo", "==", uid)
+          .get();
+
+        diagnostic.lotsFound = lotsSnap.size;
+        diagnostic.lotsQuery = `OK (${lotsSnap.size} lotes)`;
+        console.log("Consulta de lotes: OK");
+        console.log("Lotes encontrados:", lotsSnap.size);
+      } catch (e) {
+        diagnostic.lotsQuery = `ERRO: ${e?.code || e?.message || e}`;
+        console.error("ERRO NA CONSULTA DE LOTES:", e);
+        throw e;
+      }
+
+      // Não consultar /users novamente. O perfil já foi carregado antes.
+      usersSnap = null;
+      diagnostic.usersQuery = "SKIPPED (perfil já carregado no login)";
     }
 
     allLots = lotsSnap.docs.map(doc => ({
@@ -537,46 +567,53 @@ async function loadData() {
       ...doc.data()
     }));
 
-    if (roleIsAdmin()) {
-      allUsers = usersSnap.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      }));
-    } else {
-      allUsers = usersSnap.exists
-        ? [{
-            id: usersSnap.id,
-            ...usersSnap.data()
-          }]
-        : [currentProfile];
+    allUsers = roleIsAdmin()
+      ? usersSnap.docs.map(doc => ({
+          id: doc.id,
+          uid: doc.id,
+          ...doc.data()
+        }))
+      : [{
+          id: currentUser.uid,
+          uid: currentUser.uid,
+          ...currentProfile
+        }];
+
+    console.log("DIAGNÓSTICO FINAL:", diagnostic);
+    reluzUpdateDiagnosticBadge();
+    console.groupEnd();
+
+    if (!roleIsAdmin()) {
+      // Força o Kanban a abrir/atualizar com os lotes recém-carregados.
+      renderKanban();
     }
 
     fillUserSelects();
-
-    if (roleIsAdmin()) {
-      renderDashboard();
-      renderReport();
-      renderUsers();
-    }
-
-    // Para colaborador, allLots já contém somente seus lotes.
-    renderKanban();
+    renderAll();
 
   } catch (error) {
+    diagnostic.error = {
+      code: error?.code || "unknown",
+      message: error?.message || String(error)
+    };
 
-    console.error(
-      "Erro ao carregar dados:",
-      error
-    );
+    console.error("[RELÜZ DIAGNÓSTICO] FALHA NO LOAD DATA:", diagnostic);
+    reluzUpdateDiagnosticBadge({error: diagnostic.error?.code || diagnostic.error?.message});
+    console.groupEnd();
 
-    alert(
-      "Erro ao carregar dados do Firebase: " +
-      error.message
-    );
+    // Mostra uma mensagem útil sem esconder o erro real.
+    const msg =
+      error?.code === "permission-denied"
+        ? "Permissão negada ao carregar os lotes. Abra F12 → Console e procure por [RELÜZ DIAGNÓSTICO]."
+        : (error?.message || "Erro ao carregar dados.");
 
+    const el = document.querySelector("#loginError");
+    if (el) el.textContent = msg;
+
+    throw error;
   }
-
 }
+
 
 
 /* =========================================================
@@ -3810,3 +3847,16 @@ document.addEventListener(
 
   }
 );
+
+function reluzUpdateDiagnosticBadge(extra = {}) {
+  const el = document.getElementById("reluzDiagnostic");
+  if (!el) return;
+  const uid = firebase.auth().currentUser?.uid || "UID ausente";
+  const role = currentProfile?.role || "perfil ausente";
+  const count = Array.isArray(allLots) ? allLots.length : 0;
+  el.textContent =
+    "DIAGNÓSTICO • UID: " + uid +
+    "\nPerfil: " + role +
+    "\nLotes carregados: " + count +
+    (extra.error ? "\nErro: " + extra.error : "");
+}
