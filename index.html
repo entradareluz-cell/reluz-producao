@@ -1144,6 +1144,12 @@ a{
 .kanban-admin-filter.hidden{display:none!important}
 </style>
 
+<style id="reluz-collaborator-role-ui">
+body.collaborator-mode .admin-only{display:none!important}
+body.collaborator-mode #view-dashboard,
+body.collaborator-mode #view-relatorio{display:none!important}
+body.collaborator-mode #view-kanban{display:block!important}
+</style>
 </head>
 
 <body>
@@ -1221,13 +1227,13 @@ a{
       <nav class="nav">
 
         <button
-          class="nav-btn active"
+          class="nav-btn admin-only"
           data-view="dashboard">
           Dashboard
         </button>
 
         <button
-          class="nav-btn"
+          class="nav-btn active"
           data-view="kanban">
           Kanban
         </button>
@@ -1245,7 +1251,7 @@ a{
         </button>
 
         <button
-          class="nav-btn"
+          class="nav-btn admin-only"
           data-view="relatorio">
           Relatórios
         </button>
@@ -1283,7 +1289,7 @@ a{
            DASHBOARD
       ========================= -->
 
-      <section id="view-dashboard" class="view">
+      <section id="view-dashboard" class="view hidden admin-only">
 
         <div class="filters">
 
@@ -1516,7 +1522,7 @@ a{
            RELATÓRIO
       ========================= -->
 
-      <section id="view-relatorio" class="view hidden">
+      <section id="view-relatorio" class="view hidden admin-only">
 
         <div class="panel">
 
@@ -1897,6 +1903,7 @@ function showApp() {
   $("loginScreen").classList.add("hidden");
 
   $("app").classList.remove("hidden");
+  document.body.classList.toggle("collaborator-mode", !roleIsAdmin());
 
   $("userName").textContent =
     currentProfile.name ||
@@ -1917,6 +1924,19 @@ function showApp() {
       );
 
     });
+
+  if (!roleIsAdmin()) {
+    document.querySelectorAll('[data-view="dashboard"], [data-view="relatorio"]').forEach(btn => {
+      btn.classList.add("hidden");
+      btn.classList.remove("active");
+    });
+    document.querySelectorAll(".view").forEach(view => view.classList.add("hidden"));
+    const kanbanButton = document.querySelector('[data-view="kanban"]');
+    if (kanbanButton) kanbanButton.classList.add("active");
+    const kanbanView = $("view-kanban");
+    if (kanbanView) kanbanView.classList.remove("hidden");
+    $("pageTitle").textContent = "Kanban";
+  }
 
   const kanbanAdminFilter = document.querySelector(".kanban-admin-filter");
   if (kanbanAdminFilter) {

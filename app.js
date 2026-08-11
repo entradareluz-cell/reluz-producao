@@ -278,6 +278,7 @@ function showApp() {
   $("loginScreen").classList.add("hidden");
 
   $("app").classList.remove("hidden");
+  document.body.classList.toggle("collaborator-mode", !roleIsAdmin());
 
   $("userName").textContent =
     currentProfile.name ||
@@ -416,6 +417,12 @@ document
           view.classList.add("hidden")
         );
 
+      if (!roleIsAdmin() && ["dashboard","relatorio","colaboradores","lotes"].includes(button.dataset.view)) {
+        const kanbanButton = document.querySelector('[data-view="kanban"]');
+        if (kanbanButton) kanbanButton.click();
+        return;
+      }
+
       const view =
         $("view-" + button.dataset.view);
 
@@ -488,15 +495,14 @@ async function loadData() {
 
     fillUserSelects();
 
-    renderDashboard();
+    if (roleIsAdmin()) {
+      renderDashboard();
+      renderReport();
+      renderUsers();
+    }
 
+    // O Kanban é a tela operacional de todos os colaboradores.
     renderKanban();
-
-    renderMine();
-
-    renderReport();
-
-    renderUsers();
 
   } catch (error) {
 
@@ -913,8 +919,10 @@ function renderKanban() {
       $("kanbanTo").value
     );
 
-  const uid =
-    $("kanbanCollaborator").value;
+  const collaboratorFilter = $("kanbanCollaborator");
+  const uid = roleIsAdmin() && collaboratorFilter
+    ? collaboratorFilter.value
+    : "";
 
   if (uid) {
 
