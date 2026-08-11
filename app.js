@@ -1,63 +1,45 @@
-// ============================================================
-// RELUZ PRODUÇÃO - APP.JS
-// ============================================================
-
-// ============================================================
-// CONFIGURAÇÃO DO ADMINISTRADOR PRINCIPAL
-// ============================================================
-
-const MASTER_ADMIN_UID =
-    "3QlkmlndAXaGxErEpCL17Mun35E3";
-
-
-// ============================================================
-// FIREBASE
-// ============================================================
+/* =========================================================
+   FIREBASE
+========================================================= */
 
 const firebaseConfig = {
 
-    apiKey:
-        "AIzaSyCOVy3L_TD3JSWBsM7BuqGooaBE74-HG7Y",
+  apiKey: "AIzaSyCOVy3L_TD3JSWBsM7BuqGooaBE74-HG7Y",
 
-    authDomain:
-        "reluz-producao.firebaseapp.com",
+  authDomain:
+    "reluz-producao.firebaseapp.com",
 
-    databaseURL:
-        "https://reluz-producao-default-rtdb.firebaseio.com",
+  databaseURL:
+    "https://reluz-producao-default-rtdb.firebaseio.com",
 
-    projectId:
-        "reluz-producao",
+  projectId:
+    "reluz-producao",
 
-    storageBucket:
-        "reluz-producao.firebasestorage.app",
+  storageBucket:
+    "reluz-producao.firebasestorage.app",
 
-    messagingSenderId:
-        "910724669287",
+  messagingSenderId:
+    "910724669287",
 
-    appId:
-        "1:910724669287:web:e2ff572555c8cabafd59c2"
+  appId:
+    "1:910724669287:web:e2ff572555c8cabafd59c2"
 
 };
 
 
-// ============================================================
-// INICIALIZAÇÃO FIREBASE
-// ============================================================
+/* Inicializa Firebase */
 
 if (!firebase.apps.length) {
-    firebase.initializeApp(firebaseConfig);
+  firebase.initializeApp(firebaseConfig);
 }
 
-const auth =
-    firebase.auth();
-
-const db =
-    firebase.firestore();
+const auth = firebase.auth();
+const db = firebase.firestore();
 
 
-// ============================================================
-// VARIÁVEIS GLOBAIS
-// ============================================================
+/* =========================================================
+   VARIÁVEIS
+========================================================= */
 
 let currentUser = null;
 let currentProfile = null;
@@ -66,1576 +48,1016 @@ let allLots = [];
 let allUsers = [];
 
 
-// ============================================================
-// HELPERS
-// ============================================================
+/* =========================================================
+   HELPERS
+========================================================= */
 
-const $ = id =>
-    document.getElementById(id);
+const $ = id => document.getElementById(id);
 
 
 function kg(n) {
 
-    return `${Number(n || 0).toLocaleString(
-        "pt-BR",
-        {
-            maximumFractionDigits: 3
-        }
-    )} kg`;
+  return `${Number(n || 0).toLocaleString(
+    "pt-BR",
+    {
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 3
+    }
+  )} kg`;
 
 }
 
 
 function pct(n) {
 
-    return `${Number(n || 0).toLocaleString(
-        "pt-BR",
-        {
-            maximumFractionDigits: 1
-        }
-    )}%`;
+  return `${Number(n || 0).toLocaleString(
+    "pt-BR",
+    {
+      maximumFractionDigits: 1
+    }
+  )}%`;
 
 }
 
 
 function today() {
 
-    return new Date()
-        .toISOString()
-        .slice(0, 10);
+  return new Date().toISOString().slice(0, 10);
 
 }
 
 
 function dateBR(d) {
 
-    return d
-        ? String(d)
-            .split("-")
-            .reverse()
-            .join("/")
-        : "—";
+  if (!d) return "—";
+
+  if (typeof d !== "string") return "—";
+
+  return d.split("-").reverse().join("/");
 
 }
 
 
 function escapeHtml(value = "") {
 
-    return String(value).replace(
-        /[&<>"']/g,
-        char => ({
-            "&": "&amp;",
-            "<": "&lt;",
-            ">": "&gt;",
-            '"': "&quot;",
-            "'": "&#039;"
-        }[char])
-    );
+  return String(value)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
 
 }
 
 
 function dateRange(from, to) {
 
-    return allLots.filter(lot =>
+  return allLots.filter(l => {
 
-        (!from ||
-            lot.programDate >= from)
-
-        &&
-
-        (!to ||
-            lot.programDate <= to)
-
+    return (
+      (!from || l.programDate >= from) &&
+      (!to || l.programDate <= to)
     );
+
+  });
 
 }
 
-
-// ============================================================
-// ADMINISTRADOR PRINCIPAL
-// ============================================================
 
 function roleIsAdmin() {
 
-    if (!currentUser) {
-        return false;
-    }
-
-    // O perfil "admin" passa a ser a fonte principal de autorização
-    // no aplicativo. O UID antigo continua como fallback.
-    const role =
-        String(
-            currentProfile?.role ||
-            currentProfile?.perfil ||
-            currentProfile?.type ||
-            ""
-        )
-        .trim()
-        .toLowerCase();
-
-    return (
-        currentUser.uid === MASTER_ADMIN_UID
-        || role === "admin"
-        || role === "administrador"
-    );
+  return currentProfile?.role === "admin";
 
 }
 
 
-// ============================================================
-// COLABORADOR
-// ============================================================
+/* =========================================================
+   LOTES
+========================================================= */
 
-function roleIsCollaborator() {
+function lotProduced(l) {
 
-    if (!currentProfile) {
-        return false;
-    }
-
-    const role =
-        String(
-            currentProfile.role ||
-            currentProfile.perfil ||
-            currentProfile.type ||
-            ""
-        )
-        .trim()
-        .toLowerCase();
-
-    return (
-        role === "colaborador"
-        &&
-        currentProfile.active !== false
-    );
+  return Number(l.producedWeight || 0);
 
 }
 
 
-// ============================================================
-// AUTENTICAÇÃO
-// ============================================================
+function lotRemaining(l) {
 
-auth.onAuthStateChanged(
-    async user => {
-
-        if (!user) {
-
-            currentUser = null;
-            currentProfile = null;
-
-            allLots = [];
-            allUsers = [];
-
-            showLogin();
-
-            return;
-        }
-
-        currentUser = user;
-
-        try {
-
-            // =================================================
-            // PERFIL
-            // =================================================
-
-            const profileRef =
-                db
-                    .collection("users")
-                    .doc(user.uid);
-
-            const snap =
-                await profileRef.get();
-
-            // =================================================
-            // ADMIN PRINCIPAL
-            // =================================================
-            //
-            // Se o seu usuário ainda não tiver perfil,
-            // criamos automaticamente o perfil do administrador.
-            //
-            // Isso evita o erro de login sem perfil.
-            //
-            // =================================================
-
-            if (!snap.exists) {
-
-                if (user.uid === MASTER_ADMIN_UID) {
-
-                    await profileRef.set({
-
-                        name:
-                            user.displayName ||
-                            "Administrador",
-
-                        email:
-                            user.email ||
-                            "",
-
-                        role:
-                            "admin",
-
-                        active:
-                            true,
-
-                        createdAt:
-                            firebase.firestore
-                                .FieldValue
-                                .serverTimestamp()
-
-                    });
-
-                    const newSnap =
-                        await profileRef.get();
-
-                    currentProfile = {
-
-                        uid: user.uid,
-                        ...newSnap.data()
-
-                    };
-
-                } else {
-
-                    await auth.signOut();
-
-                    throw new Error(
-                        "Usuário sem perfil cadastrado no Firestore."
-                    );
-                }
-
-            } else {
-
-                currentProfile = {
-
-                    uid: user.uid,
-                    ...snap.data()
-
-                };
-
-            }
-
-
-            console.log(
-                "USUÁRIO:",
-                currentUser.uid
-            );
-
-            console.log(
-                "PERFIL:",
-                currentProfile
-            );
-
-            console.log(
-                "ADMIN PRINCIPAL:",
-                roleIsAdmin()
-            );
-
-
-            // =================================================
-            // MOSTRAR APP
-            // =================================================
-
-            showApp();
-
-            await loadData();
-
-        } catch (error) {
-
-            console.error(
-                "Erro de autenticação:",
-                error
-            );
-
-            if ($("loginError")) {
-
-                $("loginError").textContent =
-                    error.message ||
-                    "Erro ao carregar perfil.";
-
-            }
-
-            if (currentUser) {
-                await auth.signOut();
-            }
-
-        }
-
-    }
-);
-
-
-// ============================================================
-// MOSTRAR LOGIN
-// ============================================================
-
-function showLogin() {
-
-    $("loginScreen")
-        ?.classList
-        .remove("hidden");
-
-    $("app")
-        ?.classList
-        .add("hidden");
+  return Math.max(
+    0,
+    Number(l.weight || 0) - lotProduced(l)
+  );
 
 }
 
 
-// ============================================================
-// MOSTRAR APP
-// ============================================================
+function lotPercent(l) {
 
-function showApp() {
+  const weight = Number(l.weight || 0);
 
-    $("loginScreen")
-        ?.classList
-        .add("hidden");
+  if (weight <= 0) return 0;
 
-    $("app")
-        ?.classList
-        .remove("hidden");
-
-
-    if ($("userName")) {
-
-        $("userName").textContent =
-            currentProfile?.name ||
-            currentUser?.email ||
-            "Usuário";
-
-    }
-
-
-    if ($("userRole")) {
-
-        $("userRole").textContent =
-            roleIsAdmin()
-                ? "Administrador"
-                : "Colaborador";
-
-    }
-
-
-    // =========================================================
-    // MOSTRAR / ESCONDER ÁREAS DE ADMIN
-    // =========================================================
-
-    document
-        .querySelectorAll(".admin-only")
-        .forEach(element => {
-
-            element.classList.toggle(
-                "hidden",
-                !roleIsAdmin()
-            );
-
-        });
-
-
-    if ($("todayLabel")) {
-
-        $("todayLabel").textContent =
-            new Date().toLocaleDateString(
-                "pt-BR",
-                {
-                    dateStyle: "full"
-                }
-            );
-
-    }
-
-
-    const t =
-        today();
-
-
-    [
-        "dashFrom",
-        "kanbanFrom",
-        "mineFrom",
-        "reportFrom"
-    ]
-    .forEach(id => {
-
-        if ($(id)) {
-            $(id).value = t;
-        }
-
-    });
-
-
-    [
-        "dashTo",
-        "kanbanTo",
-        "mineTo",
-        "reportTo"
-    ]
-    .forEach(id => {
-
-        if ($(id)) {
-            $(id).value = t;
-        }
-
-    });
+  return Math.min(
+    100,
+    (lotProduced(l) / weight) * 100
+  );
 
 }
 
 
-// ============================================================
-// LOGIN
-// ============================================================
+function lotStatus(l) {
 
-if ($("loginForm")) {
+  if (l.status === "cancelado") {
+    return "cancelado";
+  }
 
-    $("loginForm").addEventListener(
-        "submit",
-        async event => {
+  if (lotRemaining(l) <= 0.0001) {
+    return "finalizado";
+  }
 
-            event.preventDefault();
+  if (lotProduced(l) > 0) {
+    return "producao";
+  }
 
-            if ($("loginError")) {
-                $("loginError").textContent = "";
-            }
-
-            try {
-
-                await auth
-                    .signInWithEmailAndPassword(
-
-                        $("loginEmail")
-                            .value
-                            .trim(),
-
-                        $("loginPassword")
-                            .value
-
-                    );
-
-            } catch (error) {
-
-                console.error(error);
-
-                if ($("loginError")) {
-
-                    $("loginError").textContent =
-                        "E-mail ou senha inválidos.";
-
-                }
-
-            }
-
-        }
-    );
-
-}
-
-
-// ============================================================
-// LOGOUT
-// ============================================================
-
-if ($("logoutBtn")) {
-
-    $("logoutBtn").onclick =
-        () => auth.signOut();
-
-}
-
-
-// ============================================================
-// ATUALIZAR
-// ============================================================
-
-if ($("refreshBtn")) {
-
-    $("refreshBtn").onclick =
-        async () => {
-
-            try {
-
-                await loadData();
-
-            } catch (error) {
-
-                console.error(error);
-
-            }
-
-        };
-
-}
-
-
-// ============================================================
-// NAVEGAÇÃO
-// ============================================================
-
-document
-    .querySelectorAll(".nav-btn")
-    .forEach(button => {
-
-        button.onclick = () => {
-
-            // Segurança visual:
-            // não permite abrir tela admin por botão
-            // caso não seja o UID principal.
-
-            if (
-                button.classList.contains("admin-only")
-                &&
-                !roleIsAdmin()
-            ) {
-
-                return;
-
-            }
-
-
-            document
-                .querySelectorAll(".nav-btn")
-                .forEach(btn =>
-                    btn.classList.remove("active")
-                );
-
-
-            button.classList.add("active");
-
-
-            document
-                .querySelectorAll(".view")
-                .forEach(view =>
-                    view.classList.add("hidden")
-                );
-
-
-            const view =
-                $("view-" + button.dataset.view);
-
-
-            if (view) {
-                view.classList.remove("hidden");
-            }
-
-
-            if ($("pageTitle")) {
-
-                $("pageTitle").textContent =
-                    button.textContent.trim();
-
-            }
-
-
-            switch (
-                button.dataset.view
-            ) {
-
-                case "dashboard":
-                    renderDashboard();
-                    break;
-
-                case "kanban":
-                    renderKanban();
-                    break;
-
-                case "meus-lotes":
-                    renderMine();
-                    break;
-
-                case "relatorio":
-                    renderReport();
-                    break;
-
-                case "colaboradores":
-                    renderUsers();
-                    break;
-
-            }
-
-        };
-
-    });
-
-
-// ============================================================
-// CARREGAR DADOS
-// ============================================================
-
-async function loadData() {
-
-    if (!currentUser) {
-        return;
-    }
-
-
-    try {
-
-        // =====================================================
-        // ADMIN PRINCIPAL
-        // =====================================================
-
-        if (roleIsAdmin()) {
-
-            const result =
-                await Promise.all([
-
-                    db
-                        .collection("lots")
-                        .get(),
-
-                    db
-                        .collection("users")
-                        .get()
-
-                ]);
-
-
-            const lotsSnap =
-                result[0];
-
-            const usersSnap =
-                result[1];
-
-
-            allLots =
-                lotsSnap.docs.map(
-                    doc => ({
-
-                        id: doc.id,
-                        ...doc.data()
-
-                    })
-                );
-
-
-            allUsers =
-                usersSnap.docs.map(
-                    doc => ({
-
-                        id: doc.id,
-                        ...doc.data()
-
-                    })
-                );
-
-        }
-
-        // =====================================================
-        // COLABORADOR
-        // =====================================================
-
-        else {
-
-            const lotsSnap =
-                await db
-                    .collection("lots")
-                    .where(
-                        "assignedTo",
-                        "==",
-                        currentUser.uid
-                    )
-                    .get();
-
-
-            allLots =
-                lotsSnap.docs.map(
-                    doc => ({
-
-                        id: doc.id,
-                        ...doc.data()
-
-                    })
-                );
-
-
-            allUsers = [
-
-                {
-                    id: currentUser.uid,
-                    ...currentProfile
-                }
-
-            ];
-
-        }
-
-
-        console.log(
-            "Lotes carregados:",
-            allLots.length
-        );
-
-
-        console.log(
-            "Usuários carregados:",
-            allUsers.length
-        );
-
-
-        fillUserSelects();
-
-        renderDashboard();
-        renderKanban();
-        renderMine();
-        renderReport();
-        renderUsers();
-
-
-    } catch (error) {
-
-        console.error(
-            "Erro ao carregar dados do Firebase:",
-            error
-        );
-
-
-        const message =
-            error?.code ===
-            "permission-denied"
-
-                ? (
-                    "Permissão negada pelo Firestore. " +
-                    "Confirme se existe users/{UID} com role admin ou " +
-                    "colaborador e active=true, e publique o firestore.rules atualizado."
-                )
-
-                : (
-                    error.message ||
-                    "Erro ao carregar dados."
-                );
-
-
-        if ($("loginError")) {
-            $("loginError").textContent =
-                message;
-        }
-
-
-        alert(
-            message
-        );
-
-    }
-
-}
-
-
-// ============================================================
-// SELECTS DE USUÁRIOS
-// ============================================================
-
-function fillUserSelects() {
-
-    const activeUsers =
-        allUsers.filter(
-            user =>
-                user.active !== false
-        );
-
-
-    if ($("kanbanCollaborator")) {
-
-        $("kanbanCollaborator").innerHTML =
-            `<option value="">Todos</option>` +
-
-            activeUsers
-                .map(user =>
-                    `<option value="${escapeHtml(user.id)}">
-                        ${escapeHtml(
-                            user.name ||
-                            user.email ||
-                            "Sem nome"
-                        )}
-                    </option>`
-                )
-                .join("");
-
-    }
-
-
-    if ($("reportUser")) {
-
-        $("reportUser").innerHTML =
-            `<option value="">
-                Todos os colaboradores
-            </option>` +
-
-            activeUsers
-                .map(user =>
-                    `<option value="${escapeHtml(user.id)}">
-                        ${escapeHtml(
-                            user.name ||
-                            user.email ||
-                            "Sem nome"
-                        )}
-                    </option>`
-                )
-                .join("");
-
-    }
-
-}
-
-
-// ============================================================
-// FUNÇÕES DOS LOTES
-// ============================================================
-
-function lotProduced(lot) {
-
-    return Number(
-        lot.producedWeight || 0
-    );
-
-}
-
-
-function lotRemaining(lot) {
-
-    return Math.max(
-        0,
-        Number(lot.weight || 0) -
-        lotProduced(lot)
-    );
-
-}
-
-
-function lotPercent(lot) {
-
-    const weight =
-        Number(lot.weight || 0);
-
-    if (weight <= 0) {
-        return 0;
-    }
-
-    return Math.min(
-        100,
-        (
-            lotProduced(lot) /
-            weight
-        ) * 100
-    );
-
-}
-
-
-function lotStatus(lot) {
-
-    if (
-        lot.status ===
-        "cancelado"
-    ) {
-
-        return "cancelado";
-
-    }
-
-
-    if (
-        lotRemaining(lot) <=
-        0.0001
-    ) {
-
-        return "finalizado";
-
-    }
-
-
-    if (
-        lotProduced(lot) > 0
-    ) {
-
-        return "producao";
-
-    }
-
-
-    return "pendente";
+  return "pendente";
 
 }
 
 
 function statusLabel(status) {
 
-    return {
+  const labels = {
 
-        pendente:
-            "Pendente",
+    pendente: "Pendente",
 
-        producao:
-            "Em produção",
+    producao: "Em produção",
 
-        finalizado:
-            "Finalizado",
+    finalizado: "Finalizado",
 
-        cancelado:
-            "Cancelado"
+    cancelado: "Cancelado"
 
-    }[status] || status;
+  };
+
+  return labels[status] || status;
 
 }
 
 
-// ============================================================
-// DASHBOARD
-// ============================================================
+/* =========================================================
+   AUTH
+========================================================= */
 
-function renderDashboard() {
+auth.onAuthStateChanged(async user => {
 
-    if (!$("dashFrom")) {
-        return;
-    }
+  if (!user) {
 
+    showLogin();
 
-    let lots =
-        dateRange(
-            $("dashFrom").value,
-            $("dashTo").value
-        );
+    return;
 
+  }
 
-    if (!roleIsAdmin()) {
+  currentUser = user;
 
-        lots =
-            lots.filter(
-                lot =>
-                    lot.assignedTo ===
-                    currentUser.uid
-            );
+  try {
 
-    }
+    const snap =
+      await db.collection("users")
+        .doc(user.uid)
+        .get();
 
+    if (!snap.exists) {
 
-    renderPerformance(
-        lots,
-        $("reportFrom").value,
-        $("reportTo").value
-    );
+      await auth.signOut();
 
-
-    const planned =
-        lots.reduce(
-            (total, lot) =>
-                total +
-                Number(
-                    lot.weight || 0
-                ),
-            0
-        );
-
-
-    const produced =
-        lots.reduce(
-            (total, lot) =>
-                total +
-                lotProduced(lot),
-            0
-        );
-
-
-    const remaining =
-        lots.reduce(
-            (total, lot) =>
-                total +
-                lotRemaining(lot),
-            0
-        );
-
-
-    const done =
-        lots.filter(
-            lot =>
-                lotStatus(lot) ===
-                "finalizado"
-        ).length;
-
-
-    if ($("dashboardCards")) {
-
-        $("dashboardCards").innerHTML = [
-
-            [
-                "Peso programado",
-                kg(planned)
-            ],
-
-            [
-                "Peso produzido",
-                kg(produced)
-            ],
-
-            [
-                "Saldo",
-                kg(remaining)
-            ],
-
-            [
-                "Lotes finalizados",
-                done
-            ]
-
-        ]
-        .map(item =>
-            `<div class="card">
-
-                <small>
-                    ${item[0]}
-                </small>
-
-                <strong>
-                    ${item[1]}
-                </strong>
-
-            </div>`
-        )
-        .join("");
+      throw new Error(
+        "Usuário sem perfil cadastrado no Firestore."
+      );
 
     }
 
+    currentProfile = {
+      uid: user.uid,
+      ...snap.data()
+    };
 
-    const by = {};
+    showApp();
 
+    await loadData();
 
-    lots.forEach(lot => {
+  } catch (error) {
 
-        const user =
-            allUsers.find(
-                item =>
-                    item.id ===
-                    lot.assignedTo
-            );
+    console.error(error);
 
+    $("loginError").textContent =
+      error.message || "Erro ao carregar usuário.";
 
-        const name =
-            user?.name ||
-            "Não atribuído";
+    await auth.signOut();
 
+  }
 
-        const key =
-            `${lot.programDate}|${name}`;
-
-
-        if (!by[key]) {
-
-            by[key] = {
-
-                date:
-                    lot.programDate,
-
-                name,
-
-                weight:
-                    0,
-
-                clients:
-                    new Set(),
-
-                lots:
-                    0
-
-            };
-
-        }
+});
 
 
-        by[key].weight +=
-            lotProduced(lot);
+/* =========================================================
+   LOGIN / APP
+========================================================= */
+
+function showLogin() {
+
+  $("loginScreen").classList.remove("hidden");
+
+  $("app").classList.add("hidden");
+
+}
 
 
-        by[key].clients.add(
-            lot.clientName ||
-            lot.name ||
-            "Sem cliente"
-        );
+function showApp() {
 
+  $("loginScreen").classList.add("hidden");
 
-        by[key].lots++;
+  $("app").classList.remove("hidden");
+
+  $("userName").textContent =
+    currentProfile.name ||
+    currentUser.email;
+
+  $("userRole").textContent =
+    roleIsAdmin()
+      ? "Administrador"
+      : "Colaborador";
+
+  document
+    .querySelectorAll(".admin-only")
+    .forEach(element => {
+
+      element.classList.toggle(
+        "hidden",
+        !roleIsAdmin()
+      );
 
     });
 
+  $("todayLabel").textContent =
+    new Date().toLocaleDateString(
+      "pt-BR",
+      {
+        dateStyle: "full"
+      }
+    );
 
-    const rows =
-        Object.values(by)
-            .sort(
-                (a, b) =>
-                    String(a.date || "")
-                        .localeCompare(
-                            String(b.date || "")
-                        )
-                    ||
-                    String(a.name || "")
-                        .localeCompare(
-                            String(b.name || "")
-                        )
-            );
+  const t = today();
 
+  [
+    "dashFrom",
+    "kanbanFrom",
+    "mineFrom",
+    "reportFrom"
+  ].forEach(id => {
 
-    if ($("dailyCollaboratorTable")) {
-
-        $("dailyCollaboratorTable")
-            .innerHTML = `
-
-            <div class="table-wrap">
-
-                <table class="data-table">
-
-                    <thead>
-
-                        <tr>
-
-                            <th>Data</th>
-                            <th>Colaborador</th>
-                            <th>Peso do dia</th>
-                            <th>Clientes</th>
-                            <th>Lotes</th>
-
-                        </tr>
-
-                    </thead>
-
-                    <tbody>
-
-                        ${
-                            rows.length
-
-                                ? rows
-                                    .map(row => `
-
-                                        <tr>
-
-                                            <td>
-                                                ${dateBR(
-                                                    row.date
-                                                )}
-                                            </td>
-
-                                            <td>
-                                                ${escapeHtml(
-                                                    row.name
-                                                )}
-                                            </td>
-
-                                            <td>
-                                                ${kg(
-                                                    row.weight
-                                                )}
-                                            </td>
-
-                                            <td>
-                                                ${escapeHtml(
-                                                    [
-                                                        ...row.clients
-                                                    ].join(", ")
-                                                )}
-                                            </td>
-
-                                            <td>
-                                                ${row.lots}
-                                            </td>
-
-                                        </tr>
-
-                                    `)
-                                    .join("")
-
-                                : `
-
-                                    <tr>
-
-                                        <td colspan="5">
-                                            Sem dados.
-                                        </td>
-
-                                    </tr>
-
-                                `
-                        }
-
-                    </tbody>
-
-                </table>
-
-            </div>
-        `;
-
+    if ($(id)) {
+      $(id).value = t;
     }
 
+  });
 
-    const statuses = [
+  [
+    "dashTo",
+    "kanbanTo",
+    "mineTo",
+    "reportTo"
+  ].forEach(id => {
 
-        "pendente",
-        "producao",
-        "finalizado"
-
-    ];
-
-
-    if ($("statusSummary")) {
-
-        $("statusSummary")
-            .innerHTML = `
-
-            <div class="status-table">
-
-                ${statuses.map(status => `
-
-                    <div class="status-row">
-
-                        <span>
-                            ${statusLabel(status)}
-                        </span>
-
-                        <strong>
-
-                            ${
-                                lots.filter(
-                                    lot =>
-                                        lotStatus(lot) ===
-                                        status
-                                ).length
-                            }
-
-                        </strong>
-
-                    </div>
-
-                `).join("")}
-
-            </div>
-
-        `;
-
+    if ($(id)) {
+      $(id).value = t;
     }
+
+  });
 
 }
 
 
-if ($("dashFilterBtn")) {
+/* LOGIN */
 
-    $("dashFilterBtn").onclick =
-        renderDashboard;
+$("loginForm").addEventListener(
+  "submit",
+  async event => {
+
+    event.preventDefault();
+
+    $("loginError").textContent = "";
+
+    const email =
+      $("loginEmail").value.trim();
+
+    const password =
+      $("loginPassword").value;
+
+    try {
+
+      await auth.signInWithEmailAndPassword(
+        email,
+        password
+      );
+
+    } catch (error) {
+
+      console.error(error);
+
+      $("loginError").textContent =
+        "E-mail ou senha inválidos.";
+
+    }
+
+  }
+);
+
+
+/* LOGOUT */
+
+$("logoutBtn").onclick = () => {
+
+  auth.signOut();
+
+};
+
+
+/* ATUALIZAR */
+
+$("refreshBtn").onclick = () => {
+
+  loadData();
+
+};
+
+
+/* =========================================================
+   NAVEGAÇÃO
+========================================================= */
+
+document
+  .querySelectorAll(".nav-btn")
+  .forEach(button => {
+
+    button.onclick = () => {
+
+      document
+        .querySelectorAll(".nav-btn")
+        .forEach(btn =>
+          btn.classList.remove("active")
+        );
+
+      button.classList.add("active");
+
+      document
+        .querySelectorAll(".view")
+        .forEach(view =>
+          view.classList.add("hidden")
+        );
+
+      const view =
+        $("view-" + button.dataset.view);
+
+      if (view) {
+        view.classList.remove("hidden");
+      }
+
+      $("pageTitle").textContent =
+        button.textContent.trim();
+
+      switch (button.dataset.view) {
+
+        case "dashboard":
+          renderDashboard();
+          break;
+
+        case "kanban":
+          renderKanban();
+          break;
+
+        case "meus-lotes":
+          renderMine();
+          break;
+
+        case "colaboradores":
+          renderUsers();
+          break;
+
+        case "relatorio":
+          renderReport();
+          break;
+
+      }
+
+    };
+
+  });
+
+
+/* =========================================================
+   CARREGAR DADOS
+========================================================= */
+
+async function loadData() {
+
+  try {
+
+    const [
+      lotsSnap,
+      usersSnap
+    ] = await Promise.all([
+
+      db.collection("lots").get(),
+
+      db.collection("users").get()
+
+    ]);
+
+    allLots =
+      lotsSnap.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      }));
+
+    allUsers =
+      usersSnap.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      }));
+
+    fillUserSelects();
+
+    renderDashboard();
+
+    renderKanban();
+
+    renderMine();
+
+    renderReport();
+
+    renderUsers();
+
+  } catch (error) {
+
+    console.error(
+      "Erro ao carregar dados:",
+      error
+    );
+
+    alert(
+      "Erro ao carregar dados do Firebase: " +
+      error.message
+    );
+
+  }
 
 }
 
 
-// ============================================================
-// CARD DO LOTE
-// ============================================================
+/* =========================================================
+   SELECTS
+========================================================= */
+
+function fillUserSelects() {
+
+  const activeUsers =
+    allUsers.filter(
+      user => user.active !== false
+    );
+
+  $("kanbanCollaborator").innerHTML =
+    `<option value="">Todos</option>` +
+    activeUsers
+      .map(user =>
+        `<option value="${escapeHtml(user.id)}">
+          ${escapeHtml(user.name || "Sem nome")}
+        </option>`
+      )
+      .join("");
+
+  $("reportUser").innerHTML =
+    `<option value="">
+      Todos os colaboradores
+    </option>` +
+    activeUsers
+      .map(user =>
+        `<option value="${escapeHtml(user.id)}">
+          ${escapeHtml(user.name || "Sem nome")}
+        </option>`
+      )
+      .join("");
+
+}
+
+
+/* =========================================================
+   DASHBOARD
+========================================================= */
+
+function renderDashboard() {
+
+  const lots =
+    dateRange(
+      $("dashFrom").value,
+      $("dashTo").value
+    );
+
+  const visible =
+    roleIsAdmin()
+      ? lots
+      : lots.filter(
+          lot =>
+            lot.assignedTo === currentUser.uid
+        );
+
+  const planned =
+    visible.reduce(
+      (total, lot) =>
+        total + Number(lot.weight || 0),
+      0
+    );
+
+  const produced =
+    visible.reduce(
+      (total, lot) =>
+        total + lotProduced(lot),
+      0
+    );
+
+  const remaining =
+    visible.reduce(
+      (total, lot) =>
+        total + lotRemaining(lot),
+      0
+    );
+
+  const done =
+    visible.filter(
+      lot =>
+        lotStatus(lot) === "finalizado"
+    ).length;
+
+
+  $("dashboardCards").innerHTML = [
+
+    [
+      "Peso programado",
+      kg(planned)
+    ],
+
+    [
+      "Peso produzido",
+      kg(produced)
+    ],
+
+    [
+      "Saldo",
+      kg(remaining)
+    ],
+
+    [
+      "Lotes finalizados",
+      done
+    ]
+
+  ].map(item => `
+
+    <div class="card">
+
+      <small>${item[0]}</small>
+
+      <strong>${item[1]}</strong>
+
+    </div>
+
+  `).join("");
+
+
+  const by = {};
+
+
+  visible.forEach(lot => {
+
+    const user =
+      allUsers.find(
+        x => x.id === lot.assignedTo
+      );
+
+    const name =
+      user?.name ||
+      "Não atribuído";
+
+    const key =
+      `${lot.programDate}|${name}`;
+
+    if (!by[key]) {
+
+      by[key] = {
+
+        date: lot.programDate,
+
+        name,
+
+        weight: 0,
+
+        clients: new Set(),
+
+        lots: 0
+
+      };
+
+    }
+
+    by[key].weight +=
+      lotProduced(lot);
+
+    by[key].clients.add(
+      lot.clientName ||
+      lot.name ||
+      "Sem cliente"
+    );
+
+    by[key].lots++;
+
+  });
+
+
+  const rows =
+    Object.values(by)
+      .sort((a, b) => {
+
+        return (
+          a.date.localeCompare(b.date) ||
+          a.name.localeCompare(b.name)
+        );
+
+      });
+
+
+  $("dailyCollaboratorTable").innerHTML = `
+
+    <div class="table-wrap">
+
+      <table class="data-table">
+
+        <thead>
+
+          <tr>
+
+            <th>Data</th>
+            <th>Colaborador</th>
+            <th>Peso do dia</th>
+            <th>Clientes</th>
+            <th>Lotes</th>
+
+          </tr>
+
+        </thead>
+
+        <tbody>
+
+          ${
+            rows.length
+
+              ? rows.map(row => `
+
+                  <tr>
+
+                    <td>
+                      ${dateBR(row.date)}
+                    </td>
+
+                    <td>
+                      ${escapeHtml(row.name)}
+                    </td>
+
+                    <td>
+                      ${kg(row.weight)}
+                    </td>
+
+                    <td>
+                      ${escapeHtml(
+                        [...row.clients].join(", ")
+                      )}
+                    </td>
+
+                    <td>
+                      ${row.lots}
+                    </td>
+
+                  </tr>
+
+                `).join("")
+
+              : `
+                <tr>
+                  <td colspan="5">
+                    Sem dados.
+                  </td>
+                </tr>
+              `
+          }
+
+        </tbody>
+
+      </table>
+
+    </div>
+
+  `;
+
+
+  const statuses = [
+    "pendente",
+    "producao",
+    "finalizado"
+  ];
+
+
+  $("statusSummary").innerHTML = `
+
+    <div class="status-table">
+
+      ${
+        statuses.map(status => `
+
+          <div class="status-item">
+
+            <span>
+              ${statusLabel(status)}
+            </span>
+
+            <strong>
+              ${
+                visible.filter(
+                  lot =>
+                    lotStatus(lot) === status
+                ).length
+              }
+            </strong>
+
+          </div>
+
+        `).join("")
+      }
+
+    </div>
+
+  `;
+
+}
+
+
+$("dashFilterBtn").onclick =
+  renderDashboard;
+
+
+/* =========================================================
+   KANBAN
+========================================================= */
 
 function lotCard(lot) {
 
-    const user =
-        allUsers.find(
-            item =>
-                item.id ===
-                lot.assignedTo
-        );
+  const user =
+    allUsers.find(
+      x => x.id === lot.assignedTo
+    );
 
+  const status =
+    lotStatus(lot);
 
-    const status =
-        lotStatus(lot);
+  const percent =
+    lotPercent(lot);
 
+  return `
 
-    return `
+    <div
+      class="lot-card"
+      onclick="openLot('${lot.id}')">
+
+      <span class="lot-status">
+        ${statusLabel(status)}
+      </span>
+
+      <h4>
+        ${escapeHtml(lot.name || "Sem nome")}
+      </h4>
+
+      <div class="lot-info">
+
+        <strong>
+          OS:
+        </strong>
+
+        ${escapeHtml(lot.os || "—")}
+
+        <br>
+
+        <strong>
+          Peso:
+        </strong>
+
+        ${kg(lot.weight)}
+
+        <br>
+
+        <strong>
+          Programação:
+        </strong>
+
+        ${dateBR(lot.programDate)}
+
+        <br>
+
+        <strong>
+          Responsável:
+        </strong>
+
+        ${escapeHtml(
+          user?.name || "—"
+        )}
+
+      </div>
+
+      <div class="progress">
 
         <div
-            class="lot-card"
-            onclick="openLot('${lot.id}')"
-        >
-
-            <div class="lot-status">
-                ${statusLabel(status)}
-            </div>
-
-
-            <h4>
-                ${escapeHtml(
-                    lot.name ||
-                    "Lote"
-                )}
-            </h4>
-
-
-            <div>
-                OS:
-                ${escapeHtml(
-                    lot.os ||
-                    "—"
-                )}
-            </div>
-
-
-            <div>
-                Cliente:
-                ${escapeHtml(
-                    lot.clientName ||
-                    lot.name ||
-                    "—"
-                )}
-            </div>
-
-
-            <div>
-                Peso:
-                ${kg(lot.weight)}
-            </div>
-
-
-            <div>
-                Programação:
-                ${dateBR(
-                    lot.programDate
-                )}
-            </div>
-
-
-            <div>
-                Responsável:
-                ${escapeHtml(
-                    user?.name ||
-                    "—"
-                )}
-            </div>
-
-
-            <div class="lot-progress">
-
-                <div class="progress-bar">
-
-                    <div
-                        class="progress-fill"
-                        style="
-                            width:${lotPercent(lot)}%
-                        "
-                    ></div>
-
-                </div>
-
-
-                <small>
-
-                    ${kg(
-                        lotProduced(lot)
-                    )}
-
-                    produzido
-
-                    •
-
-                    ${pct(
-                        lotPercent(lot)
-                    )}
-
-                </small>
-
-            </div>
-
-
-            }
-
+          class="progress-bar"
+          style="width:${percent}%">
         </div>
 
-    `;
+      </div>
+
+      <div class="lot-info">
+
+        ${kg(lotProduced(lot))}
+        produzido
+
+        • ${pct(percent)}
+
+      </div>
+
+    </div>
+
+  `;
 
 }
 
 
-// ============================================================
-// KANBAN
-// ============================================================
-
 function renderKanban() {
 
-    if (!$("kanban")) {
-        return;
-    }
-
-
-    let lots =
-        dateRange(
-            $("kanbanFrom").value,
-            $("kanbanTo").value
-        );
-
-
-    const collaborator =
-        $("kanbanCollaborator")?.value;
-
-
-    if (collaborator) {
-
-        lots =
-            lots.filter(
-                lot =>
-                    lot.assignedTo ===
-                    collaborator
-            );
-
-    }
-
-
-    if (!roleIsAdmin()) {
-
-        lots =
-            lots.filter(
-                lot =>
-                    lot.assignedTo ===
-                    currentUser.uid
-            );
-
-    }
-
-
-    renderKanbanInto(
-        "kanban",
-        lots
+  let lots =
+    dateRange(
+      $("kanbanFrom").value,
+      $("kanbanTo").value
     );
+
+  const uid =
+    $("kanbanCollaborator").value;
+
+  if (uid) {
+
+    lots =
+      lots.filter(
+        lot =>
+          lot.assignedTo === uid
+      );
+
+  }
+
+  if (!roleIsAdmin()) {
+
+    lots =
+      lots.filter(
+        lot =>
+          lot.assignedTo ===
+          currentUser.uid
+      );
+
+  }
+
+  renderKanbanInto(
+    "kanban",
+    lots
+  );
 
 }
 
 
 function renderMine() {
 
-    if (!$("mineKanban")) {
-        return;
-    }
-
-
-    let lots =
-        dateRange(
-            $("mineFrom").value,
-            $("mineTo").value
-        );
-
-
-    lots =
-        lots.filter(
-            lot =>
-                lot.assignedTo ===
-                currentUser.uid
-        );
-
-
-    renderKanbanInto(
-        "mineKanban",
-        lots
+  const lots =
+    dateRange(
+      $("mineFrom").value,
+      $("mineTo").value
+    ).filter(
+      lot =>
+        lot.assignedTo ===
+        currentUser.uid
     );
+
+  renderKanbanInto(
+    "mineKanban",
+    lots
+  );
 
 }
 
 
 function renderKanbanInto(
-    id,
-    lots
+  elementId,
+  lots
 ) {
 
-    if (!$(id)) {
-        return;
-    }
+  const columns = [
+
+    [
+      "pendente",
+      "A FAZER"
+    ],
+
+    [
+      "producao",
+      "EM PRODUÇÃO"
+    ],
+
+    [
+      "finalizado",
+      "FINALIZADO"
+    ],
+
+    [
+      "cancelado",
+      "CANCELADOS"
+    ]
+
+  ];
 
 
-    const columns = [
+  $(elementId).innerHTML =
+    columns.map(
+      ([status, title]) => {
 
-        [
-            "pendente",
-            "A FAZER"
-        ],
+        const list =
+          lots.filter(
+            lot =>
+              lotStatus(lot) ===
+              status
+          );
 
-        [
-            "producao",
-            "EM PRODUÇÃO"
-        ],
+        return `
 
-        [
-            "finalizado",
-            "FINALIZADO"
-        ],
+          <div class="kanban-column">
 
-        [
-            "cancelado",
-            "CANCELADOS"
-        ]
+            <h3>
 
-    ];
+              <span>
+                ${title}
+              </span>
 
+              <span class="badge">
+                ${list.length}
+              </span>
 
-    $(id).innerHTML =
-        columns
-            .map(
-                ([status, title]) => {
+            </h3>
 
-                    const list =
-                        lots.filter(
-                            lot =>
-                                lotStatus(lot) ===
-                                status
-                        );
+            ${
+              list.length
+                ? list.map(lotCard).join("")
+                : `
+                  <div
+                    style="
+                      text-align:center;
+                      color:#9ca3af;
+                      font-size:12px;
+                      padding:30px 10px;
+                    ">
+                    Nenhum lote
+                  </div>
+                `
+            }
 
+          </div>
 
-                    return `
+        `;
 
-                        <div class="kanban-column">
-
-                            <h3>
-
-                                ${title}
-
-                                <span class="badge">
-                                    ${list.length}
-                                </span>
-
-                            </h3>
-
-
-                            ${
-                                list.length
-
-                                    ? list
-                                        .map(lotCard)
-                                        .join("")
-
-                                    : `
-
-                                        <div class="empty-state">
-                                            Nenhum lote
-                                        </div>
-
-                                    `
-                            }
-
-                        </div>
-
-                    `;
-
-                }
-            )
-            .join("");
+      }
+    ).join("");
 
 }
 
 
-if ($("kanbanFilterBtn")) {
+$("kanbanFilterBtn").onclick =
+  renderKanban;
 
-    $("kanbanFilterBtn").onclick =
-        renderKanban;
-
-}
-
-
-if ($("mineFilterBtn")) {
-
-    $("mineFilterBtn").onclick =
-        renderMine;
-
-}
+$("mineFilterBtn").onclick =
+  renderMine;
 
 
-// ============================================================
-// ABRIR LOTE
-// ============================================================
+/* =========================================================
+   MODAL LOTE
+========================================================= */
 
 window.openLot = async function(id) {
 
@@ -2014,1087 +1436,415 @@ window.openLot = async function(id) {
 };
 
 
-window.closeLotModal =
-function() {
+window.closeLotModal = function() {
 
-    $("lotModal")
-        ?.classList
-        .add("hidden");
-
-    window.currentLot = null;
-    window.currentSelectedLot = null;
-
-    const openedLotModal = $("lotModal");
-    if (openedLotModal) {
-        delete openedLotModal.dataset.lotId;
-    }
+  $("lotModal")
+    .classList
+    .add("hidden");
 
 };
 
 
-// ============================================================
-// FECHAR CLICANDO FORA
-// ============================================================
+/* Fechar clicando fora */
 
-if ($("lotModal")) {
+$("lotModal").addEventListener(
+  "click",
+  event => {
 
-    $("lotModal").addEventListener(
-        "click",
-        event => {
+    if (
+      event.target ===
+      $("lotModal")
+    ) {
 
-            if (
-                event.target ===
-                $("lotModal")
-            ) {
+      closeLotModal();
 
-                closeLotModal();
+    }
 
-            }
+  }
+);
+
+
+/* =========================================================
+   REGISTRAR PRODUÇÃO
+========================================================= */
+
+async function registerProduction(
+  event,
+  lot
+) {
+
+  event.preventDefault();
+
+  const amount =
+    Number(
+      $("productionInput").value || 0
+    );
+
+  if (amount <= 0) {
+
+    $("modalMessage").textContent =
+      "Informe um peso maior que zero.";
+
+    return;
+
+  }
+
+
+  if (
+    lotProduced(lot) +
+    amount >
+    Number(lot.weight) +
+    0.0001
+  ) {
+
+    $("modalMessage").textContent =
+      "O peso produzido ultrapassa o peso do lote.";
+
+    return;
+
+  }
+
+
+  const now =
+    firebase.firestore
+      .FieldValue
+      .serverTimestamp();
+
+
+  const observation =
+    $("productionObs")
+      .value
+      .trim();
+
+
+  try {
+
+    await db.runTransaction(
+      async transaction => {
+
+        const ref =
+          db.collection("lots")
+            .doc(lot.id);
+
+        const snap =
+          await transaction.get(ref);
+
+        if (!snap.exists) {
+
+          throw new Error(
+            "Lote não encontrado."
+          );
 
         }
+
+
+        const data =
+          snap.data();
+
+
+        const current =
+          Number(
+            data.producedWeight || 0
+          );
+
+
+        const weight =
+          Number(
+            data.weight || 0
+          );
+
+
+        const next =
+          current + amount;
+
+
+        const newStatus =
+          next >= weight - 0.0001
+            ? "finalizado"
+            : "producao";
+
+
+        const productionLog = {
+
+          weight: amount,
+
+          obs: observation,
+
+          userId:
+            currentUser.uid,
+
+          at:
+            new Date()
+
+        };
+
+
+        transaction.update(
+          ref,
+          {
+
+            producedWeight:
+              next,
+
+            status:
+              newStatus,
+
+            updatedAt:
+              now,
+
+            lastObservation:
+              observation,
+
+            productionLogs:
+              firebase.firestore
+                .FieldValue
+                .arrayUnion(
+                  productionLog
+                )
+
+          }
+        );
+
+      }
     );
+
+
+    closeLotModal();
+
+    await loadData();
+
+
+  } catch (error) {
+
+    console.error(error);
+
+    $("modalMessage").textContent =
+      error.message ||
+      "Erro ao registrar produção.";
+
+  }
 
 }
 
 
-// ============================================================
-// EDITAR LOTE
-// ============================================================
-//
-// SOMENTE ADMIN PRINCIPAL.
-//
-// Campos editáveis:
-// - Nome
-// - OS
-// - Cliente
-// - Peso
-// - Data de entrada
-// - Data de programação
-// - Colaborador
-//
-// Produção NÃO é alterada aqui.
-// Isso evita quebrar o histórico de produção.
-//
-// ============================================================
-
-window.editLot =
-function(id) {
-
-    if (!roleIsAdmin()) {
-
-        alert(
-            "Somente o administrador principal pode editar lotes."
-        );
-
-        return;
-
-    }
-
-
-    const lot =
-        allLots.find(
-            item =>
-                item.id === id
-        );
-
-
-    if (!lot) {
-
-        alert(
-            "Lote não encontrado."
-        );
-
-        return;
-
-    }
-
-
-    const collaborators =
-        allUsers.filter(
-            user =>
-                user.role ===
-                "colaborador"
-        );
-
-
-    $("lotModalContent").innerHTML = `
-
-        <h2>
-            ✏️ Editar lote
-        </h2>
-
-
-        <form
-            id="editLotForm"
-            class="form-grid"
-        >
-
-            <label>
-
-                Nome do lote
-
-                <input
-                    id="editLotName"
-                    value="${escapeHtml(
-                        lot.name || ""
-                    )}"
-                    required
-                >
-
-            </label>
-
-
-            <label>
-
-                OS
-
-                <input
-                    id="editLotOs"
-                    value="${escapeHtml(
-                        lot.os || ""
-                    )}"
-                    required
-                >
-
-            </label>
-
-
-            <label>
-
-                Cliente
-
-                <input
-                    id="editLotClient"
-                    value="${escapeHtml(
-                        lot.clientName ||
-                        lot.name ||
-                        ""
-                    )}"
-                    required
-                >
-
-            </label>
-
-
-            <label>
-
-                Peso do lote (kg)
-
-                <input
-                    id="editLotWeight"
-                    type="number"
-                    step="0.001"
-                    min="0.001"
-                    value="${Number(
-                        lot.weight || 0
-                    )}"
-                    required
-                >
-
-            </label>
-
-
-            <label>
-
-                Data de entrada
-
-                <input
-                    id="editLotEntry"
-                    type="date"
-                    value="${escapeHtml(
-                        lot.entryDate || ""
-                    )}"
-                    required
-                >
-
-            </label>
-
-
-            <label>
-
-                Data de programação
-
-                <input
-                    id="editLotProgram"
-                    type="date"
-                    value="${escapeHtml(
-                        lot.programDate || ""
-                    )}"
-                    required
-                >
-
-            </label>
-
-
-            <label>
-
-                Colaborador responsável
-
-                <select
-                    id="editLotAssigned"
-                    required
-                >
-
-                    <option value="">
-                        Selecione
-                    </option>
-
-                    ${
-                        collaborators
-                            .map(
-                                user => `
-
-                                    <option
-                                        value="${escapeHtml(
-                                            user.id
-                                        )}"
-                                        ${
-                                            user.id ===
-                                            lot.assignedTo
-                                                ? "selected"
-                                                : ""
-                                        }
-                                    >
-                                        ${escapeHtml(
-                                            user.name ||
-                                            user.email ||
-                                            "Sem nome"
-                                        )}
-                                    </option>
-
-                                `
-                            )
-                            .join("")
-                    }
-
-                </select>
-
-            </label>
-
-
-            <div class="full">
-
-                <div
-                    style="
-                        padding:12px;
-                        border-radius:8px;
-                        background:#f3f4f6;
-                        margin-bottom:15px;
-                    "
-                >
-
-                    <strong>
-                        Produzido:
-                    </strong>
-
-                    ${kg(
-                        lotProduced(lot)
-                    )}
-
-                    <br>
-
-                    <strong>
-                        Saldo atual:
-                    </strong>
-
-                    ${kg(
-                        lotRemaining(lot)
-                    )}
-
-                </div>
-
-
-                <button
-                    type="submit"
-                    class="primary"
-                >
-                    💾 SALVAR ALTERAÇÕES
-                </button>
-
-
-                <button
-                    type="button"
-                    class="secondary"
-                    style="
-                        margin-top:10px;
-                    "
-                    onclick="
-                        openLot('${lot.id}')
-                    "
-                >
-                    Cancelar
-                </button>
-
-            </div>
-
-        </form>
-
-
-        <div
-            id="editLotMessage"
-            style="
-                margin-top:15px;
-            "
-        ></div>
-
-    `;
-
-
-    $("lotModal")
-        ?.classList
-        .remove("hidden");
-
-
-    $("editLotForm").onsubmit =
-        async event => {
-
-            event.preventDefault();
-
-
-            const message =
-                $("editLotMessage");
-
-
-            message.textContent =
-                "";
-
-
-            const name =
-                $("editLotName")
-                    .value
-                    .trim();
-
-
-            const os =
-                $("editLotOs")
-                    .value
-                    .trim();
-
-
-            const clientName =
-                $("editLotClient")
-                    .value
-                    .trim();
-
-
-            const weight =
-                Number(
-                    $("editLotWeight")
-                        .value
-                );
-
-
-            const entryDate =
-                $("editLotEntry")
-                    .value;
-
-
-            const programDate =
-                $("editLotProgram")
-                    .value;
-
-
-            const assignedTo =
-                $("editLotAssigned")
-                    .value;
-
-
-            if (!name) {
-
-                message.textContent =
-                    "Informe o nome do lote.";
-
-                return;
-
-            }
-
-
-            if (!os) {
-
-                message.textContent =
-                    "Informe a OS.";
-
-                return;
-
-            }
-
-
-            if (!clientName) {
-
-                message.textContent =
-                    "Informe o cliente.";
-
-                return;
-
-            }
-
-
-            if (
-                !weight ||
-                weight <= 0
-            ) {
-
-                message.textContent =
-                    "Informe um peso válido.";
-
-                return;
-
-            }
-
-
-            if (!entryDate) {
-
-                message.textContent =
-                    "Informe a data de entrada.";
-
-                return;
-
-            }
-
-
-            if (!programDate) {
-
-                message.textContent =
-                    "Informe a data de programação.";
-
-                return;
-
-            }
-
-
-            if (!assignedTo) {
-
-                message.textContent =
-                    "Selecione o colaborador.";
-
-                return;
-
-            }
-
-
-            const produced =
-                lotProduced(lot);
-
-
-            if (
-                weight <
-                produced
-            ) {
-
-                message.textContent =
-                    `O peso do lote não pode ser menor que o já produzido (${kg(produced)}).`;
-
-                return;
-
-            }
-
-
-            let newStatus =
-                "pendente";
-
-
-            if (
-                lot.status ===
-                "cancelado"
-            ) {
-
-                newStatus =
-                    "cancelado";
-
-            } else if (
-                produced >=
-                weight - 0.0001
-            ) {
-
-                newStatus =
-                    "finalizado";
-
-            } else if (
-                produced > 0
-            ) {
-
-                newStatus =
-                    "producao";
-
-            }
-
-
-            try {
-
-                await db
-                    .collection("lots")
-                    .doc(lot.id)
-                    .update({
-
-                        name,
-
-                        os,
-
-                        clientName,
-
-                        weight,
-
-                        entryDate,
-
-                        programDate,
-
-                        assignedTo,
-
-                        status:
-                            newStatus,
-
-                        updatedAt:
-                            firebase.firestore
-                                .FieldValue
-                                .serverTimestamp()
-
-                    });
-
-
-                message.className =
-                    "success";
-
-
-                message.textContent =
-                    "Lote alterado com sucesso.";
-
-
-                await loadData();
-
-
-                setTimeout(
-                    () => {
-
-                        openLot(
-                            lot.id
-                        );
-
-                    },
-                    500
-                );
-
-
-            } catch (error) {
-
-                console.error(
-                    "Erro ao editar lote:",
-                    error
-                );
-
-
-                message.className =
-                    "error";
-
-
-                message.textContent =
-                    error?.code ===
-                    "permission-denied"
-
-                        ? "Permissão negada pelo Firestore. Publique as novas Rules."
-
-                        : (
-                            error.message ||
-                            "Erro ao alterar lote."
-                        );
-
-            }
-
-        };
-
-};
-
-
-// ============================================================
-// REGISTRAR PRODUÇÃO
-// ============================================================
-
-async function registerProduction(
-    event,
-    lot
-) {
+/* =========================================================
+   CADASTRAR LOTE
+========================================================= */
+
+$("lotForm").addEventListener(
+  "submit",
+  async event => {
 
     event.preventDefault();
 
+    $("lotFormMessage").textContent = "";
 
-    const amount =
-        Number(
-            $("productionInput")
-                ?.value || 0
-        );
+    const weight =
+      Number(
+        $("lotWeight").value
+      );
 
+    if (weight <= 0) {
 
-    if (amount <= 0) {
+      $("lotFormMessage")
+        .className = "error";
 
-        $("modalMessage").textContent =
-            "Informe um peso maior que zero.";
+      $("lotFormMessage")
+        .textContent =
+        "Informe um peso válido.";
 
-        return;
-
-    }
-
-
-    const remaining =
-        lotRemaining(lot);
-
-
-    if (
-        amount >
-        remaining + 0.0001
-    ) {
-
-        $("modalMessage").textContent =
-            "O peso produzido ultrapassa o saldo do lote.";
-
-        return;
+      return;
 
     }
-
-
-    const observation =
-        $("productionObs")
-            ?.value
-            .trim() || "";
 
 
     try {
 
-        await db.runTransaction(
-            async transaction => {
-
-                const ref =
-                    db
-                        .collection("lots")
-                        .doc(lot.id);
-
-
-                const snap =
-                    await transaction.get(
-                        ref
-                    );
-
-
-                if (!snap.exists) {
-
-                    throw new Error(
-                        "Lote não encontrado."
-                    );
-
-                }
-
-
-                const data =
-                    snap.data();
-
-
-                const current =
-                    Number(
-                        data.producedWeight ||
-                        0
-                    );
-
-
-                const weight =
-                    Number(
-                        data.weight ||
-                        0
-                    );
-
-
-                const next =
-                    current +
-                    amount;
-
-
-                if (
-                    next >
-                    weight +
-                    0.0001
-                ) {
-
-                    throw new Error(
-                        "O peso produzido ultrapassa o peso do lote."
-                    );
-
-                }
-
-
-                let newStatus =
-                    "pendente";
-
-
-                if (
-                    data.status ===
-                    "cancelado"
-                ) {
-
-                    newStatus =
-                        "cancelado";
-
-                } else if (
-                    next >=
-                    weight - 0.0001
-                ) {
-
-                    newStatus =
-                        "finalizado";
-
-                } else if (
-                    next > 0
-                ) {
-
-                    newStatus =
-                        "producao";
-
-                }
-
-
-                const productionLog = {
-
-                    weight:
-                        amount,
-
-                    obs:
-                        observation,
-
-                    userId:
-                        currentUser.uid,
-
-                    at:
-                        new Date()
-
-                };
-
-
-                transaction.update(
-                    ref,
-                    {
-
-                        producedWeight:
-                            next,
-
-                        status:
-                            newStatus,
-
-                        updatedAt:
-                            firebase.firestore
-                                .FieldValue
-                                .serverTimestamp(),
-
-                        lastObservation:
-                            observation,
-
-                        productionLogs:
-                            firebase.firestore
-                                .FieldValue
-                                .arrayUnion(
-                                    productionLog
-                                )
-
-                    }
-                );
-
-            }
+      const activeUsers =
+        allUsers.filter(
+          user =>
+            user.active !== false &&
+            user.role ===
+              "colaborador"
         );
 
 
-        closeLotModal();
+      if (!activeUsers.length) {
 
-        await loadData();
+        throw new Error(
+          "Não existem colaboradores ativos para distribuição."
+        );
+
+      }
+
+
+      const loads = {};
+
+
+      allLots.forEach(lot => {
+
+        if (
+          [
+            "pendente",
+            "producao"
+          ].includes(
+            lotStatus(lot)
+          )
+        ) {
+
+          loads[lot.assignedTo] =
+            (
+              loads[lot.assignedTo] ||
+              0
+            ) +
+            lotRemaining(lot);
+
+        }
+
+      });
+
+
+      activeUsers.sort(
+        (a, b) =>
+          (
+            loads[a.id] || 0
+          ) -
+          (
+            loads[b.id] || 0
+          )
+      );
+
+
+      const chosen =
+        activeUsers[0];
+
+
+      const ref =
+        db.collection("lots").doc();
+
+
+      const data = {
+
+        name:
+          $("lotName")
+            .value
+            .trim(),
+
+        os:
+          $("lotOs")
+            .value
+            .trim(),
+
+        weight,
+
+        entryDate:
+          $("lotEntry").value,
+
+        programDate:
+          $("lotProgram").value,
+
+        assignedTo:
+          chosen.id,
+
+        producedWeight:
+          0,
+
+        status:
+          "pendente",
+
+        clientName:
+          $("lotName")
+            .value
+            .trim(),
+
+        createdBy:
+          currentUser.uid,
+
+        createdAt:
+          firebase.firestore
+            .FieldValue
+            .serverTimestamp(),
+
+        updatedAt:
+          firebase.firestore
+            .FieldValue
+            .serverTimestamp()
+
+      };
+
+
+      await ref.set(data);
+
+
+      $("lotFormMessage")
+        .className = "success";
+
+
+      $("lotFormMessage")
+        .textContent =
+        `Lote distribuído para ${chosen.name}. ` +
+        `Carga pendente atual: ${
+          kg(loads[chosen.id] || 0)
+        }.`;
+
+      event.target.reset();
+
+      await loadData();
 
 
     } catch (error) {
 
-        console.error(
-            "Erro ao registrar produção:",
-            error
-        );
+      console.error(error);
 
+      $("lotFormMessage")
+        .className = "error";
 
-        if ($("modalMessage")) {
-
-            $("modalMessage")
-                .textContent =
-                error.message ||
-                "Erro ao registrar produção.";
-
-        }
+      $("lotFormMessage")
+        .textContent =
+        error.message ||
+        "Erro ao cadastrar lote.";
 
     }
 
-}
+  }
+);
 
 
-// ============================================================
-// CADASTRAR LOTE
-// ============================================================
-
-if ($("lotForm")) {
-
-    $("lotForm").addEventListener(
-        "submit",
-        async event => {
-
-            event.preventDefault();
-
-
-            if (!roleIsAdmin()) {
-
-                return;
-
-            }
-
-
-            $("lotFormMessage")
-                .textContent = "";
-
-
-            const weight =
-                Number(
-                    $("lotWeight")
-                        .value
-                );
-
-
-            if (
-                !weight ||
-                weight <= 0
-            ) {
-
-                $("lotFormMessage")
-                    .className =
-                    "error";
-
-
-                $("lotFormMessage")
-                    .textContent =
-                    "Informe um peso válido.";
-
-                return;
-
-            }
-
-
-            try {
-
-                const activeUsers =
-                    allUsers.filter(
-                        user =>
-                            user.active !== false
-                            &&
-                            user.role ===
-                            "colaborador"
-                    );
-
-
-                if (!activeUsers.length) {
-
-                    throw new Error(
-                        "Não existem colaboradores ativos para distribuição."
-                    );
-
-                }
-
-
-                const loads = {};
-
-
-                allLots.forEach(
-                    lot => {
-
-                        if (
-                            [
-                                "pendente",
-                                "producao"
-                            ]
-                            .includes(
-                                lotStatus(lot)
-                            )
-                        ) {
-
-                            loads[
-                                lot.assignedTo
-                            ] =
-                                (
-                                    loads[
-                                        lot.assignedTo
-                                    ] ||
-                                    0
-                                )
-                                +
-                                lotRemaining(
-                                    lot
-                                );
-
-                        }
-
-                    }
-                );
-
-
-                activeUsers.sort(
-                    (a, b) =>
-                        (
-                            loads[a.id] ||
-                            0
-                        )
-                        -
-                        (
-                            loads[b.id] ||
-                            0
-                        )
-                );
-
-
-                const chosen =
-                    activeUsers[0];
-
-
-                const ref =
-                    db
-                        .collection("lots")
-                        .doc();
-
-
-                const lotName =
-                    $("lotName")
-                        .value
-                        .trim();
-
-
-                const data = {
-
-                    name:
-                        lotName,
-
-                    os:
-                        $("lotOs")
-                            .value
-                            .trim(),
-
-                    weight,
-
-                    entryDate:
-                        $("lotEntry")
-                            .value,
-
-                    programDate:
-                        $("lotProgram")
-                            .value,
-
-                    assignedTo:
-                        chosen.id,
-
-                    producedWeight:
-                        0,
-
-                    status:
-                        "pendente",
-
-                    clientName:
-                        lotName,
-
-                    createdBy:
-                        currentUser.uid,
-
-                    createdAt:
-                        firebase.firestore
-                            .FieldValue
-                            .serverTimestamp(),
-
-                    updatedAt:
-                        firebase.firestore
-                            .FieldValue
-                            .serverTimestamp()
-
-                };
-
-
-                await ref.set(data);
-
-
-                $("lotFormMessage")
-                    .className =
-                    "success";
-
-
-                $("lotFormMessage")
-                    .textContent =
-                    `Lote distribuído para ${chosen.name}. Carga pendente atual: ${kg(loads[chosen.id] || 0)}.`;
-
-
-                event.target.reset();
-
-
-                await loadData();
-
-
-            } catch (error) {
-
-                console.error(
-                    "Erro ao cadastrar lote:",
-                    error
-                );
-
-
-                $("lotFormMessage")
-                    .className =
-                    "error";
-
-
-                $("lotFormMessage")
-                    .textContent =
-                    error.message ||
-                    "Erro ao cadastrar lote.";
-
-            }
-
-        }
-    );
-
-}
-
-
-// ============================================================
-// REDISTRIBUIR LOTE
-// ============================================================
+/* =========================================================
+   REDISTRIBUIR LOTE
+========================================================= */
 
 window.redistributeLot =
-async function(id) {
+  async function(id) {
 
     if (!roleIsAdmin()) {
 
-        alert(
-            "Somente o administrador principal pode redistribuir lotes."
-        );
-
-        return;
+      return;
 
     }
 
 
     const activeUsers =
-        allUsers.filter(
-            user =>
-                user.active !== false
-                &&
-                user.role ===
-                "colaborador"
-        );
+      allUsers.filter(
+        user =>
+          user.active !== false &&
+          user.role ===
+            "colaborador"
+      );
 
 
     const lot =
-        allLots.find(
-            item =>
-                item.id === id
-        );
+      allLots.find(
+        item => item.id === id
+      );
 
 
     if (
-        !lot ||
-        !activeUsers.length
+      !lot ||
+      !activeUsers.length
     ) {
 
-        return;
+      return;
 
     }
 
@@ -3102,1768 +1852,1891 @@ async function(id) {
     const loads = {};
 
 
-    allLots.forEach(
-        item => {
+    allLots.forEach(item => {
 
-            if (
-                item.id !== id
-                &&
-                [
-                    "pendente",
-                    "producao"
-                ]
-                .includes(
-                    lotStatus(item)
-                )
-            ) {
+      if (
+        item.id !== id &&
+        [
+          "pendente",
+          "producao"
+        ].includes(
+          lotStatus(item)
+        )
+      ) {
 
-                loads[
-                    item.assignedTo
-                ] =
-                    (
-                        loads[
-                            item.assignedTo
-                        ] ||
-                        0
-                    )
-                    +
-                    lotRemaining(
-                        item
-                    );
+        loads[item.assignedTo] =
+          (
+            loads[item.assignedTo] ||
+            0
+          ) +
+          lotRemaining(item);
 
-            }
+      }
 
-        }
-    );
+    });
 
 
     activeUsers.sort(
-        (a, b) =>
-            (
-                loads[a.id] ||
-                0
-            )
-            -
-            (
-                loads[b.id] ||
-                0
-            )
+      (a, b) =>
+        (
+          loads[a.id] || 0
+        ) -
+        (
+          loads[b.id] || 0
+        )
     );
 
 
     const chosen =
-        activeUsers[0];
+      activeUsers[0];
 
 
-    try {
+    await db
+      .collection("lots")
+      .doc(id)
+      .update({
 
-        await db
-            .collection("lots")
-            .doc(id)
-            .update({
+        assignedTo:
+          chosen.id,
 
-                assignedTo:
-                    chosen.id,
+        updatedAt:
+          firebase.firestore
+            .FieldValue
+            .serverTimestamp()
 
-                updatedAt:
-                    firebase.firestore
-                        .FieldValue
-                        .serverTimestamp()
-
-            });
+      });
 
 
-        closeLotModal();
+    closeLotModal();
 
-        await loadData();
+    await loadData();
 
-
-    } catch (error) {
-
-        console.error(
-            error
-        );
-
-        alert(
-            error.message ||
-            "Erro ao redistribuir lote."
-        );
-
-    }
-
-};
+  };
 
 
-// ============================================================
-// ANÁLISE DE DESEMPENHO
-// ============================================================
-
-function inclusiveDays(from, to) {
-
-    if (!from || !to) {
-        return 0;
-    }
-
-    const start = new Date(`${from}T00:00:00`);
-    const end = new Date(`${to}T00:00:00`);
-
-    if (
-        Number.isNaN(start.getTime()) ||
-        Number.isNaN(end.getTime()) ||
-        end < start
-    ) {
-        return 0;
-    }
-
-    return Math.floor(
-        (end - start) / 86400000
-    ) + 1;
-}
-
-
-function buildPerformance(lots, from, to) {
-
-    const periodDays = inclusiveDays(from, to);
-
-    const totalProduced = lots.reduce(
-        (sum, lot) => sum + lotProduced(lot),
-        0
-    );
-
-    const by = {};
-
-    lots.forEach(lot => {
-
-        const uid = lot.assignedTo || "sem-colaborador";
-
-        const user = allUsers.find(
-            item => item.id === uid
-        );
-
-        if (!by[uid]) {
-            by[uid] = {
-                uid,
-                name: user?.name || "Sem colaborador",
-                produced: 0,
-                planned: 0,
-                lots: 0,
-                days: new Set()
-            };
-        }
-
-        by[uid].produced += lotProduced(lot);
-        by[uid].planned += Number(lot.weight || 0);
-        by[uid].lots++;
-
-        if (lot.programDate) {
-            by[uid].days.add(lot.programDate);
-        }
-    });
-
-    const collaborators = Object.values(by)
-        .map(item => {
-
-            const daysWorked = item.days.size;
-
-            return {
-                ...item,
-                daysWorked,
-                averagePerWorkedDay:
-                    daysWorked
-                        ? item.produced / daysWorked
-                        : 0,
-                averagePerPeriodDay:
-                    periodDays
-                        ? item.produced / periodDays
-                        : 0,
-                realization:
-                    item.planned
-                        ? (item.produced / item.planned) * 100
-                        : 0
-            };
-        })
-        .sort((a, b) => b.produced - a.produced);
-
-    return {
-        periodDays,
-        totalProduced,
-        periodAverage:
-            periodDays
-                ? totalProduced / periodDays
-                : 0,
-        collaborators
-    };
-}
-
-
-function renderPerformance(lots, from, to) {
-
-    const performance =
-        buildPerformance(lots, from, to);
-
-    if ($("performanceSummary")) {
-
-        $("performanceSummary").innerHTML = [
-            ["Dias no período", performance.periodDays],
-            ["Produção total", kg(performance.totalProduced)],
-            ["Média por dia do período", kg(performance.periodAverage)],
-            ["Colaboradores", performance.collaborators.length]
-        ]
-        .map(item => `
-            <div class="card">
-                <small>${item[0]}</small>
-                <strong>${item[1]}</strong>
-            </div>
-        `)
-        .join("");
-    }
-
-    if ($("performanceByCollaborator")) {
-
-        $("performanceByCollaborator").innerHTML = `
-
-            <p class="performance-note">
-                Média/dia trabalhado = produção dividida pelos dias em que
-                o colaborador teve lote. Média/dia do período = produção
-                dividida por todos os dias entre as datas selecionadas.
-            </p>
-
-            <div class="table-wrap">
-                <table class="data-table">
-                    <thead>
-                        <tr>
-                            <th>Colaborador</th>
-                            <th>Produzido</th>
-                            <th>Dias trabalhados</th>
-                            <th>Média/dia trabalhado</th>
-                            <th>Média/dia do período</th>
-                            <th>Programado</th>
-                            <th>Realização</th>
-                            <th>Lotes</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        ${
-                            performance.collaborators.length
-                                ? performance.collaborators.map(row => `
-                                    <tr>
-                                        <td>${escapeHtml(row.name)}</td>
-                                        <td>${kg(row.produced)}</td>
-                                        <td>${row.daysWorked}</td>
-                                        <td>${kg(row.averagePerWorkedDay)}</td>
-                                        <td>${kg(row.averagePerPeriodDay)}</td>
-                                        <td>${kg(row.planned)}</td>
-                                        <td>${pct(row.realization)}</td>
-                                        <td>${row.lots}</td>
-                                    </tr>
-                                `).join("")
-                                : `
-                                    <tr>
-                                        <td colspan="8">
-                                            Sem dados de desempenho no período.
-                                        </td>
-                                    </tr>
-                                `
-                        }
-                    </tbody>
-                </table>
-            </div>
-        `;
-    }
-}
-
-
-// ============================================================
-// RELATÓRIO
-// ============================================================
+/* =========================================================
+   RELATÓRIO
+========================================================= */
 
 function renderReport() {
 
-    if (
-        !$("reportFrom") ||
-        !$("reportTo")
-    ) {
-
-        return;
-
-    }
+  let lots =
+    dateRange(
+      $("reportFrom").value,
+      $("reportTo").value
+    );
 
 
-    let lots =
-        dateRange(
-            $("reportFrom").value,
-            $("reportTo").value
-        );
+  const uid =
+    $("reportUser").value;
 
 
-    const uid =
-        $("reportUser")?.value;
+  if (uid) {
+
+    lots =
+      lots.filter(
+        lot =>
+          lot.assignedTo === uid
+      );
+
+  }
 
 
-    if (uid) {
+  if (!roleIsAdmin()) {
 
-        lots =
-            lots.filter(
-                lot =>
-                    lot.assignedTo ===
-                    uid
-            );
+    lots =
+      lots.filter(
+        lot =>
+          lot.assignedTo ===
+          currentUser.uid
+      );
 
-    }
-
-
-    if (!roleIsAdmin()) {
-
-        lots =
-            lots.filter(
-                lot =>
-                    lot.assignedTo ===
-                    currentUser.uid
-            );
-
-    }
+  }
 
 
-    const planned =
-        lots.reduce(
-            (total, lot) =>
-                total +
-                Number(
-                    lot.weight || 0
-                ),
-            0
-        );
+  const planned =
+    lots.reduce(
+      (total, lot) =>
+        total +
+        Number(lot.weight || 0),
+      0
+    );
 
 
-    const produced =
-        lots.reduce(
-            (total, lot) =>
-                total +
-                lotProduced(lot),
-            0
-        );
+  const produced =
+    lots.reduce(
+      (total, lot) =>
+        total +
+        lotProduced(lot),
+      0
+    );
 
 
-    const clients =
-        new Set(
-            lots
-                .map(
-                    lot =>
-                        lot.clientName ||
-                        lot.name
-                )
-                .filter(Boolean)
-        );
-
-
-    if ($("reportSummary")) {
-
-        $("reportSummary")
-            .innerHTML = [
-
-                [
-                    "Programado",
-                    kg(planned)
-                ],
-
-                [
-                    "Produzido",
-                    kg(produced)
-                ],
-
-                [
-                    "Saldo",
-                    kg(
-                        planned -
-                        produced
-                    )
-                ],
-
-                [
-                    "Realização",
-                    pct(
-                        planned
-                            ? (
-                                produced /
-                                planned
-                            ) * 100
-                            : 0
-                    )
-                ],
-
-                [
-                    "Clientes",
-                    clients.size
-                ]
-
-            ]
-            .map(item => `
-
-                <div class="card">
-
-                    <small>
-                        ${item[0]}
-                    </small>
-
-                    <strong>
-                        ${item[1]}
-                    </strong>
-
-                </div>
-
-            `)
-            .join("");
-
-    }
-
-
-    const by = {};
-
-
-    lots.forEach(lot => {
-
-        const user =
-            allUsers.find(
-                item =>
-                    item.id ===
-                    lot.assignedTo
-            );
-
-
-        const key =
-            `${lot.programDate}|${lot.assignedTo}`;
-
-
-        if (!by[key]) {
-
-            by[key] = {
-
-                date:
-                    lot.programDate,
-
-                user:
-                    user?.name ||
-                    "—",
-
-                produced:
-                    0,
-
-                planned:
-                    0,
-
-                clients:
-                    new Set(),
-
-                lots:
-                    0
-
-            };
-
-        }
-
-
-        by[key].planned +=
-            Number(
-                lot.weight || 0
-            );
-
-
-        by[key].produced +=
-            lotProduced(lot);
-
-
-        by[key].clients.add(
+  const clients =
+    new Set(
+      lots
+        .map(
+          lot =>
             lot.clientName ||
-            lot.name ||
-            "Sem cliente"
+            lot.name
+        )
+        .filter(Boolean)
+    );
+
+
+  $("reportSummary").innerHTML = [
+
+    [
+      "Programado",
+      kg(planned)
+    ],
+
+    [
+      "Produzido",
+      kg(produced)
+    ],
+
+    [
+      "Saldo",
+      kg(planned - produced)
+    ],
+
+    [
+      "Realização",
+      pct(
+        planned
+          ? produced / planned * 100
+          : 0
+      )
+    ],
+
+    [
+      "Clientes",
+      clients.size
+    ]
+
+  ].map(item => `
+
+    <div class="card">
+
+      <small>
+        ${item[0]}
+      </small>
+
+      <strong>
+        ${item[1]}
+      </strong>
+
+    </div>
+
+  `).join("");
+
+
+  const by = {};
+
+
+  lots.forEach(lot => {
+
+    const user =
+      allUsers.find(
+        x =>
+          x.id ===
+          lot.assignedTo
+      );
+
+
+    const key =
+      `${lot.programDate}|${lot.assignedTo}`;
+
+
+    if (!by[key]) {
+
+      by[key] = {
+
+        date:
+          lot.programDate,
+
+        user:
+          user?.name || "—",
+
+        produced:
+          0,
+
+        planned:
+          0,
+
+        clients:
+          new Set(),
+
+        lots:
+          0
+
+      };
+
+    }
+
+
+    by[key].planned +=
+      Number(lot.weight || 0);
+
+
+    by[key].produced +=
+      lotProduced(lot);
+
+
+    by[key].clients.add(
+      lot.clientName ||
+      lot.name ||
+      "Sem cliente"
+    );
+
+
+    by[key].lots++;
+
+  });
+
+
+  const rows =
+    Object.values(by)
+      .sort((a, b) => {
+
+        return (
+          a.date.localeCompare(
+            b.date
+          ) ||
+          a.user.localeCompare(
+            b.user
+          )
         );
 
+      });
 
-        by[key].lots++;
 
-    });
+  $("reportByCollaborator").innerHTML = `
 
+    <h3>
+      Produção por colaborador e por dia
+    </h3>
 
-    const rows =
-        Object.values(by)
-            .sort(
-                (a, b) =>
-                    String(a.date || "")
-                        .localeCompare(
-                            String(b.date || "")
-                        )
-                    ||
-                    String(a.user || "")
-                        .localeCompare(
-                            String(b.user || "")
-                        )
-            );
+    <div class="table-wrap">
 
+      <table class="data-table">
 
-    if ($("reportByCollaborator")) {
+        <thead>
 
-        $("reportByCollaborator")
-            .innerHTML = `
+          <tr>
 
-            <h3>
-                Produção por colaborador e por dia
-            </h3>
+            <th>Data</th>
 
+            <th>Colaborador</th>
 
-            <div class="table-wrap">
+            <th>Peso do dia</th>
 
-                <table class="data-table">
+            <th>Programado</th>
 
-                    <thead>
+            <th>Clientes</th>
 
-                        <tr>
+            <th>Lotes</th>
 
-                            <th>Data</th>
-                            <th>Colaborador</th>
-                            <th>Peso do dia</th>
-                            <th>Programado</th>
-                            <th>Clientes</th>
-                            <th>Lotes</th>
+          </tr>
 
-                        </tr>
+        </thead>
 
-                    </thead>
+        <tbody>
 
+          ${
+            rows.length
 
-                    <tbody>
+              ? rows.map(row => `
 
-                        ${
-                            rows.length
+                  <tr>
 
-                                ? rows.map(row => `
+                    <td>
+                      ${dateBR(row.date)}
+                    </td>
 
-                                    <tr>
+                    <td>
+                      ${escapeHtml(row.user)}
+                    </td>
 
-                                        <td>
-                                            ${dateBR(
-                                                row.date
-                                            )}
-                                        </td>
+                    <td>
+                      ${kg(row.produced)}
+                    </td>
 
-                                        <td>
-                                            ${escapeHtml(
-                                                row.user
-                                            )}
-                                        </td>
+                    <td>
+                      ${kg(row.planned)}
+                    </td>
 
-                                        <td>
-                                            ${kg(
-                                                row.produced
-                                            )}
-                                        </td>
+                    <td>
+                      ${escapeHtml(
+                        [...row.clients]
+                          .join(", ")
+                      )}
+                    </td>
 
-                                        <td>
-                                            ${kg(
-                                                row.planned
-                                            )}
-                                        </td>
+                    <td>
+                      ${row.lots}
+                    </td>
 
-                                        <td>
-                                            ${escapeHtml(
-                                                [
-                                                    ...row.clients
-                                                ].join(", ")
-                                            )}
-                                        </td>
+                  </tr>
 
-                                        <td>
-                                            ${row.lots}
-                                        </td>
+                `).join("")
 
-                                    </tr>
+              : `
 
-                                `).join("")
+                <tr>
 
-                                : `
+                  <td colspan="6">
+                    Sem dados.
+                  </td>
 
-                                    <tr>
+                </tr>
 
-                                        <td colspan="6">
-                                            Sem dados.
-                                        </td>
+              `
+          }
 
-                                    </tr>
+        </tbody>
 
-                                `
-                        }
+      </table>
 
-                    </tbody>
+    </div>
 
-                </table>
+  `;
 
-            </div>
 
-        `;
+  $("reportDetails").innerHTML = `
 
-    }
+    <h3>
+      Detalhamento dos lotes
+    </h3>
 
+    <div class="table-wrap">
 
-    if ($("reportDetails")) {
+      <table class="data-table">
 
-        $("reportDetails")
-            .innerHTML = `
+        <thead>
 
-            <h3>
-                Detalhamento dos lotes
-            </h3>
+          <tr>
 
+            <th>Programação</th>
 
-            <div class="table-wrap">
+            <th>OS</th>
 
-                <table class="data-table">
+            <th>Lote</th>
 
-                    <thead>
+            <th>Colaborador</th>
 
-                        <tr>
+            <th>Peso</th>
 
-                            <th>Programação</th>
-                            <th>OS</th>
-                            <th>Lote</th>
-                            <th>Colaborador</th>
-                            <th>Peso</th>
-                            <th>Produzido</th>
-                            <th>Saldo</th>
-                            <th>Status</th>
+            <th>Produzido</th>
 
-                        </tr>
+            <th>Saldo</th>
 
-                    </thead>
+            <th>Status</th>
 
+          </tr>
 
-                    <tbody>
+        </thead>
 
-                        ${
-                            lots.length
+        <tbody>
 
-                                ? [...lots]
-                                    .sort(
-                                        (a, b) =>
-                                            String(
-                                                a.programDate ||
-                                                ""
-                                            ).localeCompare(
-                                                String(
-                                                    b.programDate ||
-                                                    ""
-                                                )
-                                            )
-                                    )
-                                    .map(
-                                        lot => {
+          ${
+            lots.length
 
-                                            const user =
-                                                allUsers.find(
-                                                    item =>
-                                                        item.id ===
-                                                        lot.assignedTo
-                                                );
+              ? [...lots]
+                  .sort(
+                    (a, b) =>
+                      (
+                        a.programDate || ""
+                      ).localeCompare(
+                        b.programDate || ""
+                      )
+                  )
+                  .map(lot => {
 
+                    const user =
+                      allUsers.find(
+                        x =>
+                          x.id ===
+                          lot.assignedTo
+                      );
 
-                                            return `
+                    return `
 
-                                                <tr>
+                      <tr>
 
-                                                    <td>
-                                                        ${dateBR(
-                                                            lot.programDate
-                                                        )}
-                                                    </td>
+                        <td>
+                          ${dateBR(
+                            lot.programDate
+                          )}
+                        </td>
 
-                                                    <td>
-                                                        ${escapeHtml(
-                                                            lot.os ||
-                                                            "—"
-                                                        )}
-                                                    </td>
+                        <td>
+                          ${escapeHtml(
+                            lot.os || "—"
+                          )}
+                        </td>
 
-                                                    <td>
-                                                        ${escapeHtml(
-                                                            lot.name ||
-                                                            "—"
-                                                        )}
-                                                    </td>
+                        <td>
+                          ${escapeHtml(
+                            lot.name || "—"
+                          )}
+                        </td>
 
-                                                    <td>
-                                                        ${escapeHtml(
-                                                            user?.name ||
-                                                            "—"
-                                                        )}
-                                                    </td>
+                        <td>
+                          ${escapeHtml(
+                            user?.name || "—"
+                          )}
+                        </td>
 
-                                                    <td>
-                                                        ${kg(
-                                                            lot.weight
-                                                        )}
-                                                    </td>
+                        <td>
+                          ${kg(lot.weight)}
+                        </td>
 
-                                                    <td>
-                                                        ${kg(
-                                                            lotProduced(
-                                                                lot
-                                                            )
-                                                        )}
-                                                    </td>
+                        <td>
+                          ${kg(
+                            lotProduced(lot)
+                          )}
+                        </td>
 
-                                                    <td>
-                                                        ${kg(
-                                                            lotRemaining(
-                                                                lot
-                                                            )
-                                                        )}
-                                                    </td>
+                        <td>
+                          ${kg(
+                            lotRemaining(lot)
+                          )}
+                        </td>
 
-                                                    <td>
-                                                        ${statusLabel(
-                                                            lotStatus(
-                                                                lot
-                                                            )
-                                                        )}
-                                                    </td>
+                        <td>
+                          ${statusLabel(
+                            lotStatus(lot)
+                          )}
+                        </td>
 
-                                                </tr>
+                      </tr>
 
-                                            `;
+                    `;
 
-                                        }
-                                    )
-                                    .join("")
+                  })
+                  .join("")
 
-                                : `
+              : `
 
-                                    <tr>
+                <tr>
 
-                                        <td colspan="8">
-                                            Sem dados.
-                                        </td>
+                  <td colspan="8">
+                    Sem dados.
+                  </td>
 
-                                    </tr>
+                </tr>
 
-                                `
-                        }
+              `
+          }
 
-                    </tbody>
+        </tbody>
 
-                </table>
+      </table>
 
-            </div>
+    </div>
 
-        `;
-
-    }
+  `;
 
 }
 
 
-if ($("reportFilterBtn")) {
+$("reportFilterBtn").onclick =
+  renderReport;
 
-    $("reportFilterBtn").onclick =
-        renderReport;
 
+/* =========================================================
+   PDF
+========================================================= */
+
+
+/* =========================================================
+   PDF PROFISSIONAL — VERSÃO REVISADA
+   - carregamento robusto do jsPDF/AutoTable
+   - médias por colaborador e por período
+   - gráficos
+   - detalhamento dos lotes
+   - cabeçalho/rodapé
+========================================================= */
+
+function reportPeriodDays(from, to) {
+  if (!from || !to) return 1;
+  const a = new Date(`${from}T00:00:00`);
+  const b = new Date(`${to}T00:00:00`);
+  const days = Math.floor((b - a) / 86400000) + 1;
+  return Math.max(1, days);
+}
+
+function buildPerformance(lots, from, to) {
+  const periodDays = reportPeriodDays(from, to);
+  const byUser = {};
+  const byDay = {};
+
+  (lots || []).forEach(lot => {
+    const produced = lotProduced(lot);
+    const planned = Number(lot.weight || 0);
+    const day = lot.programDate || lot.entryDate || "";
+    const uid = lot.assignedTo || "sem-colaborador";
+    const user = allUsers.find(u => u.id === uid);
+
+    if (!byUser[uid]) {
+      byUser[uid] = {
+        name: user?.name || "Sem colaborador",
+        planned: 0,
+        produced: 0,
+        lots: 0,
+        days: new Set(),
+        clients: new Set()
+      };
+    }
+
+    byUser[uid].planned += planned;
+    byUser[uid].produced += produced;
+    byUser[uid].lots++;
+
+    if (produced > 0 && day) {
+      byUser[uid].days.add(day);
+    }
+
+    const client = lot.clientName || lot.name || "";
+    if (client) byUser[uid].clients.add(client);
+
+    if (day) {
+      if (!byDay[day]) {
+        byDay[day] = {
+          planned: 0,
+          produced: 0,
+          lots: 0
+        };
+      }
+      byDay[day].planned += planned;
+      byDay[day].produced += produced;
+      byDay[day].lots++;
+    }
+  });
+
+  const users = Object.values(byUser)
+    .map(row => ({
+      ...row,
+      workedDays: row.days.size,
+      averagePerWorkedDay:
+        row.days.size ? row.produced / row.days.size : 0,
+      averagePerPeriodDay:
+        row.produced / periodDays,
+      realization:
+        row.planned ? (row.produced / row.planned) * 100 : 0,
+      clientCount: row.clients.size
+    }))
+    .sort((a, b) => b.produced - a.produced);
+
+  const days = Object.keys(byDay)
+    .sort()
+    .map(date => ({
+      date,
+      planned: byDay[date].planned,
+      produced: byDay[date].produced,
+      lots: byDay[date].lots,
+      average: byDay[date].produced,
+      realization:
+        byDay[date].planned
+          ? (byDay[date].produced / byDay[date].planned) * 100
+          : 0
+    }));
+
+  const totalPlanned = (lots || []).reduce(
+    (sum, lot) => sum + Number(lot.weight || 0),
+    0
+  );
+
+  const totalProduced = (lots || []).reduce(
+    (sum, lot) => sum + lotProduced(lot),
+    0
+  );
+
+  const collaboratorAverage =
+    users.length ? totalProduced / users.length : 0;
+
+  return {
+    periodDays,
+    users,
+    days,
+    totalPlanned,
+    totalProduced,
+    averagePerPeriodDay: totalProduced / periodDays,
+    collaboratorAverage,
+    realization:
+      totalPlanned
+        ? (totalProduced / totalPlanned) * 100
+        : 0
+  };
 }
 
 
-// ============================================================
-// PDF
-// ============================================================
-
-function pdfBase(
-    title,
-    from,
-    to
-) {
-
-    const {
-        jsPDF
-    } = window.jspdf;
-
-
-    const doc =
-        new jsPDF({
-
-            orientation:
-                "landscape"
-
-        });
-
-
-    doc.setFontSize(18);
-
-    doc.text(
-        title,
-        14,
-        16
+/* Carrega as bibliotecas novamente se algum CDN falhar. */
+function loadExternalScript(src) {
+  return new Promise((resolve, reject) => {
+    const existing = document.querySelector(
+      `script[data-reluz-pdf="${src}"]`
     );
 
+    if (existing) {
+      existing.addEventListener("load", () => resolve(), { once: true });
+      existing.addEventListener("error", () => reject(
+        new Error(`Falha ao carregar ${src}`)
+      ), { once: true });
 
-    doc.setFontSize(9);
+      if (
+        (src.includes("jspdf.umd") && window.jspdf?.jsPDF) ||
+        (src.includes("autotable") && window.jspdf?.jsPDF?.prototype?.autoTable)
+      ) {
+        resolve();
+      }
+      return;
+    }
 
-    doc.text(
-        `Programação: ${dateBR(from)} a ${dateBR(to)}`,
-        14,
-        23
+    const script = document.createElement("script");
+    script.src = src;
+    script.async = true;
+    script.dataset.reluzPdf = src;
+
+    script.onload = () => resolve();
+    script.onerror = () => reject(
+      new Error(`Falha ao carregar a biblioteca do PDF.`)
     );
 
+    document.head.appendChild(script);
+  });
+}
 
-    doc.text(
-        `Gerado em: ${new Date().toLocaleString("pt-BR")}`,
-        200,
-        23
+async function ensurePdfLibraries() {
+  if (!window.jspdf?.jsPDF) {
+    const jsPdfUrls = [
+      "https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js",
+      "https://unpkg.com/jspdf@2.5.1/dist/jspdf.umd.min.js"
+    ];
+
+    let loaded = false;
+
+    for (const url of jsPdfUrls) {
+      try {
+        await loadExternalScript(url);
+        if (window.jspdf?.jsPDF) {
+          loaded = true;
+          break;
+        }
+      } catch (error) {
+        console.warn(error);
+      }
+    }
+
+    if (!loaded) {
+      throw new Error(
+        "A biblioteca jsPDF não carregou. Verifique a internet e recarregue a página."
+      );
+    }
+  }
+
+  let test = new window.jspdf.jsPDF();
+
+  if (typeof test.autoTable !== "function") {
+    const tableUrls = [
+      "https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js",
+      "https://unpkg.com/jspdf-autotable@3.8.2/dist/jspdf.plugin.autotable.min.js"
+    ];
+
+    let loaded = false;
+
+    for (const url of tableUrls) {
+      try {
+        await loadExternalScript(url);
+        test = new window.jspdf.jsPDF();
+
+        if (typeof test.autoTable === "function") {
+          loaded = true;
+          break;
+        }
+      } catch (error) {
+        console.warn(error);
+      }
+    }
+
+    if (!loaded) {
+      throw new Error(
+        "A biblioteca de tabelas do PDF não carregou. Recarregue a página."
+      );
+    }
+  }
+
+  return true;
+}
+
+
+function pdfBase(title, from, to) {
+  const { jsPDF } = window.jspdf;
+
+  const doc = new jsPDF({
+    orientation: "landscape",
+    unit: "mm",
+    format: "a4",
+    compress: true
+  });
+
+  const W = doc.internal.pageSize.getWidth();
+
+  doc.setFillColor(247, 250, 253);
+  doc.rect(0, 0, W, 210, "F");
+
+  doc.setFillColor(7, 25, 42);
+  doc.rect(0, 0, W, 29, "F");
+
+  doc.setFillColor(42, 194, 229);
+  doc.rect(0, 28.2, W, 0.8, "F");
+
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(17);
+  doc.setTextColor(255, 255, 255);
+  doc.text(String(title).slice(0, 70), 14, 12);
+
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(7.5);
+  doc.setTextColor(191, 222, 236);
+  doc.text(
+    `Período: ${dateBR(from)} a ${dateBR(to)}`,
+    14,
+    20
+  );
+
+  doc.setTextColor(132, 226, 249);
+  doc.setFont("helvetica", "bold");
+  doc.text(
+    `RELÜZ • PRODUÇÃO`,
+    W - 14,
+    20,
+    { align: "right" }
+  );
+
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(6.5);
+  doc.setTextColor(115, 140, 156);
+  doc.text(
+    `Gerado em ${new Date().toLocaleString("pt-BR")}`,
+    W - 14,
+    25,
+    { align: "right" }
+  );
+
+  return doc;
+}
+
+
+function pdfPageHeader(doc, title) {
+  const W = doc.internal.pageSize.getWidth();
+
+  doc.setFillColor(7, 25, 42);
+  doc.rect(0, 0, W, 20, "F");
+
+  doc.setFillColor(42, 194, 229);
+  doc.rect(0, 19.2, W, 0.8, "F");
+
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(12);
+  doc.setTextColor(255, 255, 255);
+  doc.text(String(title).slice(0, 80), 14, 12);
+
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(6.5);
+  doc.setTextColor(160, 205, 221);
+  doc.text("RELÜZ • PRODUÇÃO", W - 14, 12, { align: "right" });
+}
+
+
+function pdfFooter(doc) {
+  const W = doc.internal.pageSize.getWidth();
+  const H = doc.internal.pageSize.getHeight();
+
+  doc.setFillColor(7, 25, 42);
+  doc.rect(0, H - 10, W, 10, "F");
+
+  doc.setDrawColor(42, 194, 229);
+  doc.setLineWidth(0.25);
+  doc.line(12, H - 10, W - 12, H - 10);
+
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(6.2);
+  doc.setTextColor(185, 210, 222);
+  doc.text(
+    "RELÜZ PRODUÇÃO • RELATÓRIO DE DESEMPENHO",
+    12,
+    H - 4
+  );
+
+  doc.text(
+    `Página ${doc.internal.getCurrentPageInfo().pageNumber}`,
+    W - 12,
+    H - 4,
+    { align: "right" }
+  );
+}
+
+
+function pdfCard(doc, x, y, w, title, value, accent = [23, 157, 198]) {
+  doc.setFillColor(255, 255, 255);
+  doc.setDrawColor(201, 216, 226);
+  doc.roundedRect(x, y, w, 21, 3, 3, "FD");
+
+  doc.setFillColor(...accent);
+  doc.roundedRect(x + 3, y + 3, 1.6, 15, 0.7, 0.7, "F");
+
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(6.5);
+  doc.setTextColor(79, 105, 123);
+  doc.text(String(title).toUpperCase(), x + 8, y + 7);
+
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(12);
+  doc.setTextColor(10, 37, 58);
+  doc.text(String(value), x + 8, y + 16.5);
+}
+
+
+function pdfBarChart(doc, title, labels, values, y = 55, height = 58) {
+  const x = 14;
+  const W = 269;
+  const left = x + 61;
+  const chartW = W - 82;
+
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(10.5);
+  doc.setTextColor(17, 48, 68);
+  doc.text(title, x, y - 7);
+
+  if (!labels.length) {
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(8);
+    doc.setTextColor(105, 128, 145);
+    doc.text("Sem dados no período.", x, y + 10);
+    return;
+  }
+
+  const max = Math.max(...values.map(v => Number(v) || 0), 1);
+  const rowH = Math.min(11.5, height / labels.length);
+
+  labels.forEach((label, i) => {
+    const yy = y + i * rowH;
+    const value = Number(values[i]) || 0;
+
+    let text = String(label || "Sem nome");
+    if (text.length > 31) text = text.slice(0, 30) + "…";
+
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(6.4);
+    doc.setTextColor(64, 88, 106);
+    doc.text(text, x, yy + 5);
+
+    doc.setFillColor(225, 235, 242);
+    doc.roundedRect(left, yy + 1, chartW, 5.5, 1.3, 1.3, "F");
+
+    doc.setFillColor(24, 166, 205);
+    doc.roundedRect(
+      left,
+      yy + 1,
+      Math.max(0.8, (value / max) * chartW),
+      5.5,
+      1.3,
+      1.3,
+      "F"
     );
 
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(6.3);
+    doc.setTextColor(17, 48, 68);
+    doc.text(
+      kg(value),
+      left + chartW + 2,
+      yy + 5.2
+    );
+  });
+}
 
-    return doc;
 
+function pdfLineChart(doc, title, labels, values, y = 42, height = 67) {
+  const x = 14;
+  const W = 269;
+  const left = x + 30;
+  const chartW = W - 44;
+  const top = y;
+  const chartH = height;
+
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(10.5);
+  doc.setTextColor(17, 48, 68);
+  doc.text(title, x, y - 7);
+
+  if (!labels.length) {
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(8);
+    doc.setTextColor(105, 128, 145);
+    doc.text("Sem dados no período.", x, y + 10);
+    return;
+  }
+
+  const max = Math.max(...values.map(v => Number(v) || 0), 1);
+
+  doc.setDrawColor(201, 216, 226);
+  doc.line(left, top, left, top + chartH);
+  doc.line(left, top + chartH, left + chartW, top + chartH);
+
+  for (let i = 0; i <= 4; i++) {
+    const gy = top + chartH - (i / 4) * chartH;
+
+    doc.setDrawColor(226, 235, 241);
+    doc.line(left, gy, left + chartW, gy);
+
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(5.3);
+    doc.setTextColor(104, 128, 145);
+    doc.text(
+      kg(max * i / 4),
+      x,
+      gy + 2
+    );
+  }
+
+  const points = values.map((value, i) => {
+    const px =
+      labels.length === 1
+        ? left + chartW / 2
+        : left + (i / (labels.length - 1)) * chartW;
+
+    const py =
+      top +
+      chartH -
+      ((Number(value) || 0) / max) * chartH;
+
+    return [px, py];
+  });
+
+  doc.setDrawColor(20, 155, 198);
+  doc.setLineWidth(1);
+
+  for (let i = 1; i < points.length; i++) {
+    doc.line(
+      points[i - 1][0],
+      points[i - 1][1],
+      points[i][0],
+      points[i][1]
+    );
+  }
+
+  points.forEach((point, i) => {
+    doc.setFillColor(20, 155, 198);
+    doc.circle(point[0], point[1], 1.4, "F");
+
+    const step = Math.max(1, Math.ceil(labels.length / 10));
+
+    if (
+      labels.length <= 14 ||
+      i === 0 ||
+      i === labels.length - 1 ||
+      i % step === 0
+    ) {
+      doc.setFontSize(5.2);
+      doc.setTextColor(91, 115, 132);
+      doc.text(
+        dateBR(labels[i]),
+        point[0] - 6,
+        top + chartH + 7
+      );
+    }
+  });
+}
+
+
+function pdfPercentChart(doc, title, labels, values, y = 42, height = 67) {
+  const x = 14;
+  const W = 269;
+  const left = x + 63;
+  const chartW = W - 83;
+
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(10.5);
+  doc.setTextColor(17, 48, 68);
+  doc.text(title, x, y - 7);
+
+  if (!labels.length) {
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(8);
+    doc.setTextColor(105, 128, 145);
+    doc.text("Sem dados no período.", x, y + 10);
+    return;
+  }
+
+  const rowH = Math.min(11.5, height / labels.length);
+
+  labels.forEach((label, i) => {
+    const yy = y + i * rowH;
+    const value = Math.max(
+      0,
+      Math.min(100, Number(values[i]) || 0)
+    );
+
+    let text = String(label || "Sem nome");
+    if (text.length > 32) text = text.slice(0, 31) + "…";
+
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(6.4);
+    doc.setTextColor(64, 88, 106);
+    doc.text(text, x, yy + 5);
+
+    doc.setFillColor(225, 235, 242);
+    doc.roundedRect(
+      left,
+      yy + 1,
+      chartW,
+      5.5,
+      1.3,
+      1.3,
+      "F"
+    );
+
+    doc.setFillColor(89, 112, 222);
+    doc.roundedRect(
+      left,
+      yy + 1,
+      (value / 100) * chartW,
+      5.5,
+      1.3,
+      1.3,
+      "F"
+    );
+
+    doc.setFont("helvetica", "bold");
+    doc.setTextColor(17, 48, 68);
+    doc.text(
+      pct(value),
+      left + chartW + 2,
+      yy + 5.2
+    );
+  });
+}
+
+
+function pdfTableTheme(options = {}) {
+  return {
+    styles: {
+      fontSize: 6.7,
+      cellPadding: 2.4,
+      textColor: [35, 55, 70],
+      fillColor: [255, 255, 255],
+      lineColor: [205, 217, 226],
+      lineWidth: 0.22,
+      overflow: "linebreak",
+      ...options.styles
+    },
+
+    headStyles: {
+      fillColor: [8, 60, 82],
+      textColor: [240, 250, 255],
+      fontStyle: "bold",
+      lineColor: [8, 60, 82],
+      lineWidth: 0.3,
+      ...options.headStyles
+    },
+
+    alternateRowStyles: {
+      fillColor: [243, 248, 251]
+    },
+
+    margin: {
+      left: 10,
+      right: 10,
+      top: 25,
+      bottom: 14
+    },
+
+    didDrawPage: data => {
+      pdfFooter(data.doc);
+      if (options.didDrawPage) {
+        options.didDrawPage(data);
+      }
+    },
+
+    ...options
+  };
 }
 
 
 function pdfRows(lots) {
-
-    return lots.map(
-        lot => {
-
-            const user =
-                allUsers.find(
-                    item =>
-                        item.id ===
-                        lot.assignedTo
-                );
-
-
-            return [
-
-                dateBR(
-                    lot.programDate
-                ),
-
-                lot.os ||
-                    "—",
-
-                lot.name ||
-                    "—",
-
-                user?.name ||
-                    "—",
-
-                kg(
-                    lot.weight
-                ),
-
-                kg(
-                    lotProduced(lot)
-                ),
-
-                kg(
-                    lotRemaining(lot)
-                ),
-
-                statusLabel(
-                    lotStatus(lot)
-                )
-
-            ];
-
-        }
-    );
-
+  return (lots || []).map(lot => [
+    dateBR(lot.programDate || lot.entryDate || ""),
+    lot.os || "—",
+    lot.name || "—",
+    allUsers.find(u => u.id === lot.assignedTo)?.name || "—",
+    kg(lot.weight || 0),
+    kg(lotProduced(lot) || 0),
+    kg(lotRemaining(lot) || 0),
+    statusLabel(lotStatus(lot))
+  ]);
 }
 
 
-function savePdf(
-    doc,
-    name
-) {
+function savePdf(doc, name) {
+  const pages = doc.getNumberOfPages();
 
-    doc.save(
-        name
-            .replace(
-                /\s+/g,
-                "_"
-            )
-        +
-        ".pdf"
-    );
+  for (let page = 1; page <= pages; page++) {
+    doc.setPage(page);
+    pdfFooter(doc);
+  }
 
+  const safeName = String(name || "Relatorio")
+    .replace(/[\\/:*?"<>|]+/g, "_")
+    .replace(/\s+/g, "_");
+
+  doc.save(`${safeName}.pdf`);
 }
 
 
-// ============================================================
-// PDF GERAL
-// ============================================================
+function setPdfButtonBusy(button, busy) {
+  if (!button) return;
+
+  button.disabled = busy;
+
+  if (busy) {
+    button.dataset.originalText = button.textContent;
+    button.textContent = "Gerando PDF...";
+  } else if (button.dataset.originalText) {
+    button.textContent = button.dataset.originalText;
+  }
+}
+
+
+/* =========================================================
+   PDF GERAL
+========================================================= */
 
 if ($("pdfGeneralBtn")) {
+  $("pdfGeneralBtn").onclick = async () => {
+    const button = $("pdfGeneralBtn");
+    setPdfButtonBusy(button, true);
 
-    $("pdfGeneralBtn").onclick = () => {
+    try {
+      await ensurePdfLibraries();
 
-        if (!roleIsAdmin()) {
-            alert("Somente administradores podem gerar o PDF geral.");
-            return;
-        }
+      if (!roleIsAdmin()) {
+        alert("Somente administradores podem gerar o PDF geral.");
+        return;
+      }
 
-        const from = $("reportFrom").value;
-        const to = $("reportTo").value;
+      const from = $("reportFrom").value;
+      const to = $("reportTo").value;
 
-        if (!from || !to) {
-            alert("Informe a data inicial e a data final.");
-            return;
-        }
+      if (!from || !to) {
+        alert("Informe a data inicial e a data final.");
+        return;
+      }
 
-        const lots = dateRange(from, to);
-        const performance = buildPerformance(lots, from, to);
+      if (from > to) {
+        alert("A data inicial não pode ser maior que a data final.");
+        return;
+      }
 
-        const planned = lots.reduce(
-            (total, lot) => total + Number(lot.weight || 0),
-            0
-        );
+      const lots = dateRange(from, to);
+      const performance = buildPerformance(lots, from, to);
 
-        const produced = lots.reduce(
-            (total, lot) => total + lotProduced(lot),
-            0
-        );
+      const doc = pdfBase(
+        "RELATÓRIO GERAL DE PRODUÇÃO",
+        from,
+        to
+      );
 
-        const realization = planned ? (produced / planned) * 100 : 0;
+      const W = doc.internal.pageSize.getWidth();
 
-        const doc = pdfBase(
-            "RELATÓRIO GERAL DE PRODUÇÃO",
-            from,
-            to
-        );
+      pdfCard(
+        doc, 14, 33, 58,
+        "Produção total",
+        kg(performance.totalProduced)
+      );
 
-        // RESUMO DO PERÍODO
-        doc.setFontSize(11);
-        doc.text(
-            `Programado: ${kg(planned)}   |   ` +
-            `Produzido: ${kg(produced)}   |   ` +
-            `Saldo: ${kg(planned - produced)}   |   ` +
-            `Realização: ${pct(realization)}`,
-            14,
-            31
-        );
+      pdfCard(
+        doc, 76, 33, 58,
+        "Programado",
+        kg(performance.totalPlanned)
+      );
 
-        doc.setFontSize(10);
-        doc.text(
-            `Dias no período: ${performance.periodDays}   |   ` +
-            `Média geral por dia: ${kg(performance.periodAverage)}   |   ` +
-            `Colaboradores: ${performance.collaborators.length}`,
-            14,
-            38
-        );
+      pdfCard(
+        doc, 138, 33, 58,
+        "Média/dia período",
+        kg(performance.averagePerPeriodDay)
+      );
 
-        // PRODUÇÃO POR DIA E COLABORADOR
-        const byDay = {};
+      pdfCard(
+        doc, 200, 33, 42,
+        "Média/colab.",
+        kg(performance.collaboratorAverage)
+      );
 
-        lots.forEach(lot => {
+      pdfCard(
+        doc, 246, 33, 37,
+        "Realização",
+        pct(performance.realization)
+      );
 
-            const user = allUsers.find(
-                item => item.id === lot.assignedTo
-            );
+      pdfBarChart(
+        doc,
+        "Produção por colaborador",
+        performance.users.map(r => r.name),
+        performance.users.map(r => r.produced),
+        61,
+        56
+      );
 
-            const key =
-                `${lot.programDate || ""}|${lot.assignedTo || ""}`;
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(9);
+      doc.setTextColor(17, 48, 68);
+      doc.text(
+        `Período: ${performance.periodDays} dias • ${lots.length} lotes • ${performance.users.length} colaboradores`,
+        14,
+        122
+      );
 
-            if (!byDay[key]) {
-                byDay[key] = {
-                    date: lot.programDate,
-                    name: user?.name || "Sem colaborador",
-                    produced: 0,
-                    planned: 0,
-                    lots: 0
-                };
-            }
+      doc.autoTable({
+        startY: 126,
+        head: [[
+          "Colaborador",
+          "Lotes",
+          "Programado",
+          "Produzido",
+          "Dias trab.",
+          "Média/dia trab.",
+          "Média/dia período",
+          "Realização"
+        ]],
 
-            byDay[key].produced += lotProduced(lot);
-            byDay[key].planned += Number(lot.weight || 0);
-            byDay[key].lots++;
-        });
+        body: performance.users.map(row => [
+          row.name,
+          row.lots,
+          kg(row.planned),
+          kg(row.produced),
+          row.workedDays,
+          kg(row.averagePerWorkedDay),
+          kg(row.averagePerPeriodDay),
+          pct(row.realization)
+        ]),
 
-        doc.autoTable({
-            startY: 44,
-            head: [[
-                "Data",
-                "Colaborador",
-                "Produzido no dia",
-                "Programado",
-                "Realização",
-                "Lotes"
-            ]],
-            body: Object.values(byDay)
-                .sort((a, b) =>
-                    String(a.date || "").localeCompare(
-                        String(b.date || "")
-                    ) ||
-                    String(a.name || "").localeCompare(
-                        String(b.name || "")
-                    )
-                )
-                .map(row => [
-                    dateBR(row.date),
-                    row.name,
-                    kg(row.produced),
-                    kg(row.planned),
-                    pct(row.planned
-                        ? (row.produced / row.planned) * 100
-                        : 0),
-                    row.lots
-                ])
-        });
+        ...pdfTableTheme({
+          styles: {
+            fontSize: 6.3
+          }
+        })
+      });
 
-        // ANÁLISE DE DESEMPENHO
-        doc.addPage();
+      doc.addPage();
+      pdfPageHeader(doc, "ANÁLISE DE DESEMPENHO");
 
-        doc.setFontSize(16);
-        doc.text("ANÁLISE DE DESEMPENHO", 14, 16);
+      pdfLineChart(
+        doc,
+        "Produção diária",
+        performance.days.map(r => r.date),
+        performance.days.map(r => r.produced),
+        34,
+        70
+      );
 
-        doc.setFontSize(10);
-        doc.text(
-            `Período: ${dateBR(from)} a ${dateBR(to)}   |   ` +
-            `Dias no período: ${performance.periodDays}`,
-            14,
-            23
-        );
+      pdfPercentChart(
+        doc,
+        "Realização por colaborador",
+        performance.users.map(r => r.name),
+        performance.users.map(r => r.realization),
+        120,
+        58
+      );
 
-        doc.text(
-            `Produção total: ${kg(performance.totalProduced)}   |   ` +
-            `Média por dia do período: ${kg(performance.periodAverage)}`,
-            14,
-            29
-        );
+      doc.autoTable({
+        startY: 184,
+        head: [[
+          "Data",
+          "Programado",
+          "Produzido",
+          "Média do dia",
+          "Realização",
+          "Lotes"
+        ]],
 
-        doc.autoTable({
-            startY: 35,
-            head: [[
-                "Colaborador",
-                "Produzido",
-                "Dias trabalhados",
-                "Média/dia trabalhado",
-                "Média/dia período",
-                "Programado",
-                "Realização",
-                "Lotes"
-            ]],
-            body: performance.collaborators.map(row => [
-                row.name,
-                kg(row.produced),
-                row.daysWorked,
-                kg(row.averagePerWorkedDay),
-                kg(row.averagePerPeriodDay),
-                kg(row.planned),
-                pct(row.realization),
-                row.lots
-            ]),
-            styles: {
-                fontSize: 8,
-                cellPadding: 2
-            },
-            headStyles: {
-                fontSize: 8
-            }
-        });
+        body: performance.days.map(row => [
+          dateBR(row.date),
+          kg(row.planned),
+          kg(row.produced),
+          kg(row.average),
+          pct(row.realization),
+          row.lots
+        ]),
 
-        // DETALHAMENTO
-        doc.addPage();
+        ...pdfTableTheme({
+          styles: {
+            fontSize: 6.5
+          }
+        })
+      });
 
-        doc.setFontSize(14);
-        doc.text("DETALHAMENTO DOS LOTES", 14, 16);
+      doc.addPage();
+      pdfPageHeader(doc, "DETALHAMENTO DOS LOTES");
 
-        doc.autoTable({
-            startY: 22,
-            head: [[
-                "Programação",
-                "OS",
-                "Lote",
-                "Colaborador",
-                "Peso",
-                "Produzido",
-                "Saldo",
-                "Status"
-            ]],
-            body: pdfRows(lots),
-            styles: {
-                fontSize: 8
-            }
-        });
+      doc.autoTable({
+        startY: 26,
+        head: [[
+          "Programação",
+          "OS",
+          "Lote",
+          "Colaborador",
+          "Peso",
+          "Produzido",
+          "Saldo",
+          "Status"
+        ]],
 
-        savePdf(
-            doc,
-            `Relatorio_Geral_${from}_${to}`
-        );
-    };
+        body: pdfRows(lots),
+
+        columnStyles: {
+          0: { cellWidth: 23 },
+          1: { cellWidth: 20 },
+          2: { cellWidth: 51 },
+          3: { cellWidth: 48 },
+          4: { cellWidth: 27 },
+          5: { cellWidth: 27 },
+          6: { cellWidth: 27 },
+          7: { cellWidth: 30 }
+        },
+
+        ...pdfTableTheme({
+          styles: {
+            fontSize: 6.4
+          }
+        })
+      });
+
+      savePdf(
+        doc,
+        `Relatorio_Geral_${from}_${to}`
+      );
+
+    } catch (error) {
+      console.error("Erro ao gerar PDF geral:", error);
+      alert(
+        "Não foi possível gerar o PDF geral.\n\n" +
+        (error?.message || "Erro desconhecido.")
+      );
+    } finally {
+      setPdfButtonBusy(button, false);
+    }
+  };
 }
 
-// ============================================================
-// PDF INDIVIDUAL
-// ============================================================
+
+/* =========================================================
+   PDF INDIVIDUAL
+========================================================= */
 
 if ($("pdfIndividualBtn")) {
+  $("pdfIndividualBtn").onclick = async () => {
+    const button = $("pdfIndividualBtn");
+    setPdfButtonBusy(button, true);
 
-    $("pdfIndividualBtn").onclick = () => {
+    try {
+      await ensurePdfLibraries();
 
-        const uid = $("reportUser").value;
+      const uid = $("reportUser").value;
 
-        if (!uid) {
-            alert("Selecione um colaborador para o PDF individual.");
-            return;
-        }
+      if (!uid) {
+        alert("Selecione um colaborador para o PDF individual.");
+        return;
+      }
 
-        const from = $("reportFrom").value;
-        const to = $("reportTo").value;
+      const from = $("reportFrom").value;
+      const to = $("reportTo").value;
 
-        if (!from || !to) {
-            alert("Informe a data inicial e a data final.");
-            return;
-        }
+      if (!from || !to) {
+        alert("Informe a data inicial e a data final.");
+        return;
+      }
 
-        const user = allUsers.find(item => item.id === uid);
+      if (from > to) {
+        alert("A data inicial não pode ser maior que a data final.");
+        return;
+      }
 
-        const lots = dateRange(from, to)
-            .filter(lot => lot.assignedTo === uid);
+      const user =
+        allUsers.find(item => item.id === uid);
 
-        const performance = buildPerformance(lots, from, to);
-        const row = performance.collaborators[0];
+      const lots =
+        dateRange(from, to)
+          .filter(lot => lot.assignedTo === uid);
 
-        const planned = lots.reduce(
-            (total, lot) => total + Number(lot.weight || 0),
-            0
-        );
+      const performance =
+        buildPerformance(lots, from, to);
 
-        const produced = lots.reduce(
-            (total, lot) => total + lotProduced(lot),
-            0
-        );
+      const row =
+        performance.users[0] || {
+          name: user?.name || "Colaborador",
+          planned: 0,
+          produced: 0,
+          workedDays: 0,
+          averagePerWorkedDay: 0,
+          averagePerPeriodDay: 0,
+          realization: 0,
+          lots: 0
+        };
 
-        const realization = planned ? (produced / planned) * 100 : 0;
+      const doc = pdfBase(
+        `RELATÓRIO INDIVIDUAL - ${user?.name || "COLABORADOR"}`,
+        from,
+        to
+      );
 
-        const clients = new Set(
-            lots.map(lot => lot.clientName || lot.name).filter(Boolean)
-        );
+      pdfCard(
+        doc, 14, 33, 50,
+        "Produção",
+        kg(row.produced)
+      );
 
-        const doc = pdfBase(
-            `RELATÓRIO INDIVIDUAL - ${user?.name || "Colaborador"}`,
-            from,
-            to
-        );
+      pdfCard(
+        doc, 68, 33, 50,
+        "Programado",
+        kg(row.planned)
+      );
 
-        // RESUMO
-        doc.setFontSize(11);
-        doc.text(
-            `Programado: ${kg(planned)}   |   ` +
-            `Produzido: ${kg(produced)}   |   ` +
-            `Saldo: ${kg(planned - produced)}   |   ` +
-            `Realização: ${pct(realization)}`,
-            14,
-            31
-        );
+      pdfCard(
+        doc, 122, 33, 50,
+        "Média/dia trab.",
+        kg(row.averagePerWorkedDay)
+      );
 
-        doc.setFontSize(10);
-        doc.text(
-            `Dias no período: ${performance.periodDays}   |   ` +
-            `Dias trabalhados: ${row?.daysWorked || 0}   |   ` +
-            `Média/dia trabalhado: ${kg(row?.averagePerWorkedDay || 0)}   |   ` +
-            `Média/dia período: ${kg(row?.averagePerPeriodDay || 0)}`,
-            14,
-            38
-        );
+      pdfCard(
+        doc, 176, 33, 50,
+        "Média/dia período",
+        kg(row.averagePerPeriodDay)
+      );
 
-        doc.text(
-            `Clientes: ${clients.size}   |   Lotes: ${lots.length}`,
-            14,
-            44
-        );
+      pdfCard(
+        doc, 230, 33, 53,
+        "Realização",
+        pct(row.realization)
+      );
 
-        // PRODUÇÃO POR DIA
-        const byDate = {};
+      pdfLineChart(
+        doc,
+        "Produção diária do colaborador",
+        performance.days.map(r => r.date),
+        performance.days.map(r => r.produced),
+        61,
+        67
+      );
 
-        lots.forEach(lot => {
+      doc.autoTable({
+        startY: 136,
 
-            const date = lot.programDate || "";
+        head: [[
+          "Indicador",
+          "Resultado"
+        ]],
 
-            if (!byDate[date]) {
-                byDate[date] = {
-                    produced: 0,
-                    planned: 0,
-                    lots: 0
-                };
-            }
+        body: [
+          ["Colaborador", user?.name || "—"],
+          ["Lotes", row.lots],
+          ["Programado", kg(row.planned)],
+          ["Produzido", kg(row.produced)],
+          ["Saldo", kg(row.planned - row.produced)],
+          ["Dias no período", performance.periodDays],
+          ["Dias trabalhados", row.workedDays],
+          ["Média por dia trabalhado", kg(row.averagePerWorkedDay)],
+          ["Média por dia do período", kg(row.averagePerPeriodDay)],
+          ["Realização", pct(row.realization)]
+        ],
 
-            byDate[date].produced += lotProduced(lot);
-            byDate[date].planned += Number(lot.weight || 0);
-            byDate[date].lots++;
-        });
+        ...pdfTableTheme({
+          styles: {
+            fontSize: 7.5
+          }
+        })
+      });
 
-        doc.autoTable({
-            startY: 50,
-            head: [[
-                "Data",
-                "Produzido no dia",
-                "Programado",
-                "Realização",
-                "Lotes"
-            ]],
-            body: Object.entries(byDate)
-                .sort((a, b) =>
-                    String(a[0]).localeCompare(String(b[0]))
-                )
-                .map(([date, data]) => [
-                    dateBR(date),
-                    kg(data.produced),
-                    kg(data.planned),
-                    pct(data.planned
-                        ? (data.produced / data.planned) * 100
-                        : 0),
-                    data.lots
-                ])
-        });
+      doc.addPage();
+      pdfPageHeader(doc, "ANÁLISE INDIVIDUAL");
 
-        // DESEMPENHO INDIVIDUAL
-        doc.addPage();
+      pdfPercentChart(
+        doc,
+        "Realização por dia",
+        performance.days.map(r => r.date),
+        performance.days.map(r => r.realization),
+        34,
+        75
+      );
 
-        doc.setFontSize(16);
-        doc.text("ANÁLISE DE DESEMPENHO", 14, 16);
+      doc.autoTable({
+        startY: 125,
 
-        doc.setFontSize(10);
-        doc.text(
-            `Colaborador: ${user?.name || "Colaborador"}`,
-            14,
-            23
-        );
+        head: [[
+          "Data",
+          "Programado",
+          "Produzido",
+          "Média do dia",
+          "Realização",
+          "Lotes"
+        ]],
 
-        doc.text(
-            `Dias no período: ${performance.periodDays}   |   ` +
-            `Dias trabalhados: ${row?.daysWorked || 0}   |   ` +
-            `Média/dia trabalhado: ${kg(row?.averagePerWorkedDay || 0)}`,
-            14,
-            29
-        );
+        body: performance.days.map(row => [
+          dateBR(row.date),
+          kg(row.planned),
+          kg(row.produced),
+          kg(row.average),
+          pct(row.realization),
+          row.lots
+        ]),
 
-        doc.text(
-            `Média/dia do período: ${kg(row?.averagePerPeriodDay || 0)}   |   ` +
-            `Produção total: ${kg(row?.produced || 0)}   |   ` +
-            `Realização: ${pct(row?.realization || 0)}`,
-            14,
-            35
-        );
+        ...pdfTableTheme({
+          styles: {
+            fontSize: 7
+          }
+        })
+      });
 
-        doc.autoTable({
-            startY: 41,
-            head: [[
-                "Colaborador",
-                "Produzido",
-                "Dias trabalhados",
-                "Média/dia trabalhado",
-                "Média/dia período",
-                "Programado",
-                "Realização",
-                "Lotes"
-            ]],
-            body: performance.collaborators.map(item => [
-                item.name,
-                kg(item.produced),
-                item.daysWorked,
-                kg(item.averagePerWorkedDay),
-                kg(item.averagePerPeriodDay),
-                kg(item.planned),
-                pct(item.realization),
-                item.lots
-            ]),
-            styles: {
-                fontSize: 8,
-                cellPadding: 2
-            },
-            headStyles: {
-                fontSize: 8
-            }
-        });
+      doc.addPage();
+      pdfPageHeader(doc, "DETALHAMENTO DOS LOTES");
 
-        // DETALHAMENTO
-        doc.addPage();
+      doc.autoTable({
+        startY: 26,
 
-        doc.setFontSize(14);
-        doc.text("DETALHAMENTO DOS LOTES", 14, 16);
+        head: [[
+          "Programação",
+          "OS",
+          "Lote",
+          "Peso",
+          "Produzido",
+          "Saldo",
+          "Status"
+        ]],
 
-        doc.autoTable({
-            startY: 22,
-            head: [[
-                "Programação",
-                "OS",
-                "Lote",
-                "Peso",
-                "Produzido",
-                "Saldo",
-                "Status"
-            ]],
-            body: lots.map(lot => [
-                dateBR(lot.programDate),
-                lot.os || "—",
-                lot.name || "—",
-                kg(lot.weight),
-                kg(lotProduced(lot)),
-                kg(lotRemaining(lot)),
-                statusLabel(lotStatus(lot))
-            ]),
-            styles: {
-                fontSize: 8
-            }
-        });
+        body: lots.map(lot => [
+          dateBR(lot.programDate || lot.entryDate),
+          lot.os || "—",
+          lot.name || "—",
+          kg(lot.weight),
+          kg(lotProduced(lot)),
+          kg(lotRemaining(lot)),
+          statusLabel(lotStatus(lot))
+        ]),
 
-        savePdf(
-            doc,
-            `Relatorio_${user?.name || "Colaborador"}_${from}_${to}`
-        );
-    };
+        columnStyles: {
+          0: { cellWidth: 28 },
+          1: { cellWidth: 25 },
+          2: { cellWidth: 67 },
+          3: { cellWidth: 35 },
+          4: { cellWidth: 35 },
+          5: { cellWidth: 35 },
+          6: { cellWidth: 35 }
+        },
+
+        ...pdfTableTheme({
+          styles: {
+            fontSize: 6.7
+          }
+        })
+      });
+
+      savePdf(
+        doc,
+        `Relatorio_${user?.name || "Colaborador"}_${from}_${to}`
+      );
+
+    } catch (error) {
+      console.error("Erro ao gerar PDF individual:", error);
+      alert(
+        "Não foi possível gerar o PDF individual.\n\n" +
+        (error?.message || "Erro desconhecido.")
+      );
+    } finally {
+      setPdfButtonBusy(button, false);
+    }
+  };
 }
 
-// ============================================================
-// COLABORADORES
-// ============================================================
+/* =========================================================
+   COLABORADORES
+========================================================= */
 
 function renderUsers() {
 
-    if (!roleIsAdmin()) {
+  if (!roleIsAdmin()) {
 
-        return;
+    return;
 
-    }
-
-
-    if (!$("usersTable")) {
-
-        return;
-
-    }
+  }
 
 
-    $("usersTable")
-        .innerHTML = `
+  $("usersTable").innerHTML = `
 
-        <div class="table-wrap">
+    <div class="table-wrap">
 
-            <table class="data-table">
+      <table class="data-table">
 
-                <thead>
+        <thead>
+
+          <tr>
+
+            <th>Nome</th>
+
+            <th>E-mail</th>
+
+            <th>Perfil</th>
+
+            <th>Ativo</th>
+
+            <th>Carga pendente</th>
+
+          </tr>
+
+        </thead>
+
+        <tbody>
+
+          ${
+            allUsers.length
+
+              ? allUsers.map(user => {
+
+                  const load =
+                    allLots
+                      .filter(
+                        lot =>
+                          lot.assignedTo ===
+                            user.id &&
+                          [
+                            "pendente",
+                            "producao"
+                          ].includes(
+                            lotStatus(lot)
+                          )
+                      )
+                      .reduce(
+                        (total, lot) =>
+                          total +
+                          lotRemaining(lot),
+                        0
+                      );
+
+
+                  return `
 
                     <tr>
 
-                        <th>Nome</th>
-                        <th>E-mail</th>
-                        <th>Perfil</th>
-                        <th>Ativo</th>
-                        <th>Carga pendente</th>
+                      <td>
+                        ${escapeHtml(
+                          user.name ||
+                          "—"
+                        )}
+                      </td>
+
+                      <td>
+                        ${escapeHtml(
+                          user.email ||
+                          "—"
+                        )}
+                      </td>
+
+                      <td>
+                        ${escapeHtml(
+                          user.role ||
+                          "—"
+                        )}
+                      </td>
+
+                      <td>
+                        ${
+                          user.active !== false
+                            ? "Sim"
+                            : "Não"
+                        }
+                      </td>
+
+                      <td>
+                        ${kg(load)}
+                      </td>
 
                     </tr>
 
-                </thead>
+                  `;
 
+                }).join("")
 
-                <tbody>
+              : `
 
-                    ${
-                        allUsers.length
+                <tr>
 
-                            ? allUsers.map(
-                                user => {
+                  <td colspan="5">
+                    Nenhum colaborador cadastrado.
+                  </td>
 
-                                    const load =
-                                        allLots
-                                            .filter(
-                                                lot =>
-                                                    lot.assignedTo ===
-                                                        user.id
-                                                    &&
-                                                    [
-                                                        "pendente",
-                                                        "producao"
-                                                    ]
-                                                    .includes(
-                                                        lotStatus(
-                                                            lot
-                                                        )
-                                                    )
-                                            )
-                                            .reduce(
-                                                (
-                                                    total,
-                                                    lot
-                                                ) =>
-                                                    total +
-                                                    lotRemaining(
-                                                        lot
-                                                    ),
-                                                0
-                                            );
+                </tr>
 
+              `
+          }
 
-                                    return `
+        </tbody>
 
-                                        <tr>
+      </table>
 
-                                            <td>
-                                                ${escapeHtml(
-                                                    user.name ||
-                                                    "—"
-                                                )}
-                                            </td>
+    </div>
 
-                                            <td>
-                                                ${escapeHtml(
-                                                    user.email ||
-                                                    "—"
-                                                )}
-                                            </td>
-
-                                            <td>
-                                                ${escapeHtml(
-                                                    user.role ||
-                                                    "—"
-                                                )}
-                                            </td>
-
-                                            <td>
-                                                ${
-                                                    user.active !== false
-                                                        ? "Sim"
-                                                        : "Não"
-                                                }
-                                            </td>
-
-                                            <td>
-                                                ${kg(load)}
-                                            </td>
-
-                                        </tr>
-
-                                    `;
-
-                                }
-                            ).join("")
-
-                            : `
-
-                                <tr>
-
-                                    <td colspan="5">
-                                        Nenhum colaborador cadastrado.
-                                    </td>
-
-                                </tr>
-
-                            `
-                    }
-
-                </tbody>
-
-            </table>
-
-        </div>
-
-    `;
+  `;
 
 }
 
 
-// ============================================================
-// CRIAR COLABORADOR
-// ============================================================
+/* =========================================================
+   CRIAR COLABORADOR
+========================================================= */
 
-if ($("userForm")) {
+$("userForm").addEventListener(
+  "submit",
+  async event => {
 
-    $("userForm").addEventListener(
-        "submit",
-        async event => {
+    event.preventDefault();
 
-            event.preventDefault();
+    if (!roleIsAdmin()) {
 
-
-            if (!roleIsAdmin()) {
-
-                return;
-
-            }
-
-
-            const name =
-                $("newUserName")
-                    .value
-                    .trim();
-
-
-            const email =
-                $("newUserEmail")
-                    .value
-                    .trim();
-
-
-            const password =
-                $("newUserPassword")
-                    .value;
-
-
-            $("userFormMessage")
-                .textContent =
-                "";
-
-
-            try {
-
-                // =================================================
-                // APP SECUNDÁRIO
-                // =================================================
-
-                const secondaryName =
-                    "secondary-" +
-                    Date.now();
-
-
-                const secondary =
-                    firebase.initializeApp(
-                        firebaseConfig,
-                        secondaryName
-                    );
-
-
-                const secondaryAuth =
-                    secondary.auth();
-
-
-                const credential =
-                    await secondaryAuth
-                        .createUserWithEmailAndPassword(
-                            email,
-                            password
-                        );
-
-
-                await db
-                    .collection("users")
-                    .doc(
-                        credential.user.uid
-                    )
-                    .set({
-
-                        name,
-
-                        email,
-
-                        role:
-                            "colaborador",
-
-                        active:
-                            true,
-
-                        createdAt:
-                            firebase.firestore
-                                .FieldValue
-                                .serverTimestamp()
-
-                    });
-
-
-                $("userFormMessage")
-                    .className =
-                    "success";
-
-
-                $("userFormMessage")
-                    .textContent =
-                    "Colaborador criado com sucesso.";
-
-
-                event.target.reset();
-
-
-                await loadData();
-
-
-            } catch (error) {
-
-                console.error(
-                    "Erro ao criar colaborador:",
-                    error
-                );
-
-
-                $("userFormMessage")
-                    .className =
-                    "error";
-
-
-                $("userFormMessage")
-                    .textContent =
-                    error.message ||
-                    "Erro ao criar colaborador.";
-
-            } finally {
-
-                // Encerra o app secundário mesmo se uma etapa falhar.
-                try {
-                    await secondary.delete();
-                } catch (cleanupError) {
-                    console.warn(
-                        "Não foi possível encerrar o app secundário:",
-                        cleanupError
-                    );
-                }
-
-            }
-
-        }
-    );
-
-}
-
-
-// ============================================================
-// INICIALIZAÇÃO
-// ============================================================
-
-document.addEventListener(
-    "DOMContentLoaded",
-    () => {
-
-        console.log(
-            "Reluz Produção carregado."
-        );
-
-
-        console.log(
-            "UID administrativo configurado:",
-            MASTER_ADMIN_UID
-        );
+      return;
 
     }
+
+
+    const name =
+      $("newUserName")
+        .value
+        .trim();
+
+
+    const email =
+      $("newUserEmail")
+        .value
+        .trim();
+
+
+    const password =
+      $("newUserPassword")
+        .value;
+
+
+    $("userFormMessage")
+      .textContent = "";
+
+
+    try {
+
+      /*
+       * App secundário.
+       * Isso evita deslogar o administrador.
+       */
+
+      const secondaryName =
+        "secondary-" +
+        Date.now();
+
+
+      const secondary =
+        firebase.initializeApp(
+          firebaseConfig,
+          secondaryName
+        );
+
+
+      const secondaryAuth =
+        secondary.auth();
+
+
+      const credential =
+        await secondaryAuth
+          .createUserWithEmailAndPassword(
+            email,
+            password
+          );
+
+
+      await db
+        .collection("users")
+        .doc(
+          credential.user.uid
+        )
+        .set({
+
+          name,
+
+          email,
+
+          role:
+            "colaborador",
+
+          active:
+            true,
+
+          createdAt:
+            firebase.firestore
+              .FieldValue
+              .serverTimestamp()
+
+        });
+
+
+      await secondary.delete();
+
+
+      $("userFormMessage")
+        .className =
+        "success";
+
+
+      $("userFormMessage")
+        .textContent =
+        "Colaborador criado com sucesso.";
+
+
+      event.target.reset();
+
+
+      await loadData();
+
+
+    } catch (error) {
+
+      console.error(error);
+
+
+      $("userFormMessage")
+        .className =
+        "error";
+
+
+      $("userFormMessage")
+        .textContent =
+        error.message ||
+        "Erro ao criar colaborador.";
+
+    }
+
+  }
 );
 
 
-/*
- * ============================================================
- * EDIÇÃO COMPLETA DO LOTE PELO ADMINISTRADOR
- * ============================================================
- *
- * A tela de edição pode chamar:
- *
- * await adminUpdateLot(lotId, {
- *   name: "Novo nome",
- *   osNumber: "12345",
- *   originalWeight: 1000,
- *   assignedTo: "UID_DO_COLABORADOR",
- *   startDate: "2026-08-10",
- *   endDate: "2026-08-11"
- * });
- *
- * A Firestore Rule garante que somente o administrador
- * consiga alterar todos esses campos.
- */
-window.adminUpdateLot = async function adminUpdateLot(lotId, updates) {
+/* =========================================================
+   INICIALIZAÇÃO
+========================================================= */
 
-    if (!currentUser || !roleIsAdmin()) {
-        throw new Error(
-            "Apenas o administrador pode editar todos os campos do lote."
-        );
-    }
+document.addEventListener(
+  "DOMContentLoaded",
+  () => {
 
-    if (!lotId || !updates || typeof updates !== "object") {
-        throw new Error("Dados inválidos para atualização do lote.");
-    }
-
-    const cleanUpdates = Object.fromEntries(
-        Object.entries(updates).filter(
-            ([, value]) => value !== undefined
-        )
+    console.log(
+      "Reluz Produção carregado."
     );
 
-    cleanUpdates.updatedAt =
-        firebase.firestore.FieldValue.serverTimestamp();
-
-    await db
-        .collection("lots")
-        .doc(lotId)
-        .update(cleanUpdates);
-
-    return true;
-};
-
-/* ADMIN - editor visual */
-window.openAdminLotEditor = function(lotId, lot) {
-    if (!roleIsAdmin()) {
-        alert("Apenas o administrador pode editar.");
-        return;
-    }
-
-    const modal = document.createElement("div");
-    modal.id = "adminLotEditModal";
-    modal.style.cssText =
-        "position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:99999;" +
-        "display:flex;align-items:center;justify-content:center;padding:20px;";
-
-    const box = document.createElement("div");
-    box.style.cssText =
-        "background:white;padding:24px;border-radius:12px;width:min(720px,95vw);" +
-        "max-height:90vh;overflow:auto;";
-
-    const fields = [
-        ["name","Nome","text"],
-        ["osNumber","Número da OS","text"],
-        ["originalWeight","Peso","number"],
-        ["client","Cliente","text"],
-        ["assignedTo","Colaborador (UID)","text"],
-        ["startDate","Data inicial","date"],
-        ["endDate","Data final","date"],
-        ["status","Status","text"],
-        ["lastObservation","Observação","text"]
-    ];
-
-    box.innerHTML = "<h2>Editar lote</h2>";
-    const form = document.createElement("div");
-    form.style.cssText = "display:grid;grid-template-columns:1fr 1fr;gap:12px;";
-
-    const inputs = {};
-    fields.forEach(([key,label,type]) => {
-        const wrap = document.createElement("label");
-        wrap.style.cssText = "display:flex;flex-direction:column;gap:5px;";
-        const title = document.createElement("span");
-        title.textContent = label;
-        const input = document.createElement("input");
-        input.type = type;
-        input.value = lot && lot[key] != null ? String(lot[key]) : "";
-        input.style.cssText = "padding:9px;border:1px solid #ccc;border-radius:6px;";
-        inputs[key] = input;
-        wrap.append(title,input);
-        form.appendChild(wrap);
-    });
-    box.appendChild(form);
-
-    const actions = document.createElement("div");
-    actions.style.cssText = "display:flex;justify-content:flex-end;gap:10px;margin-top:18px;";
-    const cancel = document.createElement("button");
-    cancel.textContent = "Cancelar";
-    cancel.onclick = () => modal.remove();
-
-    const save = document.createElement("button");
-    save.textContent = "Salvar alterações";
-    save.onclick = async () => {
-        save.disabled = true;
-        try {
-            const updates = {};
-            for (const [key,input] of Object.entries(inputs)) {
-                if (input.value !== "") {
-                    updates[key] = input.type === "number" ? Number(input.value) : input.value;
-                }
-            }
-            await adminUpdateLot(lotId, updates);
-            modal.remove();
-            alert("Lote atualizado com sucesso.");
-            location.reload();
-        } catch (e) {
-            alert("Erro ao salvar: " + (e.message || e));
-            save.disabled = false;
-        }
-    };
-
-    actions.append(cancel,save);
-    box.appendChild(actions);
-    modal.appendChild(box);
-    document.body.appendChild(modal);
-};
+  }
+);
