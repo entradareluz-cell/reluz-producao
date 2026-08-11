@@ -834,6 +834,74 @@ tr:hover td{background:rgba(57,220,255,.035)!important}
 }
 </style>
 
+
+<style id="reluz-readable-futuristic">
+:root{
+  --rf-text:#f4f9ff;
+  --rf-text-strong:#ffffff;
+  --rf-muted:#b9cbe0;
+  --rf-label:#d9eaff;
+  --rf-line:rgba(110,205,255,.28);
+}
+body{
+  color:var(--rf-text)!important;
+  font-size:15px!important;
+}
+body, p, span, div, label, td, th, li, small{
+  text-shadow:0 1px 2px rgba(0,0,0,.35);
+}
+h1,h2,h3,h4,h5,h6{
+  color:#ffffff!important;
+  text-shadow:0 0 14px rgba(57,220,255,.12)!important;
+}
+label, .label, .form-label{
+  color:var(--rf-label)!important;
+  font-weight:600!important;
+}
+small,.muted,.text-muted,.hint,.help-text,.subtitle{
+  color:var(--rf-muted)!important;
+}
+input,select,textarea{
+  color:#f5fbff!important;
+  background:rgba(2,8,17,.92)!important;
+  border-color:rgba(120,210,255,.38)!important;
+  font-weight:500!important;
+}
+input::placeholder,textarea::placeholder{
+  color:#91a9c0!important;
+  opacity:1!important;
+}
+select option{
+  background:#0a1423!important;
+  color:#f5fbff!important;
+}
+button,.btn,.nav-btn{
+  color:#ffffff!important;
+  font-weight:650!important;
+}
+th{
+  color:#e9f8ff!important;
+  font-weight:700!important;
+}
+td{
+  color:#e4f0fa!important;
+}
+.card,.panel,.dashboard-card,.stat-card,.table-wrap{
+  color:#edf7ff!important;
+}
+.badge,.status,.tag{
+  color:#ffffff!important;
+  font-weight:650!important;
+}
+a{
+  color:#6fe5ff!important;
+}
+::selection{
+  background:rgba(57,220,255,.35);
+  color:#fff;
+}
+</style>
+
 </head>
 
 <body>
@@ -3696,192 +3764,155 @@ $("reportFilterBtn").onclick =
 
 function pdfBase(title, from, to) {
   const { jsPDF } = window.jspdf;
-  const doc = new jsPDF({ orientation:"landscape", unit:"mm", format:"a4" });
-
-  doc.setFillColor(5,10,20);
+  const doc = new jsPDF({orientation:"landscape",unit:"mm",format:"a4"});
+  doc.setFillColor(247,250,253);
   doc.rect(0,0,297,210,"F");
 
-  doc.setFillColor(10,22,38);
-  doc.roundedRect(10,8,277,20,4,4,"F");
-
-  doc.setFillColor(57,220,255);
-  doc.roundedRect(10,8,3,20,1.5,1.5,"F");
+  doc.setFillColor(8,23,39);
+  doc.rect(0,0,297,27,"F");
+  doc.setFillColor(43,188,225);
+  doc.rect(0,26.3,297,.7,"F");
 
   doc.setFont("helvetica","bold");
   doc.setFontSize(17);
-  doc.setTextColor(235,248,255);
-  doc.text(title,19,17);
+  doc.setTextColor(255,255,255);
+  doc.text(title,14,12);
 
   doc.setFont("helvetica","normal");
-  doc.setFontSize(7);
-  doc.setTextColor(143,171,196);
-  doc.text(`PERÍODO ${dateBR(from)} — ${dateBR(to)}`,19,23);
+  doc.setFontSize(7.5);
+  doc.setTextColor(190,220,235);
+  doc.text(`PERÍODO ${dateBR(from)} — ${dateBR(to)}`,14,20);
 
-  doc.setTextColor(100,132,160);
-  doc.text("RELÜZ • PRODUÇÃO",282,23,{align:"right"});
-
+  doc.setFont("helvetica","bold");
+  doc.setTextColor(126,232,255);
+  doc.text("RELÜZ • PRODUÇÃO",282,20,{align:"right"});
   return doc;
 }
 
-function pdfPageChrome(doc, section="ANÁLISE DE DESEMPENHO") {
-  const h = doc.internal.pageSize.getHeight();
-  doc.setFillColor(5,10,20);
-  doc.rect(0,h-12,297,12,"F");
-  doc.setDrawColor(35,78,105);
-  doc.setLineWidth(.35);
-  doc.line(12,h-12,285,h-12);
-
+function pdfPageChrome(doc,section="ANÁLISE DE DESEMPENHO"){
+  const h=doc.internal.pageSize.getHeight();
+  doc.setFillColor(8,23,39);
+  doc.rect(0,h-10,297,10,"F");
+  doc.setDrawColor(43,188,225);
+  doc.setLineWidth(.3);
+  doc.line(12,h-10,285,h-10);
   doc.setFont("helvetica","normal");
   doc.setFontSize(6.5);
-  doc.setTextColor(100,132,160);
-  doc.text(`RELÜZ • ${section}`,12,h-5);
-  doc.text(`PÁGINA ${doc.internal.getCurrentPageInfo().pageNumber}`,285,h-5,{align:"right"});
+  doc.setTextColor(184,207,222);
+  doc.text(`RELÜZ • ${section}`,12,h-4);
+  doc.text(`PÁGINA ${doc.internal.getCurrentPageInfo().pageNumber}`,285,h-4,{align:"right"});
 }
 
-function pdfCard(doc,x,y,w,title,value,accent=[57,220,255]) {
-  doc.setFillColor(9,19,33);
-  doc.setDrawColor(31,62,87);
-  doc.roundedRect(x,y,w,19,3,3,"FD");
-
+function pdfCard(doc,x,y,w,title,value,accent=[23,151,190]){
+  doc.setFillColor(255,255,255);
+  doc.setDrawColor(202,215,226);
+  doc.roundedRect(x,y,w,20,3,3,"FD");
   doc.setFillColor(...accent);
-  doc.roundedRect(x+3,y+3,1.5,13,0.7,0.7,"F");
-
-  doc.setFont("helvetica","normal");
-  doc.setFontSize(6.8);
-  doc.setTextColor(145,171,195);
-  doc.text(String(title).toUpperCase(),x+8,y+7);
-
+  doc.roundedRect(x+3,y+3,1.5,14,.7,.7,"F");
   doc.setFont("helvetica","bold");
-  doc.setFontSize(11.5);
-  doc.setTextColor(230,246,255);
-  doc.text(String(value),x+8,y+15);
+  doc.setFontSize(6.5);
+  doc.setTextColor(85,108,126);
+  doc.text(String(title).toUpperCase(),x+8,y+7);
+  doc.setFont("helvetica","bold");
+  doc.setFontSize(12);
+  doc.setTextColor(12,35,55);
+  doc.text(String(value),x+8,y+16);
 }
 
-function pdfBarChart(doc,title,labels,values,y=45,height=72) {
-  const x=14,w=269,left=x+58,chartW=w-76;
+function pdfBarChart(doc,title,labels,values,y=48,height=68){
+  const x=14,w=269,left=x+60,chartW=w-78;
   doc.setFont("helvetica","bold");doc.setFontSize(11);
-  doc.setTextColor(225,242,252);doc.text(title,x,y-7);
-  if(!labels.length){doc.setFontSize(8);doc.setTextColor(130,155,180);doc.text("Sem dados no período.",x,y+10);return;}
-
+  doc.setTextColor(15,42,62);doc.text(title,x,y-8);
+  if(!labels.length){
+    doc.setFontSize(8);doc.setTextColor(105,128,145);
+    doc.text("Sem dados no período.",x,y+10);return;
+  }
   const max=Math.max(...values.map(v=>Number(v)||0),1);
-  const rowH=Math.min(12.5,height/labels.length);
-
+  const rowH=Math.min(11.5,height/labels.length);
   labels.forEach((label,i)=>{
     const yy=y+i*rowH,val=Number(values[i])||0;
-    let lab=String(label);if(lab.length>28)lab=lab.slice(0,27)+"…";
-
+    let lab=String(label);if(lab.length>30)lab=lab.slice(0,29)+"…";
     doc.setFont("helvetica","normal");doc.setFontSize(6.5);
-    doc.setTextColor(150,174,196);doc.text(lab,x,yy+5);
-
-    doc.setFillColor(20,40,60);
-    doc.roundedRect(left,yy+1,chartW,6,1.5,1.5,"F");
-
-    doc.setFillColor(57,220,255);
-    doc.roundedRect(left,yy+1,Math.max(.8,(val/max)*chartW),6,1.5,1.5,"F");
-
-    doc.setFontSize(6.5);doc.setTextColor(225,242,252);
-    doc.text(kg(val),left+chartW+2,yy+5.5);
+    doc.setTextColor(64,88,106);doc.text(lab,x,yy+5);
+    doc.setFillColor(224,235,242);doc.roundedRect(left,yy+1,chartW,5.5,1.3,1.3,"F");
+    doc.setFillColor(24,166,205);doc.roundedRect(left,yy+1,Math.max(.8,(val/max)*chartW),5.5,1.3,1.3,"F");
+    doc.setFont("helvetica","bold");doc.setFontSize(6.5);doc.setTextColor(17,48,68);
+    doc.text(kg(val),left+chartW+2,yy+5.2);
   });
 }
 
-function pdfLineChart(doc,title,labels,values,y=42,height=72) {
-  const x=14,w=269,left=x+29,chartW=w-43,top=y,chartH=height;
+function pdfLineChart(doc,title,labels,values,y=45,height=70){
+  const x=14,w=269,left=x+30,chartW=w-44,top=y,chartH=height;
   doc.setFont("helvetica","bold");doc.setFontSize(11);
-  doc.setTextColor(225,242,252);doc.text(title,x,y-8);
-  if(!labels.length){doc.setFontSize(8);doc.setTextColor(130,155,180);doc.text("Sem dados no período.",x,y+10);return;}
-
+  doc.setTextColor(15,42,62);doc.text(title,x,y-8);
+  if(!labels.length){doc.setFontSize(8);doc.setTextColor(105,128,145);doc.text("Sem dados no período.",x,y+10);return;}
   const max=Math.max(...values.map(v=>Number(v)||0),1);
-  doc.setDrawColor(43,71,94);
+  doc.setDrawColor(201,216,226);
   doc.line(left,top,left,top+chartH);
   doc.line(left,top+chartH,left+chartW,top+chartH);
-
   for(let i=0;i<=4;i++){
     const gy=top+chartH-(i/4)*chartH;
-    doc.setDrawColor(24,49,69);doc.line(left,gy,left+chartW,gy);
-    doc.setFont("helvetica","normal");doc.setFontSize(5.5);
-    doc.setTextColor(105,132,158);doc.text(kg(max*i/4),x,gy+2);
+    doc.setDrawColor(225,234,240);doc.line(left,gy,left+chartW,gy);
+    doc.setFontSize(5.5);doc.setTextColor(104,128,145);doc.text(kg(max*i/4),x,gy+2);
   }
-
   const pts=values.map((v,i)=>{
     const px=labels.length===1?left+chartW/2:left+(i/(labels.length-1))*chartW;
     const py=top+chartH-(Number(v)||0)/max*chartH;
     return [px,py];
   });
-
-  doc.setDrawColor(57,220,255);doc.setLineWidth(1.1);
+  doc.setDrawColor(20,155,198);doc.setLineWidth(1.0);
   for(let i=1;i<pts.length;i++)doc.line(pts[i-1][0],pts[i-1][1],pts[i][0],pts[i][1]);
-
   pts.forEach((p,i)=>{
-    doc.setFillColor(57,220,255);doc.circle(p[0],p[1],1.5,"F");
+    doc.setFillColor(20,155,198);doc.circle(p[0],p[1],1.4,"F");
     if(labels.length<=14||i===0||i===labels.length-1||i%Math.ceil(labels.length/10)===0){
-      doc.setFontSize(5.5);doc.setTextColor(120,148,174);
-      doc.text(dateBR(labels[i]),p[0]-6,top+chartH+8);
+      doc.setFontSize(5.3);doc.setTextColor(91,115,132);
+      doc.text(dateBR(labels[i]),p[0]-6,top+chartH+7);
     }
   });
 }
 
-function pdfPercentChart(doc,title,labels,values,y=42,height=72) {
-  const x=14,w=269,left=x+62,chartW=w-82;
+function pdfPercentChart(doc,title,labels,values,y=45,height=70){
+  const x=14,w=269,left=x+64,chartW=w-84;
   doc.setFont("helvetica","bold");doc.setFontSize(11);
-  doc.setTextColor(225,242,252);doc.text(title,x,y-7);
-  if(!labels.length){doc.setFontSize(8);doc.setTextColor(130,155,180);doc.text("Sem dados no período.",x,y+10);return;}
-
-  const rowH=Math.min(12.5,height/labels.length);
+  doc.setTextColor(15,42,62);doc.text(title,x,y-8);
+  if(!labels.length){doc.setFontSize(8);doc.setTextColor(105,128,145);doc.text("Sem dados no período.",x,y+10);return;}
+  const rowH=Math.min(11.5,height/labels.length);
   labels.forEach((label,i)=>{
     const yy=y+i*rowH,val=Math.max(0,Math.min(100,Number(values[i])||0));
     let lab=String(label);if(lab.length>31)lab=lab.slice(0,30)+"…";
-    doc.setFontSize(6.5);doc.setTextColor(150,174,196);doc.text(lab,x,yy+5);
-
-    doc.setFillColor(20,40,60);doc.roundedRect(left,yy+1,chartW,6,1.5,1.5,"F");
-    doc.setFillColor(99,132,255);doc.roundedRect(left,yy+1,(val/100)*chartW,6,1.5,1.5,"F");
-
-    doc.setTextColor(225,242,252);doc.text(pct(val),left+chartW+2,yy+5.5);
+    doc.setFontSize(6.5);doc.setTextColor(64,88,106);doc.text(lab,x,yy+5);
+    doc.setFillColor(224,235,242);doc.roundedRect(left,yy+1,chartW,5.5,1.3,1.3,"F");
+    doc.setFillColor(89,112,222);doc.roundedRect(left,yy+1,(val/100)*chartW,5.5,1.3,1.3,"F");
+    doc.setFont("helvetica","bold");doc.setTextColor(17,48,68);doc.text(pct(val),left+chartW+2,yy+5.2);
   });
 }
 
-function pdfRows(lots) {
-  return lots.map(lot=>{
-    const user=allUsers.find(x=>x.id===lot.assignedTo);
-    return [
-      dateBR(lot.programDate),
-      lot.os||"—",
-      lot.name||"—",
-      user?.name||"—",
-      kg(lot.weight),
-      kg(lotProduced(lot)),
-      kg(lotRemaining(lot)),
-      statusLabel(lotStatus(lot))
-    ];
-  });
-}
-
-function pdfTableTheme(doc, options={}) {
+function pdfTableTheme(doc,options={}){
   return {
     styles:{
-      fontSize:6.5,
-      cellPadding:2.5,
-      textColor:[220,235,245],
-      fillColor:[8,18,31],
-      lineColor:[35,67,91],
-      lineWidth:.25,
+      fontSize:6.7,
+      cellPadding:2.4,
+      textColor:[35,55,70],
+      fillColor:[255,255,255],
+      lineColor:[205,217,226],
+      lineWidth:.22,
       ...options.styles
     },
     headStyles:{
-      fillColor:[14,48,69],
-      textColor:[185,237,255],
+      fillColor:[8,60,82],
+      textColor:[240,250,255],
       fontStyle:"bold",
-      lineColor:[57,220,255],
-      lineWidth:.35,
+      lineColor:[8,60,82],
+      lineWidth:.3,
       ...options.headStyles
     },
-    alternateRowStyles:{fillColor:[10,24,39]},
+    alternateRowStyles:{fillColor:[243,248,251]},
     margin:{left:10,right:10},
     ...options
   };
 }
 
-function savePdf(doc,name) {
-  // Aplicar rodapé a todas as páginas sem cobrir o conteúdo.
+function savePdf(doc,name){
   const pages=doc.getNumberOfPages();
   for(let p=1;p<=pages;p++){
     doc.setPage(p);
@@ -4001,6 +4032,7 @@ $("pdfGeneralBtn").onclick=()=>{
   pdfCard(doc,212,31,71,"Realização",pct(perf.realization));
 
   pdfBarChart(doc,"Produção total por colaborador",perf.users.map(r=>r.name),perf.users.map(r=>r.produced),58,60);
+  doc.setFont("helvetica","bold");doc.setFontSize(9);doc.setTextColor(17,48,68);doc.text("RESUMO E DETALHAMENTO",14,38);
   doc.autoTable({startY:124,head:[["Colaborador","Lotes","Programado","Produzido","Dias trab.","Média/dia trab.","Média/dia período","Realização"]],body:perf.users.map(r=>[r.name,r.lots,kg(r.planned),kg(r.produced),r.workedDays,kg(r.avgWorked),kg(r.avgPeriod),pct(r.realization)]),...pdfTableTheme(doc,{styles:{fontSize:6.5}})});
 
   doc.addPage();
