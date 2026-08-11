@@ -1637,382 +1637,673 @@ if ($("mineFilterBtn")) {
 // ABRIR LOTE
 // ============================================================
 
-window.openLot = async function(id) {
+window.openLot =
+async function(id) {
 
-  const lot = allLots.find(item => item.id === id);
+    const lot =
+        allLots.find(
+            item =>
+                item.id === id
+        );
 
-  if (!lot) {
-    alert("Lote não encontrado.");
-    return;
-  }
 
-  const user = allUsers.find(item => item.id === lot.assignedTo);
-  const mine = lot.assignedTo === currentUser.uid;
-  const canEditProduction = roleIsAdmin() || mine;
+    if (!lot) {
+        return;
+    }
 
-  const collaborators = allUsers.filter(
-    u => u.role === "colaborador" && u.active !== false
-  );
+    // Guarda exatamente o lote que está aberto no modal.
+    // Isso permite que o botão "Editar lote" saiba qual registro editar.
+    window.currentLot = lot;
+    window.currentSelectedLot = lot;
 
-  $("lotModalContent").innerHTML = `
+    // Fonte oficial para o botão de edição: o próprio modal aberto.
+    const openedLotModal = $("lotModal");
+    if (openedLotModal) {
+        openedLotModal.dataset.lotId = id;
+    }
 
-    ${
-      roleIsAdmin()
-        ? `
-          <form id="adminLotEditForm" class="form-grid">
 
-            <h2 class="full">
-              ✏️ Editar lote
-            </h2>
+    const user =
+        allUsers.find(
+            item =>
+                item.id ===
+                lot.assignedTo
+        );
 
-            <label>
-              Nome do lote
-              <input
-                id="adminEditName"
-                type="text"
-                value="${escapeHtml(lot.name || "")}"
-                required>
-            </label>
 
-            <label>
-              Número da OS
-              <input
-                id="adminEditOs"
-                type="text"
-                value="${escapeHtml(lot.os || "")}"
-                required>
-            </label>
+    const mine =
+        lot.assignedTo ===
+        currentUser.uid;
 
-            <label>
-              Cliente
-              <input
-                id="adminEditClient"
-                type="text"
-                value="${escapeHtml(lot.clientName || "")}"
-                required>
-            </label>
 
-            <label>
-              Peso do lote (kg)
-              <input
-                id="adminEditWeight"
-                type="number"
-                min="0.001"
-                step="0.001"
-                value="${Number(lot.weight || 0)}"
-                required>
-            </label>
+    const canEditProduction =
+        roleIsAdmin() ||
+        mine;
 
-            <label>
-              Data de entrada
-              <input
-                id="adminEditEntry"
-                type="date"
-                value="${escapeHtml(lot.entryDate || "")}"
-                required>
-            </label>
 
-            <label>
-              Data de programação
-              <input
-                id="adminEditProgram"
-                type="date"
-                value="${escapeHtml(lot.programDate || "")}"
-                required>
-            </label>
+    if (!$("lotModalContent")) {
+        return;
+    }
 
-            <label>
-              Colaborador responsável
-              <select id="adminEditAssigned" required>
-                <option value="">Selecione</option>
-                ${
-                  collaborators.map(u => `
-                    <option
-                      value="${escapeHtml(u.id)}"
-                      ${u.id === lot.assignedTo ? "selected" : ""}>
-                      ${escapeHtml(u.name || u.email || "Sem nome")}
-                    </option>
-                  `).join("")
+
+    $("lotModalContent").innerHTML = `
+
+        ${
+            roleIsAdmin()
+
+                ? `
+
+                    <form
+                        id="inlineAdminLotForm"
+                        class="form-grid"
+                    >
+
+                        <h2 class="full">
+                            ${escapeHtml(
+                                lot.name ||
+                                "Editar lote"
+                            )}
+                        </h2>
+
+                        <label>
+                            Nome do lote
+                            <input
+                                id="inlineLotName"
+                                value="${escapeHtml(lot.name || "")}"
+                                required
+                            >
+                        </label>
+
+                        <label>
+                            Número da OS
+                            <input
+                                id="inlineLotOs"
+                                value="${escapeHtml(lot.os || "")}"
+                                required
+                            >
+                        </label>
+
+                        <label>
+                            Cliente
+                            <input
+                                id="inlineLotClient"
+                                value="${escapeHtml(
+                                    lot.clientName ||
+                                    lot.name ||
+                                    ""
+                                )}"
+                                required
+                            >
+                        </label>
+
+                        <label>
+                            Peso do lote (kg)
+                            <input
+                                id="inlineLotWeight"
+                                type="number"
+                                step="0.001"
+                                min="0.001"
+                                value="${Number(lot.weight || 0)}"
+                                required
+                            >
+                        </label>
+
+                        <label>
+                            Data de entrada
+                            <input
+                                id="inlineLotEntry"
+                                type="date"
+                                value="${escapeHtml(lot.entryDate || "")}"
+                                required
+                            >
+                        </label>
+
+                        <label>
+                            Data de programação
+                            <input
+                                id="inlineLotProgram"
+                                type="date"
+                                value="${escapeHtml(lot.programDate || "")}"
+                                required
+                            >
+                        </label>
+
+                        <label>
+                            Colaborador responsável
+                            <select
+                                id="inlineLotAssigned"
+                                required
+                            >
+                                <option value="">
+                                    Selecione
+                                </option>
+
+                                ${
+                                    allUsers
+                                        .filter(
+                                            user =>
+                                                user.role ===
+                                                "colaborador"
+                                        )
+                                        .map(
+                                            user => `
+
+                                                <option
+                                                    value="${escapeHtml(user.id)}"
+                                                    ${
+                                                        user.id ===
+                                                        lot.assignedTo
+                                                            ? "selected"
+                                                            : ""
+                                                    }
+                                                >
+                                                    ${escapeHtml(
+                                                        user.name ||
+                                                        user.email ||
+                                                        "Sem nome"
+                                                    )}
+                                                </option>
+
+                                            `
+                                        )
+                                        .join("")
+                                }
+
+                            </select>
+                        </label>
+
+                        <label>
+                            Status
+                            <select id="inlineLotStatus">
+                                <option
+                                    value="pendente"
+                                    ${
+                                        lotStatus(lot) === "pendente"
+                                            ? "selected"
+                                            : ""
+                                    }
+                                >
+                                    Pendente
+                                </option>
+
+                                <option
+                                    value="producao"
+                                    ${
+                                        lotStatus(lot) === "producao"
+                                            ? "selected"
+                                            : ""
+                                    }
+                                >
+                                    Em produção
+                                </option>
+
+                                <option
+                                    value="finalizado"
+                                    ${
+                                        lotStatus(lot) === "finalizado"
+                                            ? "selected"
+                                            : ""
+                                    }
+                                >
+                                    Finalizado
+                                </option>
+
+                                <option
+                                    value="cancelado"
+                                    ${
+                                        lotStatus(lot) === "cancelado"
+                                            ? "selected"
+                                            : ""
+                                    }
+                                >
+                                    Cancelado
+                                </option>
+                            </select>
+                        </label>
+
+                        <div class="full">
+                            <div
+                                style="
+                                    padding:12px;
+                                    border-radius:8px;
+                                    background:#f3f4f6;
+                                    margin-bottom:12px;
+                                "
+                            >
+                                <strong>Produzido:</strong>
+                                ${kg(lotProduced(lot))}
+                                <br>
+                                <strong>Saldo:</strong>
+                                ${kg(lotRemaining(lot))}
+                                <br>
+                                <strong>Percentual:</strong>
+                                ${pct(lotPercent(lot))}
+                            </div>
+
+                            <button
+                                type="submit"
+                                class="primary"
+                                id="inlineAdminSave"
+                            >
+                                💾 SALVAR ALTERAÇÕES
+                            </button>
+
+                            <div
+                                id="inlineAdminMessage"
+                                style="margin-top:10px;"
+                            ></div>
+                        </div>
+
+                    </form>
+
+                `
+
+                : `
+
+                    <h2>
+                        ${escapeHtml(
+                            lot.name ||
+                            "Lote"
+                        )}
+                    </h2>
+
+                    <div class="modal-grid">
+
+                        <div>
+                            <small>OS</small>
+                            <strong>
+                                ${escapeHtml(
+                                    lot.os ||
+                                    "—"
+                                )}
+                            </strong>
+                        </div>
+
+                        <div>
+                            <small>Cliente</small>
+                            <strong>
+                                ${escapeHtml(
+                                    lot.clientName ||
+                                    lot.name ||
+                                    "—"
+                                )}
+                            </strong>
+                        </div>
+
+                        <div>
+                            <small>Peso do lote</small>
+                            <strong>
+                                ${kg(lot.weight)}
+                            </strong>
+                        </div>
+
+                        <div>
+                            <small>Produzido</small>
+                            <strong>
+                                ${kg(
+                                    lotProduced(lot)
+                                )}
+                            </strong>
+                        </div>
+
+                        <div>
+                            <small>Saldo</small>
+                            <strong>
+                                ${kg(
+                                    lotRemaining(lot)
+                                )}
+                            </strong>
+                        </div>
+
+                        <div>
+                            <small>Data entrada</small>
+                            <strong>
+                                ${dateBR(lot.entryDate)}
+                            </strong>
+                        </div>
+
+                        <div>
+                            <small>Programação</small>
+                            <strong>
+                                ${dateBR(lot.programDate)}
+                            </strong>
+                        </div>
+
+                        <div>
+                            <small>Responsável</small>
+                            <strong>
+                                ${escapeHtml(
+                                    user?.name ||
+                                    "—"
+                                )}
+                            </strong>
+                        </div>
+
+                        <div>
+                            <small>Status</small>
+                            <strong>
+                                ${statusLabel(
+                                    lotStatus(lot)
+                                )}
+                            </strong>
+                        </div>
+
+                        <div>
+                            <small>Percentual</small>
+                            <strong>
+                                ${pct(
+                                    lotPercent(lot)
+                                )}
+                            </strong>
+                        </div>
+
+                    </div>
+
+                `
+
+        }
+
+        ${
+            canEditProduction
+
+                ? `
+
+                    <form
+                        id="productionForm"
+                        class="production-form"
+                    >
+
+                        <p>
+                            O colaborador informa
+                            o peso produzido.
+                            O saldo e o percentual
+                            são calculados
+                            automaticamente.
+                        </p>
+
+
+                        <label>
+
+                            Peso produzido agora (kg)
+
+                            <input
+                                id="productionInput"
+                                type="number"
+                                step="0.001"
+                                min="0.001"
+                                max="${lotRemaining(lot)}"
+                                required
+                            >
+
+                        </label>
+
+
+                        <label>
+
+                            Observação
+
+                            <textarea
+                                id="productionObs"
+                            ></textarea>
+
+                        </label>
+
+
+                        <button
+                            type="submit"
+                            class="primary"
+                        >
+                            Registrar produção
+                        </button>
+
+                    </form>
+
+                `
+
+                : ""
+        }
+
+
+        <div class="modal-actions">
+
+            ${
+                roleIsAdmin()
+
+                    ? `
+
+                        <button
+                            type="button"
+                            class="secondary"
+                            onclick="
+                                redistributeLot('${lot.id}')
+                            "
+                        >
+                            Redistribuir lote
+                        </button>
+
+                    `
+
+                    : ""
+            }
+
+
+            <button
+                type="button"
+                class="secondary"
+                onclick="closeLotModal()"
+            >
+                Fechar
+            </button>
+
+        </div>
+
+
+        <div id="modalMessage"></div>
+
+    `;
+
+
+    $("lotModal")
+        ?.classList
+        .remove("hidden");
+
+
+    // ============================================================
+    // EDIÇÃO DIRETA PELO ADMINISTRADOR
+    // Os campos já aparecem editáveis ao abrir o lote.
+    // Não existe botão "Editar" para entrar no modo de edição.
+    // ============================================================
+
+    if (
+        roleIsAdmin() &&
+        $("inlineAdminLotForm")
+    ) {
+
+        $("inlineAdminLotForm").onsubmit =
+            async event => {
+
+                event.preventDefault();
+
+                const message =
+                    $("inlineAdminMessage");
+
+                const save =
+                    $("inlineAdminSave");
+
+                message.textContent = "";
+
+                save.disabled = true;
+                save.textContent = "Salvando...";
+
+                try {
+
+                    const updates = {
+
+                        name:
+                            $("inlineLotName")
+                                .value
+                                .trim(),
+
+                        os:
+                            $("inlineLotOs")
+                                .value
+                                .trim(),
+
+                        clientName:
+                            $("inlineLotClient")
+                                .value
+                                .trim(),
+
+                        weight:
+                            Number(
+                                $("inlineLotWeight")
+                                    .value
+                            ),
+
+                        entryDate:
+                            $("inlineLotEntry")
+                                .value,
+
+                        programDate:
+                            $("inlineLotProgram")
+                                .value,
+
+                        assignedTo:
+                            $("inlineLotAssigned")
+                                .value,
+
+                        status:
+                            $("inlineLotStatus")
+                                .value
+
+                    };
+
+                    if (!updates.name) {
+                        throw new Error(
+                            "Informe o nome do lote."
+                        );
+                    }
+
+                    if (!updates.os) {
+                        throw new Error(
+                            "Informe o número da OS."
+                        );
+                    }
+
+                    if (!updates.clientName) {
+                        throw new Error(
+                            "Informe o cliente."
+                        );
+                    }
+
+                    if (
+                        !Number.isFinite(
+                            updates.weight
+                        ) ||
+                        updates.weight <= 0
+                    ) {
+                        throw new Error(
+                            "Informe um peso válido."
+                        );
+                    }
+
+                    if (!updates.entryDate) {
+                        throw new Error(
+                            "Informe a data de entrada."
+                        );
+                    }
+
+                    if (!updates.programDate) {
+                        throw new Error(
+                            "Informe a data de programação."
+                        );
+                    }
+
+                    if (!updates.assignedTo) {
+                        throw new Error(
+                            "Selecione o colaborador."
+                        );
+                    }
+
+                    await db
+                        .collection("lots")
+                        .doc(lot.id)
+                        .update({
+
+                            ...updates,
+
+                            updatedAt:
+                                firebase.firestore
+                                    .FieldValue
+                                    .serverTimestamp()
+
+                        });
+
+                    // Mantém a tela sincronizada sem fechar o lote.
+                    Object.assign(
+                        lot,
+                        updates
+                    );
+
+                    message.textContent =
+                        "✓ Alterações salvas com sucesso.";
+
+                    save.textContent =
+                        "✓ SALVO";
+
+                    setTimeout(
+                        () => {
+
+                            openLot(
+                                lot.id
+                            );
+
+                        },
+                        700
+                    );
+
+                } catch (error) {
+
+                    console.error(
+                        "Erro ao editar lote:",
+                        error
+                    );
+
+                    message.textContent =
+                        error?.message ||
+                        "Erro ao salvar alterações.";
+
+                    save.disabled = false;
+                    save.textContent =
+                        "💾 SALVAR ALTERAÇÕES";
+
                 }
-              </select>
-            </label>
 
-            <label>
-              Status
-              <select id="adminEditStatus">
-                <option value="pendente"
-                  ${lotStatus(lot) === "pendente" ? "selected" : ""}>
-                  Pendente
-                </option>
-                <option value="producao"
-                  ${lotStatus(lot) === "producao" ? "selected" : ""}>
-                  Em produção
-                </option>
-                <option value="finalizado"
-                  ${lotStatus(lot) === "finalizado" ? "selected" : ""}>
-                  Finalizado
-                </option>
-                <option value="cancelado"
-                  ${lotStatus(lot) === "cancelado" ? "selected" : ""}>
-                  Cancelado
-                </option>
-              </select>
-            </label>
+            };
 
-            <div class="full" style="
-              padding:12px;
-              border:1px solid #d1d5db;
-              border-radius:8px;
-              margin-top:4px;
-            ">
-              <strong>Produzido:</strong> ${kg(lotProduced(lot))}
-              &nbsp; | &nbsp;
-              <strong>Saldo:</strong> ${kg(lotRemaining(lot))}
-              &nbsp; | &nbsp;
-              <strong>Realização:</strong> ${pct(lotPercent(lot))}
-            </div>
-
-            <div class="full">
-              <button
-                id="adminSaveLot"
-                type="submit"
-                class="primary">
-                💾 SALVAR ALTERAÇÕES
-              </button>
-
-              <div
-                id="adminEditMessage"
-                style="margin-top:10px;font-weight:600;">
-              </div>
-            </div>
-
-          </form>
-        `
-        : `
-          <h2>${escapeHtml(lot.name || "Lote")}</h2>
-
-          <div class="modal-grid">
-
-            <div>
-              <small>OS</small>
-              <strong>${escapeHtml(lot.os || "—")}</strong>
-            </div>
-
-            <div>
-              <small>Cliente</small>
-              <strong>${escapeHtml(lot.clientName || "—")}</strong>
-            </div>
-
-            <div>
-              <small>Peso do lote</small>
-              <strong>${kg(lot.weight)}</strong>
-            </div>
-
-            <div>
-              <small>Produzido</small>
-              <strong>${kg(lotProduced(lot))}</strong>
-            </div>
-
-            <div>
-              <small>Saldo</small>
-              <strong>${kg(lotRemaining(lot))}</strong>
-            </div>
-
-            <div>
-              <small>Data entrada</small>
-              <strong>${dateBR(lot.entryDate)}</strong>
-            </div>
-
-            <div>
-              <small>Programação</small>
-              <strong>${dateBR(lot.programDate)}</strong>
-            </div>
-
-            <div>
-              <small>Responsável</small>
-              <strong>${escapeHtml(user?.name || "—")}</strong>
-            </div>
-
-            <div>
-              <small>Status</small>
-              <strong>${statusLabel(lotStatus(lot))}</strong>
-            </div>
-
-            <div>
-              <small>Percentual</small>
-              <strong>${pct(lotPercent(lot))}</strong>
-            </div>
-
-          </div>
-        `
     }
 
-    ${
-      canEditProduction
-        ? `
-          <form id="productionForm" class="production-form">
+    if (canEditProduction) {
 
-            <strong>Registrar produção</strong>
+        if ($("productionForm")) {
 
-            <label>
-              Peso produzido agora (kg)
-              <input
-                id="productionInput"
-                type="number"
-                step="0.001"
-                min="0.001"
-                required>
-            </label>
+            $("productionForm").onsubmit =
+                event =>
+                    registerProduction(
+                        event,
+                        lot
+                    );
 
-            <label>
-              Observação
-              <textarea
-                id="productionObs"
-                rows="3"
-                placeholder="Observação opcional"></textarea>
-            </label>
+        }
 
-            <button
-              type="submit"
-              class="primary">
-              Registrar produção
-            </button>
-
-          </form>
-        `
-        : ""
     }
 
-    <div class="modal-actions">
-
-      ${
-        roleIsAdmin()
-          ? `
-            <button
-              type="button"
-              class="secondary"
-              onclick="redistributeLot('${lot.id}')">
-              Redistribuir lote
-            </button>
-          `
-          : ""
-      }
-
-      <button
-        type="button"
-        class="secondary"
-        onclick="closeLotModal()">
-        Fechar
-      </button>
-
-    </div>
-
-    <div id="modalMessage"></div>
-  `;
-
-  $("lotModal").classList.remove("hidden");
-
-  // ============================================================
-  // SALVAR EDIÇÃO COMPLETA DO LOTE
-  // ============================================================
-  if (roleIsAdmin() && $("adminLotEditForm")) {
-
-    $("adminLotEditForm").onsubmit = async function(event) {
-
-      event.preventDefault();
-
-      const save = $("adminSaveLot");
-      const msg = $("adminEditMessage");
-
-      save.disabled = true;
-      save.textContent = "Salvando...";
-      msg.textContent = "";
-
-      try {
-
-        const name = $("adminEditName").value.trim();
-        const os = $("adminEditOs").value.trim();
-        const clientName = $("adminEditClient").value.trim();
-        const weight = Number($("adminEditWeight").value);
-        const entryDate = $("adminEditEntry").value;
-        const programDate = $("adminEditProgram").value;
-        const assignedTo = $("adminEditAssigned").value;
-        const status = $("adminEditStatus").value;
-
-        if (!name) throw new Error("Informe o nome do lote.");
-        if (!os) throw new Error("Informe o número da OS.");
-        if (!clientName) throw new Error("Informe o cliente.");
-        if (!Number.isFinite(weight) || weight <= 0) {
-          throw new Error("Informe um peso válido.");
-        }
-        if (!entryDate) throw new Error("Informe a data de entrada.");
-        if (!programDate) {
-          throw new Error("Informe a data de programação.");
-        }
-        if (!assignedTo) {
-          throw new Error("Selecione o colaborador.");
-        }
-
-        const produced = lotProduced(lot);
-
-        if (weight < produced) {
-          throw new Error(
-            "O peso do lote não pode ser menor que o já produzido: " +
-            kg(produced)
-          );
-        }
-
-        const updateData = {
-          name,
-          os,
-          clientName,
-          weight,
-          entryDate,
-          programDate,
-          assignedTo,
-          status,
-          updatedAt:
-            firebase.firestore.FieldValue.serverTimestamp()
-        };
-
-        // Grava DIRETAMENTE no documento do lote que foi aberto.
-        await db.collection("lots").doc(lot.id).update(updateData);
-
-        // Atualiza a cópia local imediatamente.
-        Object.assign(lot, updateData);
-
-        msg.textContent = "✓ Lote atualizado com sucesso.";
-        save.textContent = "✓ SALVO";
-
-        // Recarrega do Firestore para confirmar o valor persistido.
-        await loadData();
-
-        const savedLot = allLots.find(item => item.id === lot.id);
-
-        if (savedLot) {
-          // Reabre o mesmo documento usando os dados recém-lidos.
-          window.openLot(savedLot.id);
-        }
-
-      } catch (error) {
-
-        console.error("Erro ao editar lote:", error);
-
-        msg.textContent =
-          "❌ " + (error?.message || "Não foi possível salvar.");
-
-        save.disabled = false;
-        save.textContent = "💾 SALVAR ALTERAÇÕES";
-      }
-    };
-  }
-
-  if (canEditProduction && $("productionForm")) {
-    $("productionForm").onsubmit =
-      event => registerProduction(event, lot);
-  }
 };
 
+
+// ============================================================
+// FECHAR MODAL
+// ============================================================
 
 window.closeLotModal =
 function() {
