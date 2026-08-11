@@ -470,28 +470,50 @@ async function loadData() {
 
   try {
 
-    const [
-      lotsSnap,
-      usersSnap
-    ] = await Promise.all([
+    let lotsSnap;
+    let usersSnap;
 
-      db.collection("lots").get(),
+    if (roleIsAdmin()) {
+      // Administrador pode consultar todos os lotes e usuários.
+      [lotsSnap, usersSnap] = await Promise.all([
+        db.collection("lots").get(),
+        db.collection("users").get()
+      ]);
+    } else {
+      // COLABORADOR: a consulta precisa respeitar as Firestore Rules.
+      // Um .get() em toda a coleção "lots" é negado pelas Rules, mesmo
+      // que depois o JavaScript filtre os lotes.
+      lotsSnap = await db
+        .collection("lots")
+        .where("assignedTo", "==", currentUser.uid)
+        .get();
 
-      db.collection("users").get()
+      // O colaborador também não pode fazer users.get() em toda a coleção.
+      // Ele só precisa do próprio perfil.
+      usersSnap = await db
+        .collection("users")
+        .doc(currentUser.uid)
+        .get();
+    }
 
-    ]);
+    allLots = lotsSnap.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data()
+    }));
 
-    allLots =
-      lotsSnap.docs.map(doc => ({
+    if (roleIsAdmin()) {
+      allUsers = usersSnap.docs.map(doc => ({
         id: doc.id,
         ...doc.data()
       }));
-
-    allUsers =
-      usersSnap.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      }));
+    } else {
+      allUsers = usersSnap.exists
+        ? [{
+            id: usersSnap.id,
+            ...usersSnap.data()
+          }]
+        : [currentProfile];
+    }
 
     fillUserSelects();
 
@@ -501,7 +523,7 @@ async function loadData() {
       renderUsers();
     }
 
-    // O Kanban é a tela operacional de todos os colaboradores.
+    // Para colaborador, allLots já contém somente seus lotes.
     renderKanban();
 
   } catch (error) {
