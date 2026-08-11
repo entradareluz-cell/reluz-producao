@@ -1,3 +1,17 @@
+
+async function migrateAssignedTo() {
+  if (!roleIsAdmin() || !allUsers.length || !allLots.length) return;
+  const map = new Map(allUsers.map(u=>[String(u.id), String(u.uid||u.id)]));
+  const jobs=[];
+  allLots.forEach(l=>{
+    const old=String(l.assignedTo||"");
+    const uid=map.get(old);
+    if(uid && uid!==old){
+      jobs.push(db.collection("lots").doc(l.id).update({assignedTo:uid}));
+    }
+  });
+  if(jobs.length){ await Promise.all(jobs); location.reload(); }
+}
 /* =========================================================
    FIREBASE
 ========================================================= */
@@ -504,18 +518,21 @@ async function loadData() {
     if (roleIsAdmin()) {
       allUsers = usersSnap.docs.map(doc => ({
         id: doc.id,
+        uid: doc.id,
         ...doc.data()
       }));
     } else {
       allUsers = usersSnap.exists
         ? [{
             id: usersSnap.id,
+            uid: usersSnap.id,
             ...usersSnap.data()
           }]
         : [currentProfile];
     }
 
-    fillUserSelects();
+    await migrateAssignedTo();
+fillUserSelects();
 
     if (roleIsAdmin()) {
       renderDashboard();
@@ -558,7 +575,7 @@ function fillUserSelects() {
     `<option value="">Todos</option>` +
     activeUsers
       .map(user =>
-        `<option value="${escapeHtml(user.id)}">
+        `<option value="${escapeHtml(user.uid || user.id)}">
           ${escapeHtml(user.name || "Sem nome")}
         </option>`
       )
@@ -570,7 +587,7 @@ function fillUserSelects() {
     </option>` +
     activeUsers
       .map(user =>
-        `<option value="${escapeHtml(user.id)}">
+        `<option value="${escapeHtml(user.uid || user.id)}">
           ${escapeHtml(user.name || "Sem nome")}
         </option>`
       )
@@ -1181,7 +1198,7 @@ window.openLot = async function(id) {
                   collaborators.map(u => `
                     <option
                       value="${escapeHtml(u.id)}"
-                      ${u.id === lot.assignedTo ? "selected" : ""}>
+                      ${(u.uid || u.id) === lot.assignedTo ? "selected" : ""}>
                       ${escapeHtml(u.name || u.email || "Sem nome")}
                     </option>
                   `).join("")
@@ -1774,7 +1791,7 @@ $("lotForm").addEventListener(
           $("lotProgram").value,
 
         assignedTo:
-          chosen.id,
+          (chosen.uid || chosen.id),
 
         producedWeight:
           0,
@@ -1927,7 +1944,7 @@ window.redistributeLot =
       .update({
 
         assignedTo:
-          chosen.id,
+          (chosen.uid || chosen.id),
 
         updatedAt:
           firebase.firestore
@@ -3002,7 +3019,7 @@ function pdfRows(lots) {
     dateBR(lot.programDate || lot.entryDate || ""),
     lot.os || "—",
     lot.name || "—",
-    allUsers.find(u => u.id === lot.assignedTo)?.name || "—",
+    allUsers.find(u => (u.uid || u.id) === lot.assignedTo)?.name || "—",
     kg(lot.weight || 0),
     kg(lotProduced(lot) || 0),
     kg(lotRemaining(lot) || 0),
