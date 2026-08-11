@@ -737,6 +737,103 @@
       }
     }
   </style>
+
+<style id="reluz-futuristic-theme">
+:root{
+  --rf-bg:#050912;
+  --rf-panel:rgba(10,18,32,.84);
+  --rf-panel-2:rgba(14,27,48,.78);
+  --rf-line:rgba(70,190,255,.22);
+  --rf-cyan:#39dcff;
+  --rf-blue:#6384ff;
+  --rf-violet:#a16cff;
+  --rf-green:#36e2a3;
+  --rf-text:#eaf6ff;
+  --rf-muted:#91a8c0;
+}
+html,body{
+  background:
+    radial-gradient(circle at 10% 5%,rgba(57,220,255,.13),transparent 27%),
+    radial-gradient(circle at 90% 12%,rgba(161,108,255,.13),transparent 30%),
+    linear-gradient(135deg,#03060d,#091322 55%,#040811)!important;
+  color:var(--rf-text)!important;
+}
+body:before{
+  content:"";
+  position:fixed;
+  inset:0;
+  pointer-events:none;
+  opacity:.7;
+  background-image:
+    linear-gradient(rgba(70,190,255,.035) 1px,transparent 1px),
+    linear-gradient(90deg,rgba(70,190,255,.035) 1px,transparent 1px);
+  background-size:36px 36px;
+  mask-image:linear-gradient(to bottom,#000,transparent 88%);
+}
+header,.header,.topbar,.navbar{
+  background:rgba(3,8,17,.78)!important;
+  backdrop-filter:blur(18px);
+  border-bottom:1px solid var(--rf-line)!important;
+  box-shadow:0 12px 40px rgba(0,0,0,.25);
+}
+.card,.panel,.modal-box,.dashboard-card,.stat-card,.performance-panel,.table-wrap{
+  background:linear-gradient(145deg,var(--rf-panel),rgba(5,13,25,.88))!important;
+  border:1px solid var(--rf-line)!important;
+  box-shadow:0 18px 55px rgba(0,0,0,.30),inset 0 1px rgba(255,255,255,.025);
+  backdrop-filter:blur(16px);
+  border-radius:16px!important;
+}
+button,.btn,.nav-btn{
+  color:var(--rf-text)!important;
+  background:linear-gradient(135deg,rgba(57,220,255,.10),rgba(99,132,255,.16))!important;
+  border:1px solid rgba(57,220,255,.25)!important;
+  border-radius:10px!important;
+  transition:transform .18s ease,box-shadow .18s ease,border-color .18s ease;
+}
+button:hover,.btn:hover,.nav-btn:hover{
+  transform:translateY(-1px);
+  border-color:rgba(57,220,255,.62)!important;
+  box-shadow:0 0 24px rgba(57,220,255,.16);
+}
+.primary,.btn-primary{
+  background:linear-gradient(135deg,#119dce,#596fe9)!important;
+  border-color:rgba(57,220,255,.72)!important;
+  box-shadow:0 0 25px rgba(57,220,255,.16);
+}
+input,select,textarea{
+  background:rgba(2,8,17,.78)!important;
+  color:var(--rf-text)!important;
+  border:1px solid rgba(90,180,240,.25)!important;
+  border-radius:10px!important;
+}
+input:focus,select:focus,textarea:focus{
+  outline:none!important;
+  border-color:var(--rf-cyan)!important;
+  box-shadow:0 0 0 3px rgba(57,220,255,.10),0 0 20px rgba(57,220,255,.10);
+}
+th{
+  background:rgba(57,220,255,.075)!important;
+  color:#c9efff!important;
+  border-bottom:1px solid var(--rf-line)!important;
+}
+td{border-bottom:1px solid rgba(90,180,240,.08)!important}
+tr:hover td{background:rgba(57,220,255,.035)!important}
+#lotModal{
+  background:rgba(0,0,0,.72)!important;
+  backdrop-filter:blur(8px);
+}
+#lotModal .modal-box{
+  border:1px solid rgba(57,220,255,.28)!important;
+  box-shadow:0 0 45px rgba(57,220,255,.10),0 24px 80px rgba(0,0,0,.55);
+}
+.panel-title h3,h1,h2,h3{
+  text-shadow:0 0 18px rgba(57,220,255,.10);
+}
+#reportSummary .card,#performanceSummary .card{
+  border-left:2px solid var(--rf-cyan)!important;
+}
+</style>
+
 </head>
 
 <body>
@@ -3597,124 +3694,201 @@ $("reportFilterBtn").onclick =
    PDF
 ========================================================= */
 
-function pdfBase(
-  title,
-  from,
-  to
-) {
+function pdfBase(title, from, to) {
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ orientation:"landscape", unit:"mm", format:"a4" });
 
-  const {
-    jsPDF
-  } = window.jspdf;
+  doc.setFillColor(5,10,20);
+  doc.rect(0,0,297,210,"F");
 
+  doc.setFillColor(10,22,38);
+  doc.roundedRect(10,8,277,20,4,4,"F");
 
-  const doc =
-    new jsPDF({
-      orientation:
-        "landscape"
-    });
+  doc.setFillColor(57,220,255);
+  doc.roundedRect(10,8,3,20,1.5,1.5,"F");
 
+  doc.setFont("helvetica","bold");
+  doc.setFontSize(17);
+  doc.setTextColor(235,248,255);
+  doc.text(title,19,17);
 
-  doc.setFontSize(18);
+  doc.setFont("helvetica","normal");
+  doc.setFontSize(7);
+  doc.setTextColor(143,171,196);
+  doc.text(`PERÍODO ${dateBR(from)} — ${dateBR(to)}`,19,23);
 
-  doc.text(
-    title,
-    14,
-    16
-  );
-
-
-  doc.setFontSize(9);
-
-  doc.text(
-    `Programação: ${
-      dateBR(from)
-    } a ${
-      dateBR(to)
-    }`,
-    14,
-    23
-  );
-
-
-  doc.text(
-    `Gerado em: ${
-      new Date()
-        .toLocaleString(
-          "pt-BR"
-        )
-    }`,
-    200,
-    23
-  );
-
+  doc.setTextColor(100,132,160);
+  doc.text("RELÜZ • PRODUÇÃO",282,23,{align:"right"});
 
   return doc;
-
 }
 
+function pdfPageChrome(doc, section="ANÁLISE DE DESEMPENHO") {
+  const h = doc.internal.pageSize.getHeight();
+  doc.setFillColor(5,10,20);
+  doc.rect(0,h-12,297,12,"F");
+  doc.setDrawColor(35,78,105);
+  doc.setLineWidth(.35);
+  doc.line(12,h-12,285,h-12);
 
-function pdfRows(lots) {
+  doc.setFont("helvetica","normal");
+  doc.setFontSize(6.5);
+  doc.setTextColor(100,132,160);
+  doc.text(`RELÜZ • ${section}`,12,h-5);
+  doc.text(`PÁGINA ${doc.internal.getCurrentPageInfo().pageNumber}`,285,h-5,{align:"right"});
+}
 
-  return lots.map(lot => {
+function pdfCard(doc,x,y,w,title,value,accent=[57,220,255]) {
+  doc.setFillColor(9,19,33);
+  doc.setDrawColor(31,62,87);
+  doc.roundedRect(x,y,w,19,3,3,"FD");
 
-    const user =
-      allUsers.find(
-        x =>
-          x.id ===
-          lot.assignedTo
-      );
+  doc.setFillColor(...accent);
+  doc.roundedRect(x+3,y+3,1.5,13,0.7,0.7,"F");
 
+  doc.setFont("helvetica","normal");
+  doc.setFontSize(6.8);
+  doc.setTextColor(145,171,195);
+  doc.text(String(title).toUpperCase(),x+8,y+7);
 
-    return [
+  doc.setFont("helvetica","bold");
+  doc.setFontSize(11.5);
+  doc.setTextColor(230,246,255);
+  doc.text(String(value),x+8,y+15);
+}
 
-      dateBR(
-        lot.programDate
-      ),
+function pdfBarChart(doc,title,labels,values,y=45,height=72) {
+  const x=14,w=269,left=x+58,chartW=w-76;
+  doc.setFont("helvetica","bold");doc.setFontSize(11);
+  doc.setTextColor(225,242,252);doc.text(title,x,y-7);
+  if(!labels.length){doc.setFontSize(8);doc.setTextColor(130,155,180);doc.text("Sem dados no período.",x,y+10);return;}
 
-      lot.os || "—",
+  const max=Math.max(...values.map(v=>Number(v)||0),1);
+  const rowH=Math.min(12.5,height/labels.length);
 
-      lot.name || "—",
+  labels.forEach((label,i)=>{
+    const yy=y+i*rowH,val=Number(values[i])||0;
+    let lab=String(label);if(lab.length>28)lab=lab.slice(0,27)+"…";
 
-      user?.name || "—",
+    doc.setFont("helvetica","normal");doc.setFontSize(6.5);
+    doc.setTextColor(150,174,196);doc.text(lab,x,yy+5);
 
-      kg(lot.weight),
+    doc.setFillColor(20,40,60);
+    doc.roundedRect(left,yy+1,chartW,6,1.5,1.5,"F");
 
-      kg(
-        lotProduced(lot)
-      ),
+    doc.setFillColor(57,220,255);
+    doc.roundedRect(left,yy+1,Math.max(.8,(val/max)*chartW),6,1.5,1.5,"F");
 
-      kg(
-        lotRemaining(lot)
-      ),
+    doc.setFontSize(6.5);doc.setTextColor(225,242,252);
+    doc.text(kg(val),left+chartW+2,yy+5.5);
+  });
+}
 
-      statusLabel(
-        lotStatus(lot)
-      )
+function pdfLineChart(doc,title,labels,values,y=42,height=72) {
+  const x=14,w=269,left=x+29,chartW=w-43,top=y,chartH=height;
+  doc.setFont("helvetica","bold");doc.setFontSize(11);
+  doc.setTextColor(225,242,252);doc.text(title,x,y-8);
+  if(!labels.length){doc.setFontSize(8);doc.setTextColor(130,155,180);doc.text("Sem dados no período.",x,y+10);return;}
 
-    ];
+  const max=Math.max(...values.map(v=>Number(v)||0),1);
+  doc.setDrawColor(43,71,94);
+  doc.line(left,top,left,top+chartH);
+  doc.line(left,top+chartH,left+chartW,top+chartH);
 
+  for(let i=0;i<=4;i++){
+    const gy=top+chartH-(i/4)*chartH;
+    doc.setDrawColor(24,49,69);doc.line(left,gy,left+chartW,gy);
+    doc.setFont("helvetica","normal");doc.setFontSize(5.5);
+    doc.setTextColor(105,132,158);doc.text(kg(max*i/4),x,gy+2);
+  }
+
+  const pts=values.map((v,i)=>{
+    const px=labels.length===1?left+chartW/2:left+(i/(labels.length-1))*chartW;
+    const py=top+chartH-(Number(v)||0)/max*chartH;
+    return [px,py];
   });
 
+  doc.setDrawColor(57,220,255);doc.setLineWidth(1.1);
+  for(let i=1;i<pts.length;i++)doc.line(pts[i-1][0],pts[i-1][1],pts[i][0],pts[i][1]);
+
+  pts.forEach((p,i)=>{
+    doc.setFillColor(57,220,255);doc.circle(p[0],p[1],1.5,"F");
+    if(labels.length<=14||i===0||i===labels.length-1||i%Math.ceil(labels.length/10)===0){
+      doc.setFontSize(5.5);doc.setTextColor(120,148,174);
+      doc.text(dateBR(labels[i]),p[0]-6,top+chartH+8);
+    }
+  });
 }
 
+function pdfPercentChart(doc,title,labels,values,y=42,height=72) {
+  const x=14,w=269,left=x+62,chartW=w-82;
+  doc.setFont("helvetica","bold");doc.setFontSize(11);
+  doc.setTextColor(225,242,252);doc.text(title,x,y-7);
+  if(!labels.length){doc.setFontSize(8);doc.setTextColor(130,155,180);doc.text("Sem dados no período.",x,y+10);return;}
 
-function savePdf(
-  doc,
-  name
-) {
+  const rowH=Math.min(12.5,height/labels.length);
+  labels.forEach((label,i)=>{
+    const yy=y+i*rowH,val=Math.max(0,Math.min(100,Number(values[i])||0));
+    let lab=String(label);if(lab.length>31)lab=lab.slice(0,30)+"…";
+    doc.setFontSize(6.5);doc.setTextColor(150,174,196);doc.text(lab,x,yy+5);
 
-  doc.save(
-    name
-      .replace(
-        /\s+/g,
-        "_"
-      ) +
-      ".pdf"
-  );
+    doc.setFillColor(20,40,60);doc.roundedRect(left,yy+1,chartW,6,1.5,1.5,"F");
+    doc.setFillColor(99,132,255);doc.roundedRect(left,yy+1,(val/100)*chartW,6,1.5,1.5,"F");
 
+    doc.setTextColor(225,242,252);doc.text(pct(val),left+chartW+2,yy+5.5);
+  });
 }
 
+function pdfRows(lots) {
+  return lots.map(lot=>{
+    const user=allUsers.find(x=>x.id===lot.assignedTo);
+    return [
+      dateBR(lot.programDate),
+      lot.os||"—",
+      lot.name||"—",
+      user?.name||"—",
+      kg(lot.weight),
+      kg(lotProduced(lot)),
+      kg(lotRemaining(lot)),
+      statusLabel(lotStatus(lot))
+    ];
+  });
+}
+
+function pdfTableTheme(doc, options={}) {
+  return {
+    styles:{
+      fontSize:6.5,
+      cellPadding:2.5,
+      textColor:[220,235,245],
+      fillColor:[8,18,31],
+      lineColor:[35,67,91],
+      lineWidth:.25,
+      ...options.styles
+    },
+    headStyles:{
+      fillColor:[14,48,69],
+      textColor:[185,237,255],
+      fontStyle:"bold",
+      lineColor:[57,220,255],
+      lineWidth:.35,
+      ...options.headStyles
+    },
+    alternateRowStyles:{fillColor:[10,24,39]},
+    margin:{left:10,right:10},
+    ...options
+  };
+}
+
+function savePdf(doc,name) {
+  // Aplicar rodapé a todas as páginas sem cobrir o conteúdo.
+  const pages=doc.getNumberOfPages();
+  for(let p=1;p<=pages;p++){
+    doc.setPage(p);
+    pdfPageChrome(doc);
+  }
+  doc.save(name.replace(/\s+/g,"_")+".pdf");
+}
 
 /* =========================================================
    PDF COMPLETO — MÉDIAS + GRÁFICOS
@@ -3827,16 +4001,19 @@ $("pdfGeneralBtn").onclick=()=>{
   pdfCard(doc,212,31,71,"Realização",pct(perf.realization));
 
   pdfBarChart(doc,"Produção total por colaborador",perf.users.map(r=>r.name),perf.users.map(r=>r.produced),58,60);
-  doc.autoTable({startY:124,head:[["Colaborador","Lotes","Programado","Produzido","Dias trab.","Média/dia trab.","Média/dia período","Realização"]],body:perf.users.map(r=>[r.name,r.lots,kg(r.planned),kg(r.produced),r.workedDays,kg(r.avgWorked),kg(r.avgPeriod),pct(r.realization)]),styles:{fontSize:6.5},margin:{left:10,right:10}});
+  doc.autoTable({startY:124,head:[["Colaborador","Lotes","Programado","Produzido","Dias trab.","Média/dia trab.","Média/dia período","Realização"]],body:perf.users.map(r=>[r.name,r.lots,kg(r.planned),kg(r.produced),r.workedDays,kg(r.avgWorked),kg(r.avgPeriod),pct(r.realization)]),...pdfTableTheme(doc,{styles:{fontSize:6.5}})});
 
   doc.addPage();
+  doc.setFillColor(9,19,33);doc.roundedRect(10,8,277,17,3,3,"F");
+  doc.setFont("helvetica","bold");doc.setFontSize(12);doc.setTextColor(225,242,252);doc.text("ANÁLISE DE DESEMPENHO",16,18);
   pdfLineChart(doc,"Produção por dia",perf.days.map(r=>r.date),perf.days.map(r=>r.produced),35,72);
   pdfPercentChart(doc,"Realização por colaborador",perf.users.map(r=>r.name),perf.users.map(r=>r.realization),126,65);
-  doc.autoTable({startY:198,head:[["Data","Programado","Produzido","Média do dia","Realização","Lotes"]],body:perf.days.map(r=>[dateBR(r.date),kg(r.planned),kg(r.produced),kg(r.avg),pct(r.realization),r.lots]),styles:{fontSize:6.5},margin:{left:10,right:10}});
+  doc.autoTable({startY:198,head:[["Data","Programado","Produzido","Média do dia","Realização","Lotes"]],body:perf.days.map(r=>[dateBR(r.date),kg(r.planned),kg(r.produced),kg(r.avg),pct(r.realization),r.lots]),...pdfTableTheme(doc,{styles:{fontSize:6.5}})});
 
   doc.addPage();
-  doc.setFontSize(14);doc.text("DETALHAMENTO DOS LOTES",14,16);
-  doc.autoTable({startY:22,head:[["Programação","OS","Lote","Colaborador","Peso","Produzido","Saldo","Status"]],body:pdfRows(lots),styles:{fontSize:6.5},margin:{left:10,right:10}});
+  doc.setFillColor(9,19,33);doc.roundedRect(10,8,277,17,3,3,"F");
+  doc.setFont("helvetica","bold");doc.setFontSize(12);doc.setTextColor(225,242,252);doc.text("DETALHAMENTO DOS LOTES",16,18);
+  doc.autoTable({startY:22,head:[["Programação","OS","Lote","Colaborador","Peso","Produzido","Saldo","Status"]],body:pdfRows(lots),...pdfTableTheme(doc,{styles:{fontSize:6.5}})});
   savePdf(doc,`Relatorio_Geral_${from}_${to}`);
 };
 
@@ -3849,14 +4026,14 @@ $("pdfIndividualBtn").onclick=()=>{
 
   pdfCard(doc,14,31,50,"Produção",kg(row.produced));pdfCard(doc,68,31,50,"Programado",kg(row.planned));pdfCard(doc,122,31,50,"Média/dia trab.",kg(row.avgWorked));pdfCard(doc,176,31,50,"Média/dia período",kg(row.avgPeriod));pdfCard(doc,230,31,53,"Realização",pct(row.realization));
   pdfLineChart(doc,"Produção diária do colaborador",perf.days.map(r=>r.date),perf.days.map(r=>r.produced),58,68);
-  doc.autoTable({startY:136,head:[["Indicador","Resultado"]],body:[["Colaborador",user?.name||"—"],["Lotes",row.lots],["Programado",kg(row.planned)],["Produzido",kg(row.produced)],["Saldo",kg(row.planned-row.produced)],["Dias no período",perf.periodDays],["Dias trabalhados",row.workedDays],["Média por dia trabalhado",kg(row.avgWorked)],["Média por dia do período",kg(row.avgPeriod)],["Realização",pct(row.realization)]],styles:{fontSize:8},margin:{left:10,right:10}});
+  doc.autoTable({startY:136,head:[["Indicador","Resultado"]],body:[["Colaborador",user?.name||"—"],["Lotes",row.lots],["Programado",kg(row.planned)],["Produzido",kg(row.produced)],["Saldo",kg(row.planned-row.produced)],["Dias no período",perf.periodDays],["Dias trabalhados",row.workedDays],["Média por dia trabalhado",kg(row.avgWorked)],["Média por dia do período",kg(row.avgPeriod)],["Realização",pct(row.realization)]],...pdfTableTheme(doc,{styles:{fontSize:8}})});
 
   doc.addPage();
   pdfPercentChart(doc,"Realização por dia",perf.days.map(r=>r.date),perf.days.map(r=>r.realization),35,80);
-  doc.autoTable({startY:124,head:[["Data","Programado","Produzido","Média do dia","Realização","Lotes"]],body:perf.days.map(r=>[dateBR(r.date),kg(r.planned),kg(r.produced),kg(r.avg),pct(r.realization),r.lots]),styles:{fontSize:7},margin:{left:10,right:10}});
+  doc.autoTable({startY:124,head:[["Data","Programado","Produzido","Média do dia","Realização","Lotes"]],body:perf.days.map(r=>[dateBR(r.date),kg(r.planned),kg(r.produced),kg(r.avg),pct(r.realization),r.lots]),...pdfTableTheme(doc,{styles:{fontSize:7}})});
 
   doc.addPage();doc.setFontSize(14);doc.text("DETALHAMENTO DOS LOTES",14,16);
-  doc.autoTable({startY:22,head:[["Programação","OS","Lote","Peso","Produzido","Saldo","Status"]],body:lots.map(l=>[dateBR(l.programDate),l.os||"—",l.name||"—",kg(l.weight),kg(lotProduced(l)),kg(lotRemaining(l)),statusLabel(lotStatus(l))]),styles:{fontSize:6.5},margin:{left:10,right:10}});
+  doc.autoTable({startY:22,head:[["Programação","OS","Lote","Peso","Produzido","Saldo","Status"]],body:lots.map(l=>[dateBR(l.programDate),l.os||"—",l.name||"—",kg(l.weight),kg(lotProduced(l)),kg(lotRemaining(l)),statusLabel(lotStatus(l))]),...pdfTableTheme(doc,{styles:{fontSize:6.5}})});
   savePdf(doc,`Relatorio_${user?.name||"Colaborador"}_${from}_${to}`);
 };
 
