@@ -1,4 +1,11 @@
 
+async function reluzLoadCollaboratorLots() {
+  const uid = firebase.auth().currentUser?.uid;
+  if (!uid) throw new Error("Usuário não autenticado.");
+  return await db.collection("lots").where("assignedTo","==",uid).get();
+}
+
+
 function reluzAssignedToCurrentCollaborator(lote) {
   const uid = reluzAuthUid();
   return !!uid && String(lote?.assignedTo || "") === String(uid);

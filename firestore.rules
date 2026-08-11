@@ -32,26 +32,26 @@ service cloud.firestore {
       allow create, update, delete: if isAdmin();
     }
 
+    
     match /lots/{lotId} {
-      // ADMIN: leitura, criação, edição COMPLETA e exclusão.
+      // Administradores podem ler/criar/editar/excluir qualquer lote.
       allow read, create, update, delete: if isAdmin();
 
-      // COLABORADOR: somente seus lotes.
-      allow read: if isCollaborator()
+      // Colaborador só pode ler o lote que está atribuído ao seu Auth UID.
+      // A consulta do Kanban usa where("assignedTo", "==", request.auth.uid).
+      allow read: if signedIn()
+        && isCollaborator()
         && resource.data.assignedTo == request.auth.uid;
 
-      // COLABORADOR: somente campos operacionais.
-      allow update: if isCollaborator()
+      // Colaborador pode atualizar o próprio lote, mantendo a atribuição.
+      allow update: if signedIn()
+        && isCollaborator()
         && resource.data.assignedTo == request.auth.uid
-        && request.resource.data.assignedTo == resource.data.assignedTo
-        && request.resource.data.diff(resource.data).affectedKeys()
-          .hasOnly([
-            "producedWeight",
-            "status",
-            "updatedAt",
-            "lastObservation",
-            "productionLogs"
-          ]);
+        && request.resource.data.assignedTo == request.auth.uid;
+
+      // Colaborador não pode criar/excluir lotes.
+      allow create, delete: if false;
     }
+
   }
 }
